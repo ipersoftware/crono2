@@ -97,10 +97,3 @@ class User extends Authenticatable
         return false;
     }
 }
-
-
-    public function isUtente(): bool
-    {
-        return $this->role === 'utente';
-    }
-}
