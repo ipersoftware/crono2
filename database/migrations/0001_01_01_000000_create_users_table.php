@@ -13,13 +13,14 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('ente_id')->nullable()->constrained('enti')->onDelete('set null');
             $table->string('cognome');
             $table->string('nome');
             $table->string('email')->unique();
             $table->string('keycloak_id')->nullable()->unique();
             $table->string('last_login_provider', 32)->nullable();
             $table->timestamp('email_verified_at')->nullable();
-            $table->string('password');
+            $table->string('password')->nullable()->comment('NULL in modalità Keycloak');
             $table->boolean('primo_accesso_eseguito')->default(false);
             $table->enum('role', [
                 'utente',
@@ -27,11 +28,14 @@ return new class extends Migration
                 'admin_ente',
                 'admin',
             ])->default('utente');
-            $table->foreignId('ente_id')->nullable()->constrained('enti')->onDelete('set null');
             $table->string('telefono')->nullable();
             $table->boolean('attivo')->default(true);
+            $table->boolean('privacy_ok')->default(false)->comment('Consenso GDPR');
+            $table->boolean('newsletter_ok')->default(false);
+            $table->dateTime('last_login_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
