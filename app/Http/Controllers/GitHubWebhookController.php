@@ -57,7 +57,7 @@ class GitHubWebhookController extends Controller
 
             try {
                 // Reset hard e git pull per sovrascrivere eventuali modifiche locali
-                $gitResult = Process::path('/var/www/ermes')
+                $gitResult = Process::path('/var/www/crono2')
                     ->run('git reset --hard && git pull');
 
                 if (!$gitResult->successful()) {
@@ -76,8 +76,8 @@ class GitHubWebhookController extends Controller
                 ]);
 
                 // Esegui npm ci e build solo se i permessi lo permettono
-                // Altrimenti fai manualmente: cd /var/www/ermes && npm ci && npm run build
-                $npmResult = Process::path('/var/www/ermes')
+                // Altrimenti fai manualmente: cd /var/www/crono2 && npm ci && npm run build
+                $npmResult = Process::path('/var/www/crono2')
                     ->timeout(300) // 5 minuti per npm
                     ->run('npm ci --prefer-offline && npm run build');
 
@@ -88,7 +88,7 @@ class GitHubWebhookController extends Controller
 
                     return response()->json([
                         'message' => 'OK_GIT_ONLY',
-                        'warning' => 'Git pull OK, ma npm build fallito. Esegui manualmente: cd /var/www/ermes && npm ci && npm run build',
+                        'warning' => 'Git pull OK, ma npm build fallito. Esegui manualmente: cd /var/www/crono2 && npm ci && npm run build',
                         'error' => $npmResult->errorOutput(),
                         'git_output' => $gitResult->output()
                     ], 200); // 200 perché git pull è comunque riuscito

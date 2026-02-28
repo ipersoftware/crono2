@@ -335,8 +335,9 @@ const caricaDati = async () => {
 
     if (!isNuovo.value) {
       const evRes = await eventiApi.show(enteId.value, eventoId.value)
-      const ev = evRes.data
-      console.log('[EventoForm] dati evento ricevuti:', ev.id, ev.titolo, ev.stato)
+      console.log('[EventoForm] evRes.data keys:', evRes.data ? Object.keys(evRes.data) : evRes.data)
+      const ev = evRes.data?.data ?? evRes.data
+      console.log('[EventoForm] dati evento ricevuti:', ev?.id, ev?.titolo, ev?.stato)
       form.titolo                    = ev.titolo ?? ''
       form.descrizione_breve         = ev.descrizione_breve ?? ''
       form.descrizione               = ev.descrizione ?? ''
