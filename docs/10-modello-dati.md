@@ -111,6 +111,8 @@ attributi          JSON              -- attributi custom (flessibili)
 layout             LONGTEXT          -- contenuto CKEditor
 abilitaNote        TINYINT           -- campo note libere in prenotazione
 noteEtichetta      VARCHAR           -- etichetta del campo note
+consenti_multi_sessione TINYINT      -- permette prenotazioni multiple sessioni stesso evento
+consenti_prenotazione_guest TINYINT  -- permette prenotazione senza autenticazione
 ```
 
 ---
@@ -244,7 +246,7 @@ prenotazioni  → luoghi, persone, posti come JSON snapshot
 | 5 | **Prenotazione anonima** — nessun legame con account | Impossibile "le mie prenotazioni" | `user_id` nullable: supporto sia guest che registrato |
 | 6 | `costoTotale` presente ma **pagamenti mai implementati** | Campo inutilizzato, nessun flusso di cassa | Progettare il campo fin dall'inizio; integrazioni pagamento come fase 2 |
 | 7 | **Form prenotazione non personalizzabile** — `campiDinamici` JSON flat | Non si può configurare quali dati raccogliere per evento | Entità `campi_form` collegata all'evento: tipo, etichetta, obbligatorio, ordine |
-| 8 | Nessun **locking temporale** dei posti durante la compilazione del form | Posti esauriti dal momento della scelta alla conferma | Sistema di **prenotazione temporanea** con scadenza (TBD: DB lock o Redis) |
+| 8 | Nessun **locking temporale** dei posti durante la compilazione del form | Posti esauriti dal momento della scelta alla conferma | Sistema di **prenotazione temporanea** con scadenza (DB + scheduler Laravel) |
 | 9 | Nessuna **lista d'attesa** | Utente perde il posto senza alternativa | Tabella `lista_attesa` per sessione, configurabile per evento |
 | 10 | `customerIDList` JSON in `users` | Utente multi-ente non gestibile in modo pulito | `ente_id` FK diretta in `users`; ruolo globale gestito da Keycloak |
 | 11 | `model_templates` JSON-driven — schemi entità nel DB | Molto flessibile ma complessissimo da manutenere | Attributi extra come JSON semplice; template solo per form personalizzati |
@@ -308,8 +310,8 @@ notifiche_log   ← log email inviate
 |---|---|---|
 | `id` | BIGINT PK | |
 | `nome` | VARCHAR(255) | ragione sociale |
-| `slug` | VARCHAR(255) UNIQUE | ex hashTag — URL vetrina `/ente/{slug}` |
-| `shop_url` | VARCHAR(255) UNIQUE nullable | URL pubblico vetrina (es. `tennis-club-bologna`) → `crono.app/{shop_url}` |
+| `slug` | VARCHAR(255) UNIQUE | ex hashTag — URL vetrina `/ente/{slug}` (deprecato in favore di shop_url) |
+| `shop_url` | VARCHAR(255) UNIQUE nullable | URL pubblico vetrina (es. `tennis-club-bologna`) → `crono.app/{shop_url}` — gestito SOLO dall'Admin di sistema |
 | `codice_fiscale` | VARCHAR(16) UNIQUE | |
 | `partita_iva` | VARCHAR(11) nullable | |
 | `email` | VARCHAR UNIQUE | |
@@ -324,12 +326,31 @@ notifiche_log   ← log email inviate
 | `eventi_in_evidenza` | JSON nullable | array di `evento_id` da mostrare in evidenza |
 | `stato` | ENUM | ATTIVO, SOSPESO, CANCELLATO |
 | `licenza` | ENUM | GRATUITA, PREMIUM (TBD) |
-| `config` | JSON nullable | configurazioni specifiche (es. colori, tema) |
+| `config` | JSON nullable | configurazioni specifiche (tema, branding, notifiche). Vedi [§7.4 Tema e branding](./04-enti-e-pagine-vetrina.md#74-tema-e-branding) |
 | `attivo_dal` / `attivo_al` | DATETIME nullable | |
 | `attivo` | BOOLEAN default true | |
 | `deleted_at` | TIMESTAMP | soft delete |
 
 > La vetrina è raggiungibile tramite `shop_url`. Vedi [04-enti-e-pagine-vetrina.md](./04-enti-e-pagine-vetrina.md).
+>
+> **Struttura campo `config` (esempio)**:
+> ```json
+> {
+>   "tema": {
+>     "colore_primario": "#3B82F6",
+>     "colore_secondario": "#64748B",
+>     "colore_accento": "#F59E0B",
+>     "colore_sfondo": "#FFFFFF",
+>     "colore_testo": "#1E293B",
+>     "font_famiglia": "Inter",
+>     "font_titoli": "Montserrat",
+>     "layout_eventi": "griglia"
+>   },
+>   "css_custom": "/* CSS personalizzato */",
+>   "css_custom_attivo": true,
+>   "notifica_cancellazioni": true
+> }
+> ```
 
 ---
 
@@ -356,6 +377,10 @@ notifiche_log   ← log email inviate
 > L'`ente_id` identifica l'Ente a cui appartiene l'operatore/admin_ente.
 > Gli utenti finali (ruolo `utente`) hanno `ente_id = NULL`.
 > L'Admin di sistema (ruolo `admin`) ha accesso a tutti gli enti indipendentemente dall'`ente_id`.
+>
+> **Creazione account da prenotazione guest**: Durante il checkout guest, l'utente può scegliere
+> volontariamente (checkbox opt-in) di creare un account per accedere all'area personale.
+> Se accetta, il sistema crea il record in `users` e invia email con link per impostare la password.
 
 ---
 
@@ -466,7 +491,10 @@ notifiche_log   ← log email inviate
 | `prenotabile` | BOOLEAN default true | override manuale |
 | `forza_non_disponibile` | BOOLEAN default false | chiusura forzata manuale |
 | `soglia_chiusura_automatica` | INT nullable | chiudi a N posti globali rimasti |
+| `soglia_overbooking_percentuale` | INT nullable | percentuale overbooking consentito (es. 10 = +10%). Vedi [§10 Overbooking](./06-prenotazioni.md#10-overbooking-configurabile) |
+| `soglia_overbooking_assoluta` | INT nullable | posti extra assoluti consentiti (es. 5 = +5 posti). Vedi [§10 Overbooking](./06-prenotazioni.md#10-overbooking-configurabile) |
 | `attiva_lista_attesa` | BOOLEAN default false | |
+| `lista_attesa_finestra_conferma_ore` | INT default 24 | durata finestra conferma per lista d'attesa (ore). Vedi [§3.4 Finestra configurabile](./06-prenotazioni.md#34-finestra-di-conferma-configurabile) |
 | `durata_lock_minuti` | INT default 15 | TTL lock temporale posti |
 | `note_pubbliche` | TEXT nullable | |
 | `attributi` | JSON nullable | extra non ricercabili |
@@ -478,6 +506,22 @@ notifiche_log   ← log email inviate
 > - `false` → il sistema verifica che ogni tipologia abbia disponibilità sufficiente
 >   in `sessione_tipologie_posto.posti_disponibili`. Il `posti_disponibili` globale
 >   resta comunque aggiornato come somma totale di tutti i posti confermati.
+>
+> **Calcolo disponibilità con overbooking**:
+> ```
+> overbooking_percentuale = soglia_overbooking_percentuale * posti_totali / 100
+> overbooking_effettivo = min(overbooking_percentuale, soglia_overbooking_assoluta)
+> posti_massimi = posti_totali + overbooking_effettivo
+> disponibili = posti_massimi - posti_prenotati_confermati - posti_riservati
+> ```
+> Se entrambi i campi overbooking sono NULL, overbooking disabilitato (default).
+> Vedi [§10 Overbooking](./06-prenotazioni.md#10-overbooking-configurabile).
+>
+> **Blocco prenotazioni duplicate**: prima di confermare, il sistema verifica se esiste già
+> una prenotazione per la stessa `sessione_id` + `user_id` (o `email` per guest) in stato
+> CONFERMATA/DA_CONFERMARE/RISERVATA. Se `evento.consenti_multi_sessione = false` e già esiste
+> prenotazione per altra sessione dello stesso evento, blocca. 
+> Vedi [§12 Blocco duplicati](./06-prenotazioni.md#12-blocco-prenotazioni-duplicate).
 
 I luoghi della sessione sono assegnati tramite il pivot **`sessione_luogo`** (vedere § 3.6).
 
@@ -580,6 +624,14 @@ Usata solo quando `sessioni.controlla_posti_globale = false`.
 | `deleted_at` | TIMESTAMP | |
 
 > Il dettaglio delle tipologie prenotate è in `prenotazione_posti` (§ 3.13).
+>
+> **Prenotazioni guest vs registrate**:
+> - **Guest**: `user_id = NULL` — prenotazione anonima, dati solo in questa tabella
+> - **Registrata**: `user_id` valorizzato — collegata a un account utente
+>
+> Durante il checkout guest, l'utente può scegliere di creare un account (opt-in).
+> In tal caso il sistema crea l'utente e valorizza `user_id` nella prenotazione.
+> Dettagli nel documento [06-prenotazioni.md](./06-prenotazioni.md).
 
 ---
 
@@ -725,9 +777,8 @@ un template personalizzato, il sistema usa il template di sistema (`ente_id = NU
 
 ## Aperto / Da decidere
 
-- [ ] **Prenotazione guest**: quali campi obbligatori? (nome, cognome, email minimo?)
+- [ ] **Prenotazione guest - Campi obbligatori**: nome, cognome, email sono il minimo; telefono obbligatorio o facoltativo?
 - [ ] **Lista d'attesa**: automatica con finestra di conferma o gestione manuale dall'operatore?
-- [ ] **Locking temporale**: DB puro (tabella + scheduler) o Redis TTL?
 - [ ] **Risposte form**: tabella `risposte_form` normalizzata o JSON `risposte` nella prenotazione? (impatta la reportistica)
 - [ ] **Migrazione Crono1 → Crono2**: fresh start o script di migrazione dati?
 - [ ] **Posti numerati** (es. platea con posti assegnati): da supportare o fuori scope per ora?

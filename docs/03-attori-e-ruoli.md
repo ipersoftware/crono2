@@ -37,12 +37,17 @@ Visitatore non registrato. Può navigare la piattaforma in sola lettura.
 - Visitare la pagina vetrina di un Ente
 - Consultare il calendario e la lista eventi di un Ente
 - Leggere la descrizione di un evento e le sessioni disponibili
-- Effettuare una prenotazione come **guest** (se abilitato dall'Ente — TBD)
+- Effettuare una prenotazione come **guest** (se abilitato dall'Ente)
+- Durante il checkout guest, scegliere volontariamente di creare un account
 
 **Non può fare:**
-- Accedere all'area personale
-- Vedere le proprie prenotazioni storiche
-- Cancellare una prenotazione dal portale (solo via link univoco — TBD)
+- Accedere all'area personale (a meno che non crei un account durante la prenotazione)
+- Vedere le proprie prenotazioni storiche senza account (solo via pagina pubblica con email + codice)
+
+**Accesso alle prenotazioni guest:**
+- Pagina pubblica "Visualizza le tue prenotazioni" (inserendo email + codice)
+- Cancellazione prenotazione tramite link univoco nell'email di conferma
+- Possibilità di attivare un account in qualsiasi momento dalla email di conferma
 
 ---
 
@@ -141,7 +146,7 @@ Accede tramite **Keycloak SSO**.
 |---|:---:|:---:|:---:|:---:|:---:|
 | Visualizza vetrina Ente | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Visualizza eventi pubblici | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Prenota (guest) | ⚙️ TBD | ✅ | — | — | — |
+| Prenota (guest) | ✅ | ✅ | — | — | — |
 | Prenota (registrato) | — | ✅ | — | — | — |
 | "Le mie prenotazioni" | — | ✅ | — | — | — |
 | Cancella propria prenotazione | — | ✅ | — | — | — |
@@ -167,10 +172,16 @@ Accede tramite **Keycloak SSO**.
 ### Gestione autenticazione per ruolo
 
 - **Utente (`utente`)**: autenticazione **locale** (email/password) gestita da Laravel.
-  Non usa Keycloak SSO.
+  **Non usa Keycloak SSO** — autenticazione nativa Laravel (Sanctum).
 - **Operatore Ente, Admin Ente, Admin**: autenticazione tramite **Keycloak SSO**.
   I ruoli sono definiti come **Realm Roles** in Keycloak e sincronizzati
   nel campo `role` della tabella `users`.
+
+**Razionale separazione**:
+- Gli utenti finali (`utente`) non necessitano di SSO enterprise
+- Registrazione semplificata (email/password) riduce attrito
+- I ruoli gestionali beneficiano di SSO per sicurezza e gestione centralizzata
+- Keycloak gestisce solo utenti interni/staff, non la base utenti pubblica
 
 Un utente con ruolo `admin` ha accesso globale a tutti gli Enti.
 Un utente con ruolo `operatore_ente` o `admin_ente` è associato al proprio Ente
@@ -197,8 +208,6 @@ La SPA Vue.js espone una sezione `/profilo` accessibile agli utenti autenticati 
 
 ## Aperto / Da decidere
 
-- [ ] **Prenotazione guest**: se abilitata, l'Ente deve poterla attivare/disattivare per evento?
-- [ ] **Cancellazione prenotazione**: l'utente può cancellare entro X ore dall'evento? Configurabile per evento?
 - [ ] **Multi-Ente per Admin Ente**: un Admin Ente può gestire più di un Ente (scenario franchise)?
 - [ ] **Notifica all'utente** quando viene promosso a Operatore/Admin di un Ente?
 - [ ] **Registrazione pubblica**: chiunque può registrarsi, o solo su invito?

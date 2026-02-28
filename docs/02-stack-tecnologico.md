@@ -42,6 +42,7 @@ tutto transita attraverso le API Laravel.
 | Migrations | Laravel Migrations |
 | Queue | Laravel Queue (database driver, espandibile a Redis) |
 | Scheduler | Laravel Task Scheduling (artisan schedule:run) |
+| Locking temporale posti | Database + Scheduler (scelta MVP; migrabile a Redis) |
 | WebSocket Server | Laravel Reverb (comunicazione real-time) |
 | Test | PHPUnit / Pest |
 
@@ -174,7 +175,7 @@ Crono2 si integra con i seguenti sistemi esterni:
 ## Aperto / Da decidere
 
 - [ ] Invio email: driver SMTP nativo vs Mailgun vs SES?
-- [ ] Redis per queue e cache in produzione?
+- [ ] Redis per queue e cache in produzione? (Locking temporale usa DB per MVP)
 - [ ] Deploy: server VPS dedicato, Docker Compose, o hosting PHP classico?
 - [ ] Versioning API (prefisso `/api/v1/`)?
 

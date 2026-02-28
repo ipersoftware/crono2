@@ -40,7 +40,8 @@ Un Evento:
 | `ente_id` | FK → enti | tenant owner |
 | `serie_id` | FK → serie nullable | raggruppamento in serie |
 | `titolo` | VARCHAR(255) | |
-| `slug` | VARCHAR(255) | URL-friendly, univoco per ente |
+| `slug` | VARCHAR(255) UNIQUE (ente_id, slug) | URL-friendly, univoco per ente, genera URL pubblico `/{shop_url}/eventi/{slug}` |
+| `slug_history` | JSON nullable | storico slug precedenti per redirect 301 |
 | `descrizione_breve` | VARCHAR(512) nullable | abstract per card in vetrina |
 | `descrizione` | LONGTEXT nullable | descrizione completa (HTML/Markdown) |
 | `immagine` | VARCHAR nullable | path copertina |
@@ -54,7 +55,9 @@ Un Evento:
 | `prenotabile_al` | DATETIME nullable | chiusura prenotazioni |
 | `posti_max_per_prenotazione` | INT default 1 | max posti acquistabili in una singola prenotazione |
 | `richiede_approvazione` | BOOLEAN default false | prenotazione → stato DA_CONFERMARE |
-| `cancellazione_consentita_ore` | INT nullable | utente può cancellare fino a N ore prima |
+| `consenti_multi_sessione` | BOOLEAN default false | permetti a un utente di prenotare più sessioni dello stesso evento. Vedi [§11 Multi-sessione](./06-prenotazioni.md#11-prenotazione-multi-sessione) |
+| `consenti_prenotazione_guest` | BOOLEAN default true | abilita prenotazioni senza registrazione per questo evento |
+| `cancellazione_consentita_ore` | INT nullable | finestra cancellazione: NULL=sempre; -1=mai; N=fino a N ore prima. Vedi [§8 Cancellazione](./06-prenotazioni.md#8-cancellazione-prenotazione-da-parte-dellutente) |
 | `mostra_disponibilita` | BOOLEAN default true | mostra posti rimasti in vetrina |
 | `attiva_note` | BOOLEAN default false | abilita campo note libere nel form |
 | `nota_etichetta` | VARCHAR(255) nullable | etichetta campo note |
