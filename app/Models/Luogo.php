@@ -12,6 +12,8 @@ class Luogo extends Model
 {
     use HasFactory, SoftDeletes;
 
+    protected $table = 'luoghi';
+
     protected $fillable = [
         'ente_id',
         'nome',

@@ -33,6 +33,11 @@ class SessioneController extends Controller
         $data = $this->valida($request);
         $data['evento_id'] = $evento->id;
 
+        // 0 = illimitato; null non ammesso dalla colonna
+        $data['posti_totali'] = $data['posti_totali'] ?? 0;
+        // DEFAULT 15; null non ammesso dalla colonna
+        $data['durata_lock_minuti'] = $data['durata_lock_minuti'] ?? 15;
+
         // Inizializza posti_disponibili = posti_totali
         if (isset($data['posti_totali'])) {
             $data['posti_disponibili'] = $data['posti_totali'];
@@ -85,13 +90,37 @@ class SessioneController extends Controller
         $this->autorizzaSessione($evento, $sessione);
 
         $data = $this->valida($request, partial: true);
+        if (array_key_exists('posti_totali', $data)) {
+            $data['posti_totali'] = $data['posti_totali'] ?? 0;
+        }
+        if (array_key_exists('durata_lock_minuti', $data)) {
+            $data['durata_lock_minuti'] = $data['durata_lock_minuti'] ?? 15;
+        }
         $sessione->update($data);
 
         if ($request->has('luogo_ids')) {
             $sessione->luoghi()->sync($request->luogo_ids);
         }
 
-        return response()->json($sessione->fresh(['luoghi', 'tipologiePosto']));
+        // Aggiorna posti per tipologia
+        if ($request->has('tipologie_posto')) {
+            foreach ($request->tipologie_posto as $config) {
+                $postiTotali = $config['posti_totali'] ?? 0;
+                $riservati   = SessioneTipologiaPosto::where('sessione_id', $sessione->id)
+                    ->where('tipologia_posto_id', $config['tipologia_posto_id'])
+                    ->value('posti_riservati') ?? 0;
+
+                SessioneTipologiaPosto::where('sessione_id', $sessione->id)
+                    ->where('tipologia_posto_id', $config['tipologia_posto_id'])
+                    ->update([
+                        'posti_totali'      => $postiTotali,
+                        'posti_disponibili' => max(0, $postiTotali - $riservati),
+                        'attiva'            => $config['attiva'] ?? true,
+                    ]);
+            }
+        }
+
+        return response()->json($sessione->fresh(['luoghi', 'tipologiePosto.tipologiaPosto']));
     }
 
     /** DELETE /api/enti/{ente}/eventi/{evento}/sessioni/{sessione} */
@@ -138,6 +167,10 @@ class SessioneController extends Controller
 
     private function autorizzaEvento(Ente $ente, Evento $evento): void
     {
+        // Admin di sistema può accedere a qualsiasi evento
+        if (request()->user()?->isAdmin()) {
+            return;
+        }
         abort_if((int) $evento->ente_id !== (int) $ente->id, 403, 'Evento non appartiene a questo Ente.');
     }
 

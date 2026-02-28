@@ -192,6 +192,10 @@ class EventoController extends Controller
 
     private function autorizza(Ente $ente, Evento $evento): void
     {
+        // Admin di sistema può accedere a qualsiasi evento (stesso bypass di EnsureEnteAccess)
+        if (request()->user()?->isAdmin()) {
+            return;
+        }
         abort_if((int) $evento->ente_id !== (int) $ente->id, 403, 'Evento non appartiene a questo Ente.');
     }
 }

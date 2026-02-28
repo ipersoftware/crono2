@@ -2,7 +2,7 @@
   <div>
     <div class="page-header">
       <div>
-        <router-link :to="`/admin/${enteId}/eventi`" class="back-link">← eventi</router-link>
+        <router-link :to="`/admin/${enteId}/eventi/${eventoId}`" class="back-link">← torna all'evento</router-link>
         <h1>🗓 Sessioni — <em>{{ evento?.titolo }}</em></h1>
       </div>
       <button @click="apriModal()" class="btn btn-primary">+ Nuova sessione</button>
@@ -16,19 +16,17 @@
           <tr>
             <th>Inizio</th>
             <th>Fine</th>
-            <th>Stato</th>
             <th>Posti totali</th>
-            <th>Prenotati</th>
+            <th>Disponibili</th>
             <th>Azioni</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="s in sessioni" :key="s.id">
-            <td>{{ formatDateTime(s.inizio_at) }}</td>
-            <td>{{ formatDateTime(s.fine_at) }}</td>
-            <td><span :class="['badge', `badge-${s.stato?.toLowerCase()}`]">{{ s.stato }}</span></td>
+            <td>{{ formatDateTime(s.data_inizio) }}</td>
+            <td>{{ formatDateTime(s.data_fine) }}</td>
             <td>{{ s.posti_totali ?? '∞' }}</td>
-            <td>{{ s.posti_prenotati }}</td>
+            <td>{{ s.posti_disponibili ?? '—' }}</td>
             <td class="actions">
               <button @click="apriModal(s)" class="btn btn-sm btn-primary">Modifica</button>
               <button @click="elimina(s)" class="btn btn-sm btn-danger">Elimina</button>
@@ -46,27 +44,22 @@
           <div class="grid-2">
             <div class="form-group">
               <label>Inizio *</label>
-              <input v-model="form.inizio_at" type="datetime-local" class="input" required />
+              <input v-model="form.data_inizio" type="datetime-local" class="input" required />
             </div>
             <div class="form-group">
               <label>Fine</label>
-              <input v-model="form.fine_at" type="datetime-local" class="input" />
+              <input v-model="form.data_fine" type="datetime-local" class="input" />
             </div>
           </div>
 
           <div class="grid-2">
             <div class="form-group">
-              <label>Posti totali (vuoto = illimitati)</label>
-              <input v-model.number="form.posti_totali" type="number" min="0" class="input" placeholder="es. 100" />
+              <label>Posti totali (0 o vuoto = illimitati)</label>
+              <input v-model.number="form.posti_totali" type="number" min="0" class="input" placeholder="0 = illimitati" />
             </div>
             <div class="form-group">
-              <label>Stato</label>
-              <select v-model="form.stato" class="input">
-                <option value="BOZZA">Bozza</option>
-                <option value="APERTA">Aperta</option>
-                <option value="CHIUSA">Chiusa</option>
-                <option value="ANNULLATA">Annullata</option>
-              </select>
+              <label>Durata lock prenotazione (minuti)</label>
+              <input v-model.number="form.durata_lock_minuti" type="number" min="1" class="input" placeholder="es. 15" />
             </div>
           </div>
 
@@ -79,15 +72,32 @@
             </div>
             <div class="form-group">
               <label class="checkbox-label">
-                <input type="checkbox" v-model="form.overbooking" />
-                Overbooking consentito
+                <input type="checkbox" v-model="form.prenotabile" />
+                Prenotabile
               </label>
             </div>
           </div>
 
+          <!-- Posti per tipologia (mostrati solo se l'evento ha tipologie) -->
+          <div v-if="form.tipologie_posto.length > 0" class="form-group">
+            <label>Posti per tipologia</label>
+            <table class="table-tipologie">
+              <thead>
+                <tr><th>Tipologia</th><th>Posti totali (0=∞)</th><th>Attiva</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="tp in form.tipologie_posto" :key="tp.tipologia_posto_id">
+                  <td>{{ tp.nome }}</td>
+                  <td><input v-model.number="tp.posti_totali" type="number" min="0" class="input input-sm" /></td>
+                  <td style="text-align:center"><input type="checkbox" v-model="tp.attiva" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
           <div class="form-group">
-            <label>Note interne</label>
-            <textarea v-model="form.note" rows="2" class="input"></textarea>
+            <label>Note pubbliche</label>
+            <textarea v-model="form.note_pubbliche" rows="2" class="input"></textarea>
           </div>
 
           <div v-if="errore" class="alert-error">{{ errore }}</div>
@@ -121,8 +131,10 @@ const saving   = ref(false)
 const errore   = ref('')
 
 const formDefault = () => ({
-  id: null, inizio_at: '', fine_at: '', posti_totali: null,
-  stato: 'BOZZA', controlla_posti_globale: true, overbooking: false, note: '',
+  id: null, data_inizio: '', data_fine: '', posti_totali: null,
+  controlla_posti_globale: true, prenotabile: true,
+  durata_lock_minuti: null, note_pubbliche: '',
+  tipologie_posto: [],
 })
 const form = reactive(formDefault())
 
@@ -142,18 +154,33 @@ const carica = async () => {
 
 const apriModal = (s = null) => {
   Object.assign(form, formDefault())
+
+  // Inizializza tipologie da evento con valori di default
+  form.tipologie_posto = (evento.value?.tipologie_posto ?? []).map(t => ({
+    tipologia_posto_id: t.id,
+    nome: t.nome,
+    posti_totali: 0,
+    attiva: true,
+  }))
+
   if (s) {
     Object.assign(form, {
       id: s.id,
-      inizio_at: s.inizio_at?.slice(0, 16) ?? '',
-      fine_at:   s.fine_at?.slice(0, 16) ?? '',
+      data_inizio: s.data_inizio?.slice(0, 16) ?? '',
+      data_fine:   s.data_fine?.slice(0, 16) ?? '',
       posti_totali: s.posti_totali,
-      stato: s.stato,
       controlla_posti_globale: s.controlla_posti_globale,
-      overbooking: s.overbooking,
-      note: s.note ?? '',
+      prenotabile: s.prenotabile ?? true,
+      durata_lock_minuti: s.durata_lock_minuti ?? null,
+      note_pubbliche: s.note_pubbliche ?? '',
+    })
+    // Sovrascrive i posti per tipologia con i valori già salvati
+    form.tipologie_posto = form.tipologie_posto.map(tp => {
+      const saved = (s.tipologie_posto ?? []).find(x => x.tipologia_posto_id === tp.tipologia_posto_id)
+      return saved ? { ...tp, posti_totali: saved.posti_totali, attiva: saved.attiva ?? true } : tp
     })
   }
+
   errore.value = ''
   modal.value  = true
 }
@@ -214,4 +241,8 @@ onMounted(carica)
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; }
+.table-tipologie { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: .25rem; }
+.table-tipologie th, .table-tipologie td { padding: .35rem .5rem; border-bottom: 1px solid #eee; }
+.table-tipologie th { font-weight: 600; text-align: left; background: #f8f9fa; }
+.input-sm { width: 90px; padding: .3rem .5rem; }
 </style>
