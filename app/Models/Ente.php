@@ -14,6 +14,7 @@ class Ente extends Model
     protected $table = 'enti';
 
     protected $fillable = [
+        'governance_id',
         'nome',
         'slug',
         'shop_url',

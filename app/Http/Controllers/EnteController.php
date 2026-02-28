@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ente;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EnteController extends Controller
@@ -105,5 +106,106 @@ class EnteController extends Controller
         return response()->json([
             'message' => 'Ente eliminato con successo',
         ]);
+    }
+
+    /**
+     * Ritorna gli enti presenti nel DB Governance abilitati a Crono2
+     * ma non ancora importati localmente (governance_id non presente in enti locale).
+     * Solo per admin.
+     */
+    public function governanceDisponibili(Request $request)
+    {
+        // IDs già importati
+        $importati = Ente::whereNotNull('governance_id')->pluck('governance_id')->all();
+
+        $query = DB::connection('governance')
+            ->table('enti as e')
+            ->where('e.attivo', 1)
+            ->select(
+                'e.id as governance_id',
+                'e.nome',
+                'e.codice_fiscale',
+                'e.email',
+                'e.citta',
+                'e.provincia'
+            );
+
+        if (count($importati) > 0) {
+            $query->whereNotIn('e.id', $importati);
+        }
+
+        if ($request->filled('search')) {
+            $s = $request->input('search');
+            $query->where(function ($q) use ($s) {
+                $q->where('e.nome', 'like', "%{$s}%")
+                  ->orWhere('e.codice_fiscale', 'like', "%{$s}%");
+            });
+        }
+
+        $enti = $query->orderBy('e.nome')->get();
+
+        return response()->json($enti);
+    }
+
+    /**
+     * Importa uno o più enti dal DB Governance nel DB locale.
+     * Solo per admin.
+     */
+    public function importaDaGovernance(Request $request)
+    {
+        $validated = $request->validate([
+            'governance_ids'   => ['required', 'array', 'min:1'],
+            'governance_ids.*' => ['required', 'integer'],
+        ]);
+
+        $importati = [];
+        $errori    = [];
+
+        foreach ($validated['governance_ids'] as $govId) {
+            try {
+                $govEnte = DB::connection('governance')
+                    ->table('enti')
+                    ->where('id', $govId)
+                    ->first();
+
+                if (!$govEnte) {
+                    throw new \RuntimeException('Ente non trovato nel DB Governance.');
+                }
+
+                // Crea o aggiorna l'ente locale
+                $ente = Ente::updateOrCreate(
+                    ['governance_id' => $govId],
+                    [
+                        'nome'            => $govEnte->nome,
+                        'codice_fiscale'  => $govEnte->codice_fiscale ?? null,
+                        'email'           => $govEnte->email ?? null,
+                        'telefono'        => $govEnte->telefono ?? null,
+                        'indirizzo'       => $govEnte->indirizzo ?? null,
+                        'citta'           => $govEnte->citta ?? null,
+                        'provincia'       => $govEnte->provincia ?? null,
+                        'cap'             => $govEnte->cap ?? null,
+                        'attivo'          => true,
+                    ]
+                );
+
+                $importati[] = [
+                    'governance_id' => $govId,
+                    'ente_id'       => $ente->id,
+                    'nome'          => $ente->nome,
+                ];
+            } catch (\Throwable $e) {
+                $errori[] = [
+                    'governance_id' => $govId,
+                    'errore'        => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'importati' => $importati,
+            'errori'    => $errori,
+            'message'   => count($importati) . ' ente/i importato/i con successo' .
+                           (count($errori) ? ', ' . count($errori) . ' errore/i.' : '.'),
+        ], count($importati) > 0 ? 200 : 422);
     }
 }

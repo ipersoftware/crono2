@@ -154,8 +154,64 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
+        $user  = $request->user()->load(['ente']);
+        $token = $request->user()->currentAccessToken();
+
+        $response = ['user' => $user];
+
+        if ($token->isImpersonating()) {
+            $response['impersonating_ente'] = $token->impersonatedEnte;
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * Impersonifica un ente (solo admin).
+     * Crea un nuovo token con impersonated_ente_id valorizzato.
+     * Il client salva il token originale e usa quello restituito per le chiamate successive.
+     */
+    public function impersonateEnte(Request $request, \App\Models\Ente $ente)
+    {
+        $admin = $request->user();
+
+        if (!$admin->isAdmin()) {
+            return response()->json(['message' => 'Non autorizzato. Solo gli admin possono impersonificare un ente.'], 403);
+        }
+
+        if (!$ente->attivo) {
+            return response()->json(['message' => 'Impossibile impersonificare un ente non attivo.'], 422);
+        }
+
+        $newToken = $admin->createToken('impersonate-ente-' . $ente->id);
+
+        // Valorizza impersonated_ente_id sul token appena creato
+        $newToken->accessToken->forceFill(['impersonated_ente_id' => $ente->id])->save();
+
         return response()->json([
-            'user' => $request->user()->load(['ente']),
+            'message'            => 'Impersonificazione avviata per l\'ente: ' . $ente->nome,
+            'token'              => $newToken->plainTextToken,
+            'impersonating_ente' => $ente,
+        ]);
+    }
+
+    /**
+     * Termina l'impersonificazione revocando il token corrente.
+     * Il client deve tornare a usare il token admin originale.
+     */
+    public function stopImpersonateEnte(Request $request)
+    {
+        $token = $request->user()->currentAccessToken();
+
+        if (!$token->isImpersonating()) {
+            return response()->json(['message' => 'Nessuna impersonificazione attiva su questo token.'], 422);
+        }
+
+        $enteName = $token->impersonatedEnte?->nome;
+        $token->delete();
+
+        return response()->json([
+            'message' => 'Impersonificazione terminata' . ($enteName ? ' per l\'ente: ' . $enteName : '') . '.',
         ]);
     }
 
