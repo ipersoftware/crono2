@@ -2,16 +2,33 @@
   <div id="app">
     <nav v-if="isAuthenticated" class="navbar">
       <div class="nav-container">
-        <h1>Ermes</h1>
+        <router-link to="/" class="nav-brand">🗓 Crono2</router-link>
+
         <div class="nav-links">
-          <router-link to="/">Home</router-link>
-          <router-link to="/users" v-if="isAdmin">Utenti</router-link>
-          <router-link to="/enti" v-if="isAdmin">Enti</router-link>
-          <button @click="logout" class="btn-logout">Logout</button>
+          <!-- Admin sistema -->
+          <template v-if="isAdmin">
+            <router-link to="/users">Utenti</router-link>
+            <router-link to="/enti">Enti</router-link>
+          </template>
+
+          <!-- Admin ente (utente legato a un ente) -->
+          <template v-if="enteId">
+            <router-link :to="`/admin/${enteId}/eventi`">📋 Eventi</router-link>
+            <router-link :to="`/admin/${enteId}/prenotazioni`">🎟 Prenotazioni</router-link>
+            <router-link :to="`/admin/${enteId}/tags`">🏷 Tag</router-link>
+            <router-link :to="`/admin/${enteId}/luoghi`">📍 Luoghi</router-link>
+            <router-link :to="`/admin/${enteId}/serie`">📚 Serie</router-link>
+            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>
+          </template>
+
+          <!-- Utente autenticato -->
+          <router-link to="/prenotazioni/mie">Le mie prenotazioni</router-link>
+
+          <button @click="logout" class="btn-logout">Esci</button>
         </div>
       </div>
     </nav>
-    
+
     <main>
       <router-view />
     </main>
@@ -20,7 +37,7 @@
 
 <script setup>
 import { useAuthStore } from '@/stores/auth'
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
@@ -28,18 +45,19 @@ const authStore = useAuthStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
+const enteId = computed(() => authStore.user?.ente_id ?? null)
+
+onMounted(async () => {
+  if (authStore.isAuthenticated && !authStore.user) {
+    await authStore.fetchUser()
+  }
+})
 
 const logout = async () => {
-  console.log('Logging out...')
   const keycloakLogoutUrl = await authStore.logout()
-  
   if (keycloakLogoutUrl) {
-    // Redirect to Keycloak logout (will redirect back to /login)
-    console.log('Redirecting to Keycloak logout...')
     window.location.href = keycloakLogoutUrl
   } else {
-    // Local logout only
-    console.log('Redirecting to login...')
     window.location.replace('/login')
   }
 }
