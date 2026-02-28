@@ -79,10 +79,30 @@ Il sistema si articola nelle seguenti macro-funzioni (capitoli della documentazi
 4. **Notifiche** — conferme, reminder, cancellazioni
 5. **Dashboard e reportistica** — viste operative e statistiche
 6. **Autenticazione e profilo utente** — Keycloak, login locale, primo accesso
+7. **Integrazioni** — connessione con sistemi esterni (Ermes, Smartpass)
 
 ---
 
-## 5. Note di Dominio
+## 5. Integrazioni con Sistemi Esterni
+
+Crono2 si integra con sistemi esterni per estendere le funzionalità:
+
+| Sistema | Funzione | Modalità |
+|---------|----------|----------|
+| **Keycloak** | Autenticazione SSO per ruoli gestionali | OAuth 2.0 / OpenID Connect |
+| **Ermes** | Invio newsletter massive ai prenotati | API REST esposta da Crono2 |
+| **Smartpass** | Generazione pass digitali per eventi | API REST bidirezionale (futuro) |
+
+**Caso d'uso principale (Ermes):**
+Un operatore vuole inviare una newsletter a tutti i prenotati di un evento.
+Ermes interroga l'API di Crono2 per ottenere la lista dei destinatari,
+l'operatore compone il messaggio su Ermes e invia.
+
+> Dettagli completi nel documento [08-integrazioni.md](./08-integrazioni.md).
+
+---
+
+## 6. Note di Dominio
 
 - Un **Ente** può avere più **Eventi** attivi contemporaneamente.
 - Un **Evento** ha una o più **Sessioni** (slot temporali prenotabili) — TBD.

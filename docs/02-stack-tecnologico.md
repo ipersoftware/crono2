@@ -15,7 +15,8 @@ Crono2 segue un'architettura **SPA + API REST**:
 ┌─────────────────────────┐        ┌──────────────────────────┐
 │   Frontend (Vue.js 3)   │◄──────►│   Backend (Laravel 11)   │
 │   http://localhost:5173 │  REST  │   http://localhost:8000  │
-└─────────────────────────┘        └────────────┬─────────────┘
+│         + Echo          │◄──────►│       + Reverb           │
+└─────────────────────────┘ WebSck └────────────┬─────────────┘
                                                 │
                          ┌──────────────────────┼───────────────────┐
                          │                      │                   │
@@ -41,6 +42,7 @@ tutto transita attraverso le API Laravel.
 | Migrations | Laravel Migrations |
 | Queue | Laravel Queue (database driver, espandibile a Redis) |
 | Scheduler | Laravel Task Scheduling (artisan schedule:run) |
+| WebSocket Server | Laravel Reverb (comunicazione real-time) |
 | Test | PHPUnit / Pest |
 
 ### Struttura directory backend rilevante
@@ -70,7 +72,8 @@ routes/
 | State management | Pinia |
 | Routing | Vue Router 4 |
 | HTTP client | Axios (via moduli in `resources/js/api/`) |
-| Stile | TBD (Tailwind CSS o Bootstrap 5) |
+| WebSocket client | Laravel Echo (comunicazione real-time) |
+| UI Components | PrimeVue |
 
 ### Struttura directory frontend rilevante
 
@@ -141,16 +144,35 @@ Le tabelle già presenti nel template di partenza sono:
 
 ```
 php artisan serve      ← Backend su :8000
+php artisan reverb:start ← WebSocket server su :8080
 npm run dev            ← Frontend (Vite) su :5173
-docker (Keycloak)      ← Keycloak su :8080
+docker (Keycloak)      ← Keycloak su :8080 (o altra porta)
 MySQL                  ← Database su :3306
 ```
 
 ---
 
+## 7. Integrazioni con Sistemi Esterni
+
+Crono2 si integra con i seguenti sistemi esterni:
+
+| Sistema | Funzione | Modalità | Status |
+|---------|----------|----------|--------|
+| **Keycloak** | Autenticazione SSO (ruoli gestionali) | OAuth 2.0 / OpenID Connect | ✅ Attivo |
+| **Ermes** | Sistema di messaggistica/newsletter | API REST (esposta da Crono2) | 🔄 Pianificato |
+| **Smartpass** | Generazione pass digitali per eventi | API REST (bidirezionale) | 🔲 Futuro |
+
+**Flusso principale:**
+- **Keycloak**: autenticazione per operatori e admin
+- **Ermes**: interroga API di Crono2 per ottenere liste prenotati e inviare newsletter
+- **Smartpass**: generazione automatica di QR code/pass digitali per le prenotazioni
+
+> Dettagli completi nel documento [08-integrazioni.md](./08-integrazioni.md).
+
+---
+
 ## Aperto / Da decidere
 
-- [ ] Stile CSS: Tailwind CSS vs Bootstrap 5 vs altra libreria?
 - [ ] Invio email: driver SMTP nativo vs Mailgun vs SES?
 - [ ] Redis per queue e cache in produzione?
 - [ ] Deploy: server VPS dedicato, Docker Compose, o hosting PHP classico?

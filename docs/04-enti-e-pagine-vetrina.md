@@ -36,19 +36,73 @@ https://crono.app/teatro-delle-muse
 ```
 
 ### Regole
-- Univoco a livello di piattaforma
+- **Univoco a livello di piattaforma** (constraint UNIQUE sul DB)
 - Solo caratteri alfanumerici lowercase e trattini (`[a-z0-9-]`)
-- Configurabile dall'Admin Ente, approvato dall'Admin di sistema (TBD)
-- Immutabile dopo la prima pubblicazione (per stabilità dei link esterni) — TBD
+- **Gestito esclusivamente dall'Admin di sistema** (non modificabile dall'Admin Ente)
+- Parametro delicato: impatta SEO, link esterni, integrazioni
+- **Immutabile dopo la prima pubblicazione** per garantire stabilità dei link
 
 ---
 
-## 3. Struttura della pagina vetrina
+## 3. URL degli Eventi — Link parlanti e SEO-friendly
+
+Ogni evento ha un proprio **slug univoco** all'interno dell'Ente, che forma l'URL pubblico dell'evento.
+
+### 3.1 Struttura URL evento
+
+**Crono2 (nuova struttura):**
+```
+https://crono.app/{shop_url}/eventi/{event_slug}
+```
+
+Esempi:
+```
+https://crono.app/teatro-delle-muse/eventi/il-robot-selvaggio
+https://crono.app/tennis-club-bologna/eventi/torneo-estivo-2026
+https://crono.app/studio-fisio-rossi/eventi/corso-pilates-base
+```
+
+**Crono1 (vecchia struttura — da migliorare):**
+```
+https://crono.ipersoftware.it/search?metaclass=Evento&class=Evento&tag=ilrobotselvaggio
+```
+
+### 3.2 Generazione automatica dello slug
+
+Lo slug viene generato automaticamente dal titolo dell'evento:
+
+```
+Titolo:  "Il Robot Selvaggio - Spettacolo Teatrale"
+Slug:    "il-robot-selvaggio-spettacolo-teatrale"
+```
+
+**Regole di generazione:**
+- Solo caratteri alfanumerici lowercase e trattini
+- Rimozione caratteri speciali, apostrofi, punteggiatura
+- Conversione spazi in trattini
+- Univoco all'interno dell'Ente (se esiste già, aggiunge suffisso numerico)
+
+**Modificabilità:**
+- L'Admin Ente può modificare manualmente lo slug
+- Se l'evento è già pubblicato, il vecchio slug viene mantenuto come redirect 301
+- Lo storico dei vecchi slug è conservato per retrocompatibilità link esterni
+
+### 3.3 Vantaggi SEO
+
+✅ **URL parlanti**: il contenuto dell'evento è riconoscibile dall'URL  
+✅ **Keyword optimization**: titolo evento indicizzato nell'URL  
+✅ **Gerarchica**: struttura `{ente}/eventi/{slug}` logica e navigabile  
+✅ **Breve e condivisibile**: facile da copiare e condividere  
+✅ **Retrocompatibilità**: redirect automatici per slug modificati  
+
+---
+
+## 4. Struttura della pagina vetrina
 
 La vetrina è una **SPA Vue.js** che carica i dati dell'Ente tramite API pubblica
 (nessuna autenticazione richiesta per la lettura).
 
-### 3.1 Layout pagina vetrina
+### 4.1 Layout pagina vetrina
 
 ```
 ┌──────────────────────────────────────────────────────┐
@@ -83,7 +137,7 @@ La vetrina è una **SPA Vue.js** che carica i dati dell'Ente tramite API pubblic
 └──────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Sezioni della vetrina
+### 4.2 Sezioni della vetrina
 
 | Sezione | Contenuto | Configurabile |
 |---|---|---|
@@ -94,7 +148,7 @@ La vetrina è una **SPA Vue.js** che carica i dati dell'Ente tramite API pubblic
 | **Ricerca eventi** | Barra ricerca testo libero + filtri | automatico |
 | **Contenuto libero** | HTML/Markdown editabile dall'Admin Ente | ✅ |
 
-### 3.3 Card evento in vetrina
+### 4.3 Card evento in vetrina
 
 Ogni card mostra:
 - Titolo evento
@@ -107,7 +161,7 @@ Ogni card mostra:
 
 ---
 
-## 4. Ricerca e filtri eventi in vetrina
+## 5. Ricerca e filtri eventi in vetrina
 
 La vetrina espone una barra di ricerca con i seguenti filtri combinabili:
 
@@ -124,7 +178,7 @@ La ricerca è **client-side** per liste brevi o **API-driven** con paginazione p
 
 ---
 
-## 5. API pubblica vetrina
+## 6. API pubblica vetrina
 
 Le seguenti rotte API sono **pubbliche** (nessun token richiesto):
 
@@ -138,33 +192,34 @@ Le seguenti rotte API sono **pubbliche** (nessun token richiesto):
 
 ---
 
-## 6. Gestione vetrina dal pannello Admin Ente
+## 7. Gestione vetrina dal pannello Admin Ente
 
 L'Admin Ente configura la vetrina da un'apposita sezione del pannello:
 
-### 6.1 Impostazioni generali
+### 7.1 Impostazioni generali
 - Nome, descrizione breve, logo, immagine copertina
-- `shop_url` (richiede approvazione Admin sistema — TBD)
 - Dati di contatto (telefono, email pubblica, indirizzo)
 - Geolocalizzazione sede (inserimento manuale o geocoding da indirizzo)
 
-### 6.2 Sezione "In evidenza"
+**Nota:** Lo `shop_url` NON è modificabile dall'Admin Ente, è gestito esclusivamente dall'Admin di sistema.
+
+### 7.2 Sezione "In evidenza"
 - Selezione drag & drop degli eventi da mostrare in evidenza
 - Ordinamento manuale
 - Massimo N eventi (TBD)
 
-### 6.3 Contenuto libero
+### 7.3 Contenuto libero
 - Editor HTML/Markdown per corpo pagina
 - Sezioni configurabili (TBD: blocchi tipo page builder o editor libero?)
 
-### 6.4 Tema e branding (TBD)
+### 7.4 Tema e branding (TBD)
 - Colore primario dell'ente
 - Font personalizzato
 - Layout alternativo (lista vs griglia eventi)
 
 ---
 
-## 7. Multi-tenancy e isolamento dati
+## 8. Multi-tenancy e isolamento dati
 
 Ogni vetrina mostra **esclusivamente** i dati dell'Ente corrispondente allo `shop_url`:
 - Solo eventi con `ente_id = ente.id` e `stato = PUBBLICATO`
@@ -178,8 +233,8 @@ Le query API sono sempre scoped sull'`ente_id`; non è possibile accedere ai dat
 
 ## Aperto / Da decidere
 
-- [ ] `shop_url` libero o approvato dall'Admin di sistema prima della pubblicazione?
-- [ ] `shop_url` modificabile dopo la pubblicazione? (impatto SEO e link salvati)
+- [ ] **Event slug**: lunghezza massima? Limite caratteri per evitare URL troppo lunghi?
+- [ ] **Redirect 301**: mantenere storico slug per quanto tempo? (1 anno, permanente?)
 - [ ] **Tema/branding**: personalizzazione colori e font per ente, o tema unico?
 - [ ] **Mappa enti**: pagina pubblica di piattaforma che mostra tutti gli enti attivi?
 - [ ] **Ricerca globale**: cercare eventi su tutta la piattaforma (cross-ente)?

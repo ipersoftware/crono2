@@ -51,7 +51,7 @@ Visitatore non registrato. Può navigare la piattaforma in sola lettura.
 Utente registrato e autenticato. Ha un'area personale.
 
 **Può fare (in aggiunta all'anonimo):**
-- Registrarsi e accedere tramite credenziali locali o Keycloak SSO
+- Registrarsi e accedere tramite credenziali locali (email/password)
 - Prenotare eventi con il proprio profilo precompilato
 - Accedere all'**area personale** → "Le mie prenotazioni"
 - Consultare lo storico delle prenotazioni effettuate
@@ -68,6 +68,7 @@ Utente registrato e autenticato. Ha un'area personale.
 
 Membro dello staff di un Ente, assegnato da un Admin Ente.
 Opera **esclusivamente nel contesto del proprio Ente**.
+Accede tramite **Keycloak SSO**.
 
 **Può fare:**
 - Visualizzare tutte le prenotazioni del proprio Ente
@@ -89,6 +90,7 @@ Opera **esclusivamente nel contesto del proprio Ente**.
 
 Responsabile dell'Ente. Ha controllo completo sul proprio Ente.
 Può avere più `admin_ente` per lo stesso Ente.
+Accede tramite **Keycloak SSO**.
 
 **Può fare (in aggiunta all'Operatore):**
 - Configurare il profilo dell'Ente (anagrafica, logo, vetrina)
@@ -117,6 +119,7 @@ Può avere più `admin_ente` per lo stesso Ente.
 ### 2.5 Admin di sistema (ruolo: `admin`)
 
 Superutente della piattaforma. Ha visibilità e controllo su tutto il sistema.
+Accede tramite **Keycloak SSO**.
 
 **Può fare:**
 - Tutto ciò che può fare l'Admin Ente, su qualsiasi Ente
@@ -161,8 +164,13 @@ Superutente della piattaforma. Ha visibilità e controllo su tutto il sistema.
 
 ## 4. Autenticazione e Keycloak
 
-I ruoli sono definiti come **Realm Roles** in Keycloak e sincronizzati
-nel campo `role` della tabella `users`.
+### Gestione autenticazione per ruolo
+
+- **Utente (`utente`)**: autenticazione **locale** (email/password) gestita da Laravel.
+  Non usa Keycloak SSO.
+- **Operatore Ente, Admin Ente, Admin**: autenticazione tramite **Keycloak SSO**.
+  I ruoli sono definiti come **Realm Roles** in Keycloak e sincronizzati
+  nel campo `role` della tabella `users`.
 
 Un utente con ruolo `admin` ha accesso globale a tutti gli Enti.
 Un utente con ruolo `operatore_ente` o `admin_ente` è associato al proprio Ente
@@ -194,7 +202,7 @@ La SPA Vue.js espone una sezione `/profilo` accessibile agli utenti autenticati 
 - [ ] **Multi-Ente per Admin Ente**: un Admin Ente può gestire più di un Ente (scenario franchise)?
 - [ ] **Notifica all'utente** quando viene promosso a Operatore/Admin di un Ente?
 - [ ] **Registrazione pubblica**: chiunque può registrarsi, o solo su invito?
-- [ ] **Profilo SSO Keycloak**: i dati nome/cognome si sincronizzano da Keycloak o sono gestiti localmente?
+- [ ] **Profilo SSO Keycloak** (per ruoli gestionali): i dati nome/cognome si sincronizzano da Keycloak o sono gestiti localmente?
 
 ---
 
