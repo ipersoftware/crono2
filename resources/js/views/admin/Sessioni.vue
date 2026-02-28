@@ -1,10 +1,20 @@
 <template>
   <div>
     <div class="page-header">
-      <div>
-        <router-link :to="`/admin/${enteId}/eventi/${eventoId}`" class="back-link">← torna all'evento</router-link>
-        <h1>🗓 Sessioni — <em>{{ evento?.titolo }}</em></h1>
-      </div>
+      <h1>{{ evento ? `✏️ Modifica evento` : 'Sessioni' }}</h1>
+      <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>
+    </div>
+
+    <!-- Tab navigation -->
+    <div class="tabs">
+      <router-link :to="`/admin/${enteId}/eventi/${eventoId}`" class="tab-btn">📝 Dettagli</router-link>
+      <span class="tab-btn active">🗓 Sessioni</span>
+      <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=tipologie`" class="tab-btn">🪑 Tipologie posto</router-link>
+      <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=form`" class="tab-btn">📋 Campi form</router-link>
+    </div>
+
+    <div class="page-subheader">
+      <span>🗓 Sessioni — <em>{{ evento?.titolo }}</em></span>
       <button @click="apriModal()" class="btn btn-primary">+ Nuova sessione</button>
     </div>
 
@@ -220,8 +230,17 @@ onMounted(carica)
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-.back-link { font-size: .85rem; color: #3498db; text-decoration: none; display: block; margin-bottom: .25rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+.page-subheader { display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 0 1rem; font-size: 1.1rem; font-weight: 600; }
+.page-subheader em { font-weight: 400; }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; border-bottom: 2px solid #eee; padding-bottom: .5rem; }
+.tab-btn {
+  padding: .5rem 1.1rem; border: none; border-radius: 6px 6px 0 0;
+  background: #f4f4f4; color: #555; cursor: pointer; font-size: .9rem;
+  text-decoration: none; display: inline-block; transition: background .15s;
+}
+.tab-btn:hover { background: #e0e0e0; }
+.tab-btn.active { background: #3498db; color: white; font-weight: 600; }
 .loading, .empty { padding: 2rem; text-align: center; color: #aaa; }
 .actions { display: flex; gap: .4rem; }
 .badge { padding: .22rem .55rem; border-radius: 10px; font-size: .75rem; font-weight: 600; text-transform: uppercase; }

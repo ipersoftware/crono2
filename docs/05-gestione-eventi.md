@@ -213,8 +213,11 @@ Il pannello di gestione guida l'Admin Ente nella creazione di un evento:
 [Step 3] Sessioni / Date
   - Aggiunta manuale: data, ora inizio/fine, descrizione, luogo (override)
   - Per ogni sessione:
-    - se tipologie definite: posti_totali per tipologia + flag controlla_posti_globale
-    - se no tipologie: posti_totali globale
+    - se tipologie definite sull'evento: ogni tipologia ha posti_totali/posti_disponibili/posti_riservati
+      propri nella tabella `sessione_tipologie_posto` (pivot sessione ↔ tipologia_posto)
+    - flag `controlla_posti_globale` sulla sessione: se TRUE usa solo sessioni.posti_disponibili
+      (ignora i contatori per tipologia); se FALSE verifica per-tipologia ← default
+    - se nessuna tipologia: posti_totali globale su sessione
   - Creazione ricorrente: es. "ogni martedì per 8 settimane"  ← TBD
   - Configurazione disponibilità per sessione
 

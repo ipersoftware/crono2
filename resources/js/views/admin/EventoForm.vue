@@ -283,7 +283,6 @@ const enteId  = computed(() => route.params.enteId)
 const eventoId = computed(() => route.params.eventoId)
 const isNuovo = computed(() => !route.params.eventoId)
 
-const tabAttivo = ref('dettagli')
 const tabs = [
   { key: 'dettagli',  label: '📝 Dettagli'       },
   { key: 'sessioni',  label: '🗓 Sessioni'        },
@@ -291,12 +290,15 @@ const tabs = [
   { key: 'form',      label: '📋 Campi form'      },
 ]
 
+const tabAttivo = ref(route.query.tab || 'dettagli')
+
 const cambiaTab = (key) => {
   if (key === 'sessioni') {
     router.push(`/admin/${enteId.value}/eventi/${eventoId.value}/sessioni`)
     return
   }
   tabAttivo.value = key
+  router.replace({ query: { ...route.query, tab: key } })
 }
 
 const form = reactive({
@@ -335,9 +337,7 @@ const caricaDati = async () => {
 
     if (!isNuovo.value) {
       const evRes = await eventiApi.show(enteId.value, eventoId.value)
-      console.log('[EventoForm] evRes.data keys:', evRes.data ? Object.keys(evRes.data) : evRes.data)
-      const ev = evRes.data?.data ?? evRes.data
-      console.log('[EventoForm] dati evento ricevuti:', ev?.id, ev?.titolo, ev?.stato)
+      const ev = evRes.data
       form.titolo                    = ev.titolo ?? ''
       form.descrizione_breve         = ev.descrizione_breve ?? ''
       form.descrizione               = ev.descrizione ?? ''

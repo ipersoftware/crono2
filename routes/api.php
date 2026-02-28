@@ -81,16 +81,19 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('serie', SerieController::class);
 
             // Eventi
-            Route::apiResource('eventi', EventoController::class);
+            Route::apiResource('eventi', EventoController::class)
+                ->parameters(['eventi' => 'evento']);
             Route::post('eventi/{evento}/pubblica',  [EventoController::class, 'pubblica']);
             Route::post('eventi/{evento}/sospendi',  [EventoController::class, 'sospendi']);
             Route::post('eventi/{evento}/annulla',   [EventoController::class, 'annulla']);
 
             // Sessioni (nested sotto evento)
-            Route::apiResource('eventi/{evento}/sessioni', SessioneController::class);
+            Route::apiResource('eventi/{evento}/sessioni', SessioneController::class)
+                ->parameters(['sessioni' => 'sessione']);
 
             // Tipologie posto (nested sotto evento)
-            Route::apiResource('eventi/{evento}/tipologie-posto', TipologiaPostoController::class);
+            Route::apiResource('eventi/{evento}/tipologie-posto', TipologiaPostoController::class)
+                ->parameters(['tipologie-posto' => 'tipologia_posto']);
 
             // Campi form (nested sotto evento)
             Route::get('eventi/{evento}/campi-form',                   [CampoFormController::class, 'index']);
