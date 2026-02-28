@@ -29,6 +29,12 @@
       </div>
     </nav>
 
+    <!-- Banner impersonificazione -->
+    <div v-if="isImpersonating" class="impersonate-banner">
+      <span>👁 Stai impersonificando: <strong>{{ authStore.impersonatingEnte?.nome }}</strong></span>
+      <button @click="stopImpersonate" class="btn-stop-impersonate">✕ Termina impersonificazione</button>
+    </div>
+
     <main>
       <router-view />
     </main>
@@ -45,7 +51,13 @@ const authStore = useAuthStore()
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
-const enteId = computed(() => authStore.user?.ente_id ?? null)
+const isImpersonating = computed(() => authStore.isImpersonating)
+
+// Durante impersonificazione mostra i link ente dell'ente impersonificato
+const enteId = computed(() => {
+  if (authStore.isImpersonating) return authStore.impersonatingEnte?.id ?? null
+  return authStore.user?.ente_id ?? null
+})
 
 onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
@@ -60,6 +72,11 @@ const logout = async () => {
   } else {
     window.location.replace('/login')
   }
+}
+
+const stopImpersonate = async () => {
+  await authStore.stopImpersonate()
+  router.push('/')
 }
 </script>
 
@@ -131,6 +148,33 @@ body {
 
 .btn-logout:hover {
   background-color: #c0392b;
+}
+
+.impersonate-banner {
+  background-color: #f39c12;
+  color: white;
+  padding: 0.6rem 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+}
+
+.btn-stop-impersonate {
+  background-color: #c0392b;
+  color: white;
+  border: none;
+  padding: 0.3rem 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background-color 0.2s;
+}
+
+.btn-stop-impersonate:hover {
+  background-color: #922b21;
 }
 
 main {
