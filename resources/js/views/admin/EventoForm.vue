@@ -2,7 +2,10 @@
   <div>
     <div class="page-header">
       <h1>{{ isNuovo ? '+ Nuovo evento' : '✏️ Modifica evento' }}</h1>
-      <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>
+      <div style="display:flex;gap:.6rem;align-items:center">
+        <a v-if="urlVetrina" :href="urlVetrina" target="_blank" class="btn btn-outline">👁 Vedi in vetrina</a>
+        <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>
+      </div>
     </div>
 
     <!-- Tab navigation -->
@@ -42,7 +45,11 @@
 
         <div class="form-group">
           <label>Descrizione completa</label>
-          <textarea v-model="form.descrizione" rows="5" class="input" placeholder="Descrizione completa HTML/testo"></textarea>
+          <Editor
+            tinymce-script-src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"
+            v-model="form.descrizione"
+            :init="tinyInit"
+          />
         </div>
 
         <div class="grid-3">
@@ -87,29 +94,45 @@
 
         <div class="grid-2">
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="form.richiede_approvazione" />
-              Richiede approvazione operatore
+            <label class="toggle-label">
+              <span class="toggle-text">Richiede approvazione operatore</span>
+              <span class="toggle-state">{{ form.richiede_approvazione ? 'Sì' : 'No' }}</span>
+              <span class="toggle-wrap">
+                <input type="checkbox" v-model="form.richiede_approvazione" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </span>
             </label>
           </div>
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="form.consenti_prenotazione_guest" />
-              Consenti prenotazioni guest (senza account)
+            <label class="toggle-label">
+              <span class="toggle-text">Consenti prenotazioni guest (senza account)</span>
+              <span class="toggle-state">{{ form.consenti_prenotazione_guest ? 'Sì' : 'No' }}</span>
+              <span class="toggle-wrap">
+                <input type="checkbox" v-model="form.consenti_prenotazione_guest" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </span>
             </label>
           </div>
         </div>
         <div class="grid-2">
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="form.consenti_multi_sessione" />
-              Consenti prenotazione di più sessioni
+            <label class="toggle-label">
+              <span class="toggle-text">Consenti prenotazione di più sessioni</span>
+              <span class="toggle-state">{{ form.consenti_multi_sessione ? 'Sì' : 'No' }}</span>
+              <span class="toggle-wrap">
+                <input type="checkbox" v-model="form.consenti_multi_sessione" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </span>
             </label>
           </div>
           <div class="form-group">
-            <label class="checkbox-label">
-              <input type="checkbox" v-model="form.mostra_disponibilita" />
-              Mostra disponibilità in vetrina
+            <label class="toggle-label">
+              <span class="toggle-text">Mostra disponibilità in vetrina</span>
+              <span class="toggle-state">{{ form.mostra_disponibilita ? 'Sì' : 'No' }}</span>
+              <span class="toggle-wrap">
+                <input type="checkbox" v-model="form.mostra_disponibilita" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </span>
             </label>
           </div>
         </div>
@@ -117,15 +140,44 @@
         <!-- Tag -->
         <div class="form-group">
           <label>Tag</label>
-          <div class="tags-flex">
-            <label v-for="tag in tags" :key="tag.id" class="tag-check">
-              <input type="checkbox" :value="tag.id" v-model="form.tag_ids" />
-              <span :style="{ background: tag.colore || '#3498db' }" class="tag-badge">{{ tag.nome }}</span>
-            </label>
+          <div class="tag-combobox" @focusout="chiudiDropdown" tabindex="-1">
+            <div class="tag-selected">
+              <span
+                v-for="tag in tagsSelezionati" :key="tag.id"
+                class="tag-badge-sel"
+                :style="{ background: tag.colore || '#3498db' }"
+              >
+                {{ tag.nome }}
+                <button type="button" @click="rimuoviTag(tag)" class="tag-remove">×</button>
+              </span>
+              <input
+                v-model="tagSearch"
+                @input="tagDropdownAperto = true"
+                @focus="tagDropdownAperto = true"
+                @keydown.enter.prevent="selezionaPrimoTag"
+                @keydown.backspace="backspaceTag"
+                @keydown.escape="tagDropdownAperto = false"
+                class="tag-input"
+                placeholder="Cerca o crea tag…"
+                autocomplete="off"
+              />
+            </div>
+            <ul v-if="tagDropdownAperto && tagsFiltrati.length" class="tag-dropdown">
+              <li
+                v-for="t in tagsFiltrati" :key="t.id ?? t.nome"
+                @mousedown.prevent="aggiungiTag(t)"
+                :class="['tag-option', { 'tag-option-new': t._nuovo }]"
+              >
+                <span v-if="!t._nuovo" class="tag-dot" :style="{ background: t.colore || '#3498db' }"></span>
+                <span v-else class="tag-option-icon">＋</span>
+                {{ t._nuovo ? `Crea "${t.nome}"` : t.nome }}
+              </li>
+            </ul>
           </div>
         </div>
 
         <div v-if="errore" class="alert-error">{{ errore }}</div>
+        <div v-if="successo" class="alert-success">{{ successo }}</div>
 
         <div class="form-actions">
           <button type="submit" :disabled="saving" class="btn btn-primary">
@@ -274,6 +326,8 @@
 <script setup>
 import { serieApi, tagsApi } from '@/api/admin'
 import { campiFormApi, eventiApi, tipologiePostoApi } from '@/api/eventi'
+import { useEnteStore } from '@/stores/ente'
+import Editor from '@tinymce/tinymce-vue'
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -316,8 +370,100 @@ const tipologie = ref([])
 const campi = ref([])
 const saving = ref(false)
 const loading = ref(false)
-const errore = ref('')
+const errore  = ref('')
+const successo = ref('')
+const eventoSlug = ref('')
+
+const enteStore  = useEnteStore()
+const urlVetrina = computed(() => {
+  const shop = enteStore.ente?.shop_url
+  const slug = eventoSlug.value
+  if (!shop || !slug) return null
+  return `/vetrina/${shop}/eventi/${slug}`
+})
+
+const tinyInit = {
+  height: 280,
+  menubar: false,
+  language: 'it',
+  language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@23.7.24/langs7/it.js',
+  plugins: 'lists link image code',
+  toolbar: 'bold italic underline | bullist numlist | link | removeformat | code',
+  branding: false,
+  promotion: false,
+  statusbar: false,
+  content_style: 'body { font-family: system-ui, sans-serif; font-size: 14px; }',
+}
+
 const tipiCampo = ['TEXT','TEXTAREA','SELECT','CHECKBOX','RADIO','DATE','EMAIL','PHONE','NUMBER']
+
+// ── Tag combobox ──────────────────────────────────────────────────────────────
+const tagSearch        = ref('')
+const tagDropdownAperto = ref(false)
+
+const tagsSelezionati = computed(() =>
+  form.tag_ids.map(id => tags.value.find(t => t.id === id)).filter(Boolean)
+)
+
+const tagsFiltrati = computed(() => {
+  const q = tagSearch.value.trim().toLowerCase()
+  const disponibili = tags.value.filter(
+    t => !form.tag_ids.includes(t.id) && (!q || t.nome.toLowerCase().includes(q))
+  )
+  const esattoEsiste = tags.value.some(t => t.nome.toLowerCase() === q)
+  if (q && !esattoEsiste) {
+    return [...disponibili, { _nuovo: true, nome: tagSearch.value.trim() }]
+  }
+  return disponibili
+})
+
+const aggiungiTag = async (t) => {
+  if (t._nuovo) {
+    try {
+      const res = await tagsApi.store(enteId.value, { nome: t.nome })
+      const nuovo = res.data
+      tags.value.push(nuovo)
+      form.tag_ids.push(nuovo.id)
+    } catch (e) {
+      console.error('Errore creazione tag:', e)
+    }
+  } else {
+    if (!form.tag_ids.includes(t.id)) form.tag_ids.push(t.id)
+  }
+  tagSearch.value = ''
+  tagDropdownAperto.value = false
+}
+
+const rimuoviTag = (tag) => {
+  form.tag_ids = form.tag_ids.filter(id => id !== tag.id)
+}
+
+const backspaceTag = () => {
+  if (tagSearch.value === '' && form.tag_ids.length) {
+    form.tag_ids.pop()
+  }
+}
+
+const selezionaPrimoTag = () => {
+  if (tagsFiltrati.value.length) aggiungiTag(tagsFiltrati.value[0])
+}
+
+const chiudiDropdown = (e) => {
+  // chiude solo se il focus esce dal componente
+  if (!e.currentTarget.contains(e.relatedTarget)) tagDropdownAperto.value = false
+}
+
+// Auto-suggerimento: quando viene caricato l'evento (nuovo), propone tag il cui
+// nome compare nel titolo
+watch(() => [form.titolo, tags.value], ([titolo, tagList]) => {
+  if (!isNuovo.value || !titolo || !tagList.length) return
+  const tLow = titolo.toLowerCase()
+  tagList.forEach(t => {
+    if (tLow.includes(t.nome.toLowerCase()) && !form.tag_ids.includes(t.id)) {
+      form.tag_ids.push(t.id)
+    }
+  })
+}, { immediate: false })
 
 const caricaDati = async () => {
   errore.value = ''
@@ -354,6 +500,7 @@ const caricaDati = async () => {
       form.prenotabile_dal           = ev.prenotabile_dal ? ev.prenotabile_dal.slice(0, 16) : ''
       form.prenotabile_al            = ev.prenotabile_al ? ev.prenotabile_al.slice(0, 16) : ''
       form.tag_ids                   = ev.tags?.map(t => t.id) ?? []
+      eventoSlug.value               = ev.slug ?? ''
 
       try {
         const [tipRes, campiRes] = await Promise.all([
@@ -375,13 +522,16 @@ const caricaDati = async () => {
 
 const salva = async () => {
   saving.value = true
-  errore.value = ''
+  errore.value  = ''
+  successo.value = ''
   try {
     if (isNuovo.value) {
       await eventiApi.store(enteId.value, form)
       router.push(`/admin/${enteId.value}/eventi`)
     } else {
       await eventiApi.update(enteId.value, eventoId.value, form)
+      successo.value = '✓ Modifiche salvate con successo.'
+      setTimeout(() => { successo.value = '' }, 3500)
     }
   } catch (e) {
     errore.value = e.response?.data?.message ?? 'Errore durante il salvataggio.'
@@ -498,17 +648,45 @@ watch(() => route.params.eventoId, (newId) => {
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; }
 .form-group { margin-bottom: .75rem; }
 .form-group label { display: block; margin-bottom: .3rem; font-weight: 500; font-size: .9rem; }
-.input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
+.form-group .checkbox-label { display: flex; align-items: center; gap: .5rem; cursor: pointer; font-weight: 500; margin-bottom: 0; }
 .checkbox-label { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+/* Toggle switch */
+.toggle-label { display: flex; align-items: center; justify-content: space-between; gap: 1rem; cursor: pointer; padding: .6rem .85rem; border: 2px solid #e8e8e8; border-radius: 8px; background: #fafafa; transition: all .2s; }
+.toggle-label:hover { background: #f0f4f8; }
+.toggle-label:has(.toggle-input:checked) { background: #eafaf1; border-color: #27ae60; }
+.toggle-text { font-size: .9rem; font-weight: 500; color: #2c3e50; flex: 1; }
+.toggle-state { font-size: .78rem; font-weight: 700; color: #aaa; min-width: 22px; text-align: right; margin-left: .75rem; margin-right: .5rem; }
+.toggle-label:has(.toggle-input:checked) .toggle-state { color: #27ae60; }
+.toggle-wrap { position: relative; flex-shrink: 0; width: 48px; height: 24px; }
+.toggle-input { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 24px; transition: background .2s; cursor: pointer; border: 1px solid #bbb; }
+.toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
+.toggle-input:checked + .toggle-slider { background: #27ae60; border-color: #27ae60; }
+.toggle-input:checked + .toggle-slider::before { transform: translateX(24px); }
+.input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
 .form-actions { margin-top: 1.5rem; }
-.alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
-.tags-flex { display: flex; flex-wrap: wrap; gap: .5rem; }
-.tag-check { display: flex; align-items: center; gap: .3rem; cursor: pointer; }
-.tag-badge { padding: .2rem .7rem; border-radius: 12px; color: white; font-size: .8rem; }
+.alert-error   { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
+.alert-success { background: #eafaf1; color: #1e8449;  border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; border: 1px solid #a9dfbf; font-weight: 500; }
+/* ── Tag combobox ─────────────────────────────────────────────────────────── */
+.tag-combobox { position: relative; border: 1px solid #ddd; border-radius: 6px; background: white; outline: none; }
+.tag-combobox:focus-within { border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,.18); }
+.tag-selected { display: flex; flex-wrap: wrap; gap: .35rem; padding: .4rem .55rem; min-height: 38px; align-items: center; }
+.tag-badge-sel { display: inline-flex; align-items: center; gap: .25rem; padding: .18rem .55rem .18rem .65rem; border-radius: 12px; color: white; font-size: .8rem; font-weight: 500; }
+.tag-remove { background: none; border: none; color: rgba(255,255,255,.85); font-size: 1rem; line-height: 1; cursor: pointer; padding: 0 0 .05rem; }
+.tag-remove:hover { color: white; }
+.tag-input { border: none; outline: none; font-size: .88rem; min-width: 140px; flex: 1; padding: .1rem .2rem; background: transparent; }
+.tag-dropdown { position: absolute; top: calc(100% + 4px); left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); z-index: 500; list-style: none; margin: 0; padding: .3rem 0; max-height: 220px; overflow-y: auto; }
+.tag-option { display: flex; align-items: center; gap: .5rem; padding: .45rem .85rem; font-size: .88rem; cursor: pointer; }
+.tag-option:hover { background: #f4f8fb; }
+.tag-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.tag-option-new { color: #2980b9; font-style: italic; }
+.tag-option-icon { font-style: normal; font-weight: 700; color: #2980b9; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .empty { padding: 2rem; text-align: center; color: #aaa; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; text-decoration: none; }
+.btn-outline { background: white; color: #3498db; border: 1.5px solid #3498db; border-radius: 6px; padding: .4rem 1rem; cursor: pointer; text-decoration: none; font-size: .9rem; }
+.btn-outline:hover { background: #eaf4fd; }
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { padding: .6rem .75rem; text-align: left; border-bottom: 1px solid #eee; font-size: .9rem; }
 .table th { background: #f8f9fa; font-weight: 600; }

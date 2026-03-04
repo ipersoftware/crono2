@@ -1,8 +1,11 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>{{ evento ? `✏️ Modifica evento` : 'Sessioni' }}</h1>
-      <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>
+      <h1>✏️ Modifica evento</h1>
+      <div style="display:flex;gap:.6rem;align-items:center">
+        <a v-if="urlVetrina" :href="urlVetrina" target="_blank" class="btn btn-outline">👁 Vedi in vetrina</a>
+        <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>
+      </div>
     </div>
 
     <!-- Tab navigation -->
@@ -126,7 +129,8 @@
 
 <script setup>
 import { eventiApi, sessioniApi } from '@/api/eventi'
-import { onMounted, reactive, ref } from 'vue'
+import { useEnteStore } from '@/stores/ente'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route   = useRoute()
@@ -136,6 +140,14 @@ const eventoId = route.params.eventoId
 const sessioni = ref([])
 const evento   = ref(null)
 const loading  = ref(false)
+
+const enteStore  = useEnteStore()
+const urlVetrina = computed(() => {
+  const shop = enteStore.ente?.shop_url
+  const slug = evento.value?.slug
+  if (!shop || !slug) return null
+  return `/vetrina/${shop}/eventi/${slug}`
+})
 const modal    = ref(false)
 const saving   = ref(false)
 const errore   = ref('')
@@ -230,17 +242,17 @@ onMounted(carica)
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .75rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
 .page-subheader { display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 0 1rem; font-size: 1.1rem; font-weight: 600; }
 .page-subheader em { font-weight: 400; }
-.tabs { display: flex; gap: .5rem; margin-bottom: 1.25rem; border-bottom: 2px solid #eee; padding-bottom: .5rem; }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
 .tab-btn {
-  padding: .5rem 1.1rem; border: none; border-radius: 6px 6px 0 0;
-  background: #f4f4f4; color: #555; cursor: pointer; font-size: .9rem;
-  text-decoration: none; display: inline-block; transition: background .15s;
+  padding: .5rem 1.2rem; border: 2px solid #ddd; border-radius: 6px;
+  background: white; color: #555; cursor: pointer; font-size: .9rem;
+  text-decoration: none; display: inline-block; transition: border-color .15s, color .15s;
 }
-.tab-btn:hover { background: #e0e0e0; }
-.tab-btn.active { background: #3498db; color: white; font-weight: 600; }
+.tab-btn:hover { border-color: #bbb; color: #2c3e50; }
+.tab-btn.active { border-color: #3498db; color: #3498db; font-weight: 600; background: white; }
 .loading, .empty { padding: 2rem; text-align: center; color: #aaa; }
 .actions { display: flex; gap: .4rem; }
 .badge { padding: .22rem .55rem; border-radius: 10px; font-size: .75rem; font-weight: 600; text-transform: uppercase; }
@@ -260,6 +272,8 @@ onMounted(carica)
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; }
+.btn-outline { background: white; color: #3498db; border: 1.5px solid #3498db; border-radius: 6px; padding: .4rem 1rem; cursor: pointer; text-decoration: none; font-size: .9rem; }
+.btn-outline:hover { background: #eaf4fd; }
 .table-tipologie { width: 100%; border-collapse: collapse; font-size: .88rem; margin-top: .25rem; }
 .table-tipologie th, .table-tipologie td { padding: .35rem .5rem; border-bottom: 1px solid #eee; }
 .table-tipologie th { font-weight: 600; text-align: left; background: #f8f9fa; }
