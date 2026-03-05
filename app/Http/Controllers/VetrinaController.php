@@ -19,15 +19,13 @@ class VetrinaController extends Controller
      */
     public function index(string $shopUrl): JsonResponse
     {
-        $ente = Ente::where('shop_url', $shopUrl)
-            ->where('attivo', true)
-            ->firstOrFail();
+        $ente = $this->enteAttivo($shopUrl);
 
         $inEvidenza = [];
         if (!empty($ente->eventi_in_evidenza)) {
             $inEvidenza = Evento::whereIn('id', $ente->eventi_in_evidenza)
                 ->where('stato', 'PUBBLICATO')
-                ->with(['tags', 'sessioni' => fn($q) => $q->where('stato', 'APERTA')->orderBy('inizio_at')])
+                ->with(['tags', 'sessioni' => fn($q) => $q->where('prenotabile', true)->where('forza_non_disponibile', false)->where('data_fine', '>', now())->orderBy('data_inizio')])
                 ->get();
         }
 
@@ -77,11 +75,11 @@ class VetrinaController extends Controller
         }
 
         if ($request->filled('da')) {
-            $q->whereHas('sessioni', fn($query) => $query->where('inizio_at', '>=', $request->da));
+            $q->whereHas('sessioni', fn($query) => $query->where('data_inizio', '>=', $request->da));
         }
 
         if ($request->filled('a')) {
-            $q->whereHas('sessioni', fn($query) => $query->where('inizio_at', '<=', $request->a));
+            $q->whereHas('sessioni', fn($query) => $query->where('data_inizio', '<=', $request->a));
         }
 
         return response()->json($q->orderByDesc('created_at')->paginate(20));
@@ -105,10 +103,11 @@ class VetrinaController extends Controller
                 'tipologiePosto' => fn($q) => $q->where('attiva', true),
                 'campiForm'      => fn($q) => $q->where('attivo', true)->where('visibile_pubblico', true)->orderBy('ordine'),
                 'sessioni'       => fn($q) => $q
-                    ->where('stato', 'APERTA')
-                    ->where('inizio_at', '>', now())
-                    ->orderBy('inizio_at')
-                    ->with('tipologieDisponibili'),
+                    ->where('prenotabile', true)
+                    ->where('forza_non_disponibile', false)
+                    ->where('data_fine', '>', now())
+                    ->orderBy('data_inizio')
+                    ->with('tipologiePosto.tipologiaPosto'),
             ])
             ->firstOrFail();
 
@@ -154,7 +153,11 @@ class VetrinaController extends Controller
 
     private function enteAttivo(string $shopUrl): Ente
     {
-        return Ente::where('shop_url', $shopUrl)
+        return Ente::where(function ($q) use ($shopUrl) {
+                $q->where('shop_url', $shopUrl)
+                  ->orWhere('slug', $shopUrl)
+                  ->orWhere('id', is_numeric($shopUrl) ? (int) $shopUrl : 0);
+            })
             ->where('attivo', true)
             ->firstOrFail();
     }

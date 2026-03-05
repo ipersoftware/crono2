@@ -176,6 +176,16 @@
           </div>
         </div>
 
+        <!-- Link Pubblico -->
+        <div v-if="linkPubblico" class="form-group link-pubblico-group">
+          <label>Link Pubblico</label>
+          <div class="link-pubblico-row">
+            <input readonly :value="linkPubblico" class="input link-pubblico-input" @click="$event.target.select()" />
+            <button type="button" @click="copiaLink" class="btn btn-sm btn-copy">📋 Copia</button>
+          </div>
+          <a :href="linkPubblico" target="_blank" class="link-apri">Apri link</a>
+        </div>
+
         <div v-if="errore" class="alert-error">{{ errore }}</div>
         <div v-if="successo" class="alert-success">{{ successo }}</div>
 
@@ -373,14 +383,24 @@ const loading = ref(false)
 const errore  = ref('')
 const successo = ref('')
 const eventoSlug = ref('')
+const enteShopUrl = ref('')
 
 const enteStore  = useEnteStore()
 const urlVetrina = computed(() => {
-  const shop = enteStore.ente?.shop_url
+  const shop = enteShopUrl.value || enteStore.ente?.shop_url || enteId.value
   const slug = eventoSlug.value
   if (!shop || !slug) return null
   return `/vetrina/${shop}/eventi/${slug}`
 })
+
+const linkPubblico = computed(() => {
+  if (!urlVetrina.value) return null
+  return window.location.origin + urlVetrina.value
+})
+
+const copiaLink = () => {
+  if (linkPubblico.value) navigator.clipboard.writeText(linkPubblico.value)
+}
 
 const tinyInit = {
   height: 280,
@@ -469,11 +489,12 @@ const caricaDati = async () => {
   errore.value = ''
   loading.value = true
   try {
-    // Carica tags e serie (non bloccanti se falliscono)
+    // Carica ente (per shop_url), tags e serie in parallelo
     try {
       const [tagsRes, serieRes] = await Promise.all([
         tagsApi.index(enteId.value),
         serieApi.index(enteId.value),
+        enteStore.ente?.id !== Number(enteId.value) ? enteStore.fetchEnte(enteId.value) : Promise.resolve(),
       ])
       tags.value  = tagsRes.data.data ?? tagsRes.data
       serie.value = serieRes.data.data ?? serieRes.data
@@ -501,6 +522,7 @@ const caricaDati = async () => {
       form.prenotabile_al            = ev.prenotabile_al ? ev.prenotabile_al.slice(0, 16) : ''
       form.tag_ids                   = ev.tags?.map(t => t.id) ?? []
       eventoSlug.value               = ev.slug ?? ''
+      enteShopUrl.value              = ev.ente?.shop_url ?? ev.ente?.slug ?? ''
 
       try {
         const [tipRes, campiRes] = await Promise.all([
@@ -692,6 +714,12 @@ watch(() => route.params.eventoId, (newId) => {
 .table th { background: #f8f9fa; font-weight: 600; }
 .actions-cell { display: flex; gap: .4rem; }
 .tipo-badge { background: #e8f4fd; color: #2980b9; padding: .15rem .5rem; border-radius: 4px; font-size: .8rem; font-weight: 600; }
+.link-pubblico-group { margin-top: .25rem; }
+.link-pubblico-row { display: flex; gap: .5rem; align-items: center; }
+.link-pubblico-input { flex: 1; font-size: .82rem; color: #555; cursor: text; }
+.btn-copy { background: #ecf0f1; color: #2c3e50; border: 1px solid #ccc; border-radius: 6px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.btn-copy:hover { background: #dfe6e9; }
+.link-apri { font-size: .82rem; color: #3498db; text-decoration: underline; display: inline-block; margin-top: .3rem; }
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 2000; }
 .modal-dialog { background: white; border-radius: 10px; padding: 1.75rem; width: 90%; max-width: 480px; box-shadow: 0 8px 30px rgba(0,0,0,.2); }
 .modal-dialog h3 { margin: 0 0 1.25rem; font-size: 1.1rem; }

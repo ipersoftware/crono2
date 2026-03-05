@@ -10,8 +10,8 @@
 
         <h1>🎟 Prenota — {{ evento?.titolo }}</h1>
         <div class="sessione-info card">
-          <strong>📅 {{ formatDateTime(sessione?.inizio_at) }}</strong>
-          <span v-if="sessione?.posti_totali" class="posti-left">
+          <strong>📅 {{ formatDateTime(sessione?.data_inizio) }}</strong>
+          <span v-if="sessione?.posti_totali !== null" class="posti-left">
             — {{ postiRimasti }} posti disponibili
           </span>
         </div>
@@ -189,10 +189,7 @@ const totale = computed(() => {
   }, 0)
 })
 
-const postiRimasti = computed(() => {
-  if (!sessione.value?.posti_totali) return null
-  return sessione.value.posti_totali - sessione.value.posti_prenotati - sessione.value.posti_riservati
-})
+const postiRimasti = computed(() => sessione.value?.posti_disponibili ?? null)
 
 const carica = async () => {
   loading.value = true
@@ -200,7 +197,7 @@ const carica = async () => {
     const res = await vetrinaApi.evento(shopUrl, slug)
     evento.value    = res.data
     sessione.value  = res.data.sessioni?.find(s => s.id === sessioneId) ?? null
-    tipologie.value = sessione.value?.tipologie_disponibili ?? []
+    tipologie.value = sessione.value?.tipologie_posto?.filter(t => t.attiva) ?? []
     campiForm.value = res.data.campi_form ?? []
 
     if (!sessione.value) {

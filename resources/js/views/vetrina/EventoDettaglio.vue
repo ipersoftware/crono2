@@ -57,12 +57,12 @@
                 class="sessione-row"
               >
                 <div class="sessione-data">
-                  <strong>{{ formatDateTime(s.inizio_at) }}</strong>
-                  <span v-if="s.fine_at" class="muted"> → {{ formatDateTime(s.fine_at) }}</span>
+                  <strong>{{ formatDateTime(s.data_inizio) }}</strong>
+                  <span v-if="s.data_fine" class="muted"> → {{ formatDateTime(s.data_fine) }}</span>
                 </div>
                 <div class="sessione-info">
                   <span v-if="s.posti_totali">
-                    {{ s.posti_totali - s.posti_prenotati - s.posti_riservati }} posti disponibili
+                    {{ s.posti_disponibili }} posti disponibili
                   </span>
                   <span v-else>Posti illimitati</span>
                 </div>

@@ -62,6 +62,7 @@ class EventoController extends Controller
                 'sessioni',
                 'tipologiePosto',
                 'campiForm',
+                'ente:id,shop_url,slug',
             ])
         );
     }

@@ -90,6 +90,20 @@
               </label>
             </div>
           </div>
+          <div class="grid-2">
+            <div class="form-group">
+              <label class="checkbox-label" style="color:#c0392b">
+                <input type="checkbox" v-model="form.forza_non_disponibile" />
+                Forza chiusura (non prenotabile)
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="checkbox-label">
+                <input type="checkbox" v-model="form.attiva_lista_attesa" />
+                Attiva lista d'attesa
+              </label>
+            </div>
+          </div>
 
           <!-- Posti per tipologia (mostrati solo se l'evento ha tipologie) -->
           <div v-if="form.tipologie_posto.length > 0" class="form-group">
@@ -155,6 +169,7 @@ const errore   = ref('')
 const formDefault = () => ({
   id: null, data_inizio: '', data_fine: '', posti_totali: null,
   controlla_posti_globale: true, prenotabile: true,
+  forza_non_disponibile: false, attiva_lista_attesa: false,
   durata_lock_minuti: null, note_pubbliche: '',
   tipologie_posto: [],
 })
@@ -193,6 +208,8 @@ const apriModal = (s = null) => {
       posti_totali: s.posti_totali,
       controlla_posti_globale: s.controlla_posti_globale,
       prenotabile: s.prenotabile ?? true,
+      forza_non_disponibile: s.forza_non_disponibile ?? false,
+      attiva_lista_attesa: s.attiva_lista_attesa ?? false,
       durata_lock_minuti: s.durata_lock_minuti ?? null,
       note_pubbliche: s.note_pubbliche ?? '',
     })

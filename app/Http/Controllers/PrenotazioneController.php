@@ -37,7 +37,8 @@ class PrenotazioneController extends Controller
         $evento   = $sessione->evento;
 
         abort_if($evento->stato !== 'PUBBLICATO', 422, 'Evento non disponibile alla prenotazione.');
-        abort_if($sessione->stato !== 'APERTA', 422, 'Sessione non aperta alle prenotazioni.');
+        abort_if(!$sessione->prenotabile, 422, 'Sessione non aperta alle prenotazioni.');
+        abort_if($sessione->forza_non_disponibile, 422, 'Sessione non disponibile.');
 
         return DB::transaction(function () use ($data, $sessione, $evento) {
             // Lock a livello di riga per evitare race conditions
@@ -47,13 +48,8 @@ class PrenotazioneController extends Controller
 
             // Verifica disponibilità globale
             if ($sessione->controlla_posti_globale) {
-                $disponibili = $sessione->posti_totali
-                    - $sessione->posti_prenotati
-                    - $sessione->posti_riservati;
-
-                if (!$sessione->overbooking) {
-                    abort_if($disponibili < $totaleRichiesto, 422, 'Posti insufficienti.');
-                }
+                $disponibili = $sessione->posti_disponibili - $sessione->posti_riservati;
+                abort_if($disponibili < $totaleRichiesto, 422, 'Posti insufficienti.');
             }
 
             // Verifica disponibilità per tipologia
@@ -64,7 +60,7 @@ class PrenotazioneController extends Controller
                     ->first();
 
                 if ($st && !$sessione->controlla_posti_globale) {
-                    $dispTip = $st->posti_disponibili - $st->posti_prenotati - $st->posti_riservati;
+                    $dispTip = $st->posti_disponibili - $st->posti_riservati;
                     abort_if($dispTip < $richiesta['quantita'], 422,
                         "Posti insufficienti per la tipologia #{$richiesta['tipologia_id']}.");
                 }
@@ -73,10 +69,11 @@ class PrenotazioneController extends Controller
             // Crea lock temporaneo
             $token = Str::uuid()->toString();
             $lock  = PrenotazioneTemporanea::create([
-                'sessione_id' => $sessione->id,
-                'token'       => $token,
-                'posti_json'  => $data['posti'],
-                'scadenza_at' => now()->addMinutes(config('booking.lock_minutes', 15)),
+                'sessione_id'        => $sessione->id,
+                'token'              => $token,
+                'posti_totali'       => $totaleRichiesto,
+                'dettaglio_tipologie'=> $data['posti'],
+                'scadenza_at'        => now()->addMinutes(config('booking.lock_minutes', 15)),
             ]);
 
             // Incrementa posti_riservati sulla sessione
@@ -201,16 +198,16 @@ class PrenotazioneController extends Controller
 
             $totaleQuantita = collect($data['posti'])->sum('quantita');
 
-            // Aggiorna posti: converti riservati → prenotati
+            // Aggiorna posti: converti riservati → confermati
             $sessione->decrement('posti_riservati', $totaleQuantita);
-            $sessione->increment('posti_prenotati', $totaleQuantita);
+            $sessione->decrement('posti_disponibili', $totaleQuantita);
 
             foreach ($data['posti'] as $posto) {
                 SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                     ->where('tipologia_posto_id', $posto['tipologia_id'])
                     ->each(function ($st) use ($posto) {
                         $st->decrement('posti_riservati', $posto['quantita']);
-                        $st->increment('posti_prenotati', $posto['quantita']);
+                        $st->decrement('posti_disponibili', $posto['quantita']);
                     });
             }
 
@@ -357,12 +354,12 @@ class PrenotazioneController extends Controller
             $sessione = Sessione::find($prenotazione->sessione_id);
             if ($sessione) {
                 $totale = $prenotazione->prenotazionePosti()->sum('quantita');
-                $sessione->decrement('posti_prenotati', $totale);
+                $sessione->increment('posti_disponibili', $totale);
 
                 foreach ($prenotazione->prenotazionePosti as $posto) {
                     SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                         ->where('tipologia_posto_id', $posto->tipologia_posto_id)
-                        ->decrement('posti_prenotati', $posto->quantita);
+                        ->increment('posti_disponibili', $posto->quantita);
                 }
             }
 
@@ -375,7 +372,7 @@ class PrenotazioneController extends Controller
         DB::transaction(function () use ($lock) {
             $sessione = Sessione::find($lock->sessione_id);
             if ($sessione) {
-                $posti = collect($lock->posti_json);
+                $posti = collect($lock->dettaglio_tipologie);
                 $totale = $posti->sum('quantita');
                 $sessione->decrement('posti_riservati', $totale);
 
