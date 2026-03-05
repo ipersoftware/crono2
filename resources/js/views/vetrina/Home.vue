@@ -163,4 +163,16 @@ onMounted(carica)
 .paginazione { display: flex; gap: .4rem; justify-content: center; margin-top: 1.5rem; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; border: none; border-radius: 4px; cursor: pointer; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; }
+@media (max-width: 768px) {
+  .hero { height: 180px; }
+  .hero-overlay h1 { font-size: 1.4rem; padding: 0 1rem; }
+  .eventi-grid { grid-template-columns: 1fr; }
+  .filtri-row { flex-direction: column; }
+  .filtri-row .input { min-width: unset; width: 100%; }
+  .container { padding: 1.25rem .75rem; }
+}
+@media (max-width: 480px) {
+  .hero-overlay h1 { font-size: 1.2rem; }
+  .sezione h2 { font-size: 1.1rem; }
+}
 </style>

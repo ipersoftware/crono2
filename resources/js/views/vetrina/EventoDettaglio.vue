@@ -146,5 +146,15 @@ onMounted(carica)
 .loading, .empty { padding: 3rem; text-align: center; color: #aaa; }
 @media (max-width: 720px) {
   .corpo { grid-template-columns: 1fr; }
+  .evento-hero { padding: 1.75rem 0 1.25rem; }
+  .evento-hero h1 { font-size: 1.45rem; }
+  .subtitle { font-size: .95rem; }
+  .card h2 { font-size: 1rem; }
+}
+@media (max-width: 480px) {
+  .evento-hero h1 { font-size: 1.2rem; }
+  .tipologie { gap: .25rem; }
+  .sessione-row { padding: .7rem; }
+  .btn-prenota { padding: .55rem; font-size: .9rem; }
 }
 </style>

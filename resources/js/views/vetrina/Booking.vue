@@ -323,5 +323,16 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .loading { padding: 3rem; text-align: center; color: #aaa; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .5rem 1.1rem; cursor: pointer; text-decoration: none; }
-@media (max-width: 500px) { .grid-2 { grid-template-columns: 1fr; } }
+@media (max-width: 600px) {
+  .grid-2 { grid-template-columns: 1fr; }
+  h1 { font-size: 1.3rem; }
+  .booking-page { padding: 1rem 0; }
+  .sessione-info { flex-direction: column; gap: .25rem; }
+  .step-actions { flex-direction: column-reverse; }
+  .step-actions .btn, .step-actions button { width: 100%; text-align: center; }
+  .tipologia-row { gap: .5rem; }
+  .totale { font-size: .95rem; }
+  .conferma { padding: 1.5rem 1rem; }
+  .conferma-icon { font-size: 2.2rem; }
+}
 </style>
