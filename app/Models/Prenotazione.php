@@ -20,6 +20,7 @@ class Prenotazione extends Model
         'ente_id',
         'stato',
         'codice',
+        'token_accesso',
         'data_prenotazione',
         'scadenza_riserva',
         'posti_prenotati',

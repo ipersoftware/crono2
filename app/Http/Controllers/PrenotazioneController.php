@@ -9,6 +9,8 @@ use App\Models\PrenotazioneTemporanea;
 use App\Models\RispostaForm;
 use App\Models\Sessione;
 use App\Models\SessioneTipologiaPosto;
+use App\Services\NotificaService;
+use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +18,11 @@ use Illuminate\Support\Str;
 
 class PrenotazioneController extends Controller
 {
+    public function __construct(
+        private readonly NotificaService $notifiche,
+        private readonly EventoLogService $log,
+    ) {}
+
     // ----------------------------------------
     // FLUSSO PUBBLICO
     // ----------------------------------------
@@ -44,12 +51,22 @@ class PrenotazioneController extends Controller
             // Lock a livello di riga per evitare race conditions
             $sessione = Sessione::lockForUpdate()->find($sessione->id);
 
+            // Purga lock scaduti e ripristina i posti_riservati
+            $lockScaduti = PrenotazioneTemporanea::where('sessione_id', $sessione->id)
+                ->where('scadenza_at', '<=', now())
+                ->get();
+            foreach ($lockScaduti as $lockScaduto) {
+                $this->rilasciaLockInterno($lockScaduto);
+            }
+            // Rilegge la sessione aggiornata dopo la purga
+            $sessione = Sessione::lockForUpdate()->find($sessione->id);
+
             $totaleRichiesto = collect($data['posti'])->sum('quantita');
 
             // Verifica disponibilità globale
             if ($sessione->controlla_posti_globale) {
                 $disponibili = $sessione->posti_disponibili - $sessione->posti_riservati;
-                abort_if($disponibili < $totaleRichiesto, 422, 'Posti insufficienti.');
+                abort_if($disponibili < $totaleRichiesto, 422, 'Posti insufficienti. Disponibili: ' . $disponibili . '.');
             }
 
             // Verifica disponibilità per tipologia
@@ -165,6 +182,7 @@ class PrenotazioneController extends Controller
                 'sessione_id'       => $sessione->id,
                 'user_id'           => $request->user()?->id,
                 'codice'            => $codice,
+                'token_accesso'     => Str::random(48),
                 'nome'              => $data['nome'],
                 'cognome'           => $data['cognome'],
                 'email'             => $data['email'],
@@ -215,6 +233,14 @@ class PrenotazioneController extends Controller
             // Elimina il lock
             $lock->delete();
 
+            // Carica relazioni per le notifiche
+            $prenotazione->load(['sessione.evento.ente', 'sessione.luoghi', 'posti.tipologiaPosto']);
+
+            // Notifica utente
+            $tipoNotifica = $statoIniziale === 'CONFERMATA' ? 'PRENOTAZIONE_CONFERMATA' : 'PRENOTAZIONE_DA_CONFERMARE';
+            $this->notifiche->invia($prenotazione, $tipoNotifica);
+            $this->notifiche->inviaNotificaStaff($prenotazione);
+
             return response()->json($prenotazione->load(['posti', 'risposteForm']), 201);
         });
     }
@@ -247,7 +273,7 @@ class PrenotazioneController extends Controller
         $tokenGuest = $request->query('token');
 
         $autorizzato = ($user && (int) $user->id === (int) $prenotazione->user_id)
-            || $tokenGuest === $prenotazione->token_accesso;
+            || ($tokenGuest && hash_equals((string) $prenotazione->token_accesso, (string) $tokenGuest));
 
         abort_if(!$autorizzato, 403, 'Accesso non autorizzato.');
 
@@ -268,12 +294,14 @@ class PrenotazioneController extends Controller
         $tokenGuest = $request->query('token');
 
         $autorizzato = ($user && (int) $user->id === (int) $prenotazione->user_id)
-            || $tokenGuest === $prenotazione->token_accesso;
+            || ($tokenGuest && hash_equals((string) $prenotazione->token_accesso, (string) $tokenGuest));
 
         abort_if(!$autorizzato, 403, 'Accesso non autorizzato.');
         abort_if(!$prenotazione->isAnnullabile(), 422, 'Prenotazione non annullabile.');
 
-        return $this->eseguiAnnullamento($prenotazione, 'ANNULLATA_UTENTE');
+        $motivo = $request->input('motivo_annullamento');
+
+        return $this->eseguiAnnullamento($prenotazione, 'ANNULLATA_UTENTE', $motivo);
     }
 
     // ----------------------------------------
@@ -319,9 +347,15 @@ class PrenotazioneController extends Controller
         abort_if($prenotazione->stato !== 'DA_CONFERMARE', 422, 'Prenotazione non in attesa di conferma.');
 
         $prenotazione->update([
-            'stato'         => 'CONFERMATA',
-            'confermata_at' => now(),
+            'stato' => 'CONFERMATA',
         ]);
+
+        $this->notifiche->invia($prenotazione, 'PRENOTAZIONE_APPROVATA');
+        $this->log->log(
+            $prenotazione->sessione->evento_id,
+            'prenotazione.approvata',
+            "Prenotazione {$prenotazione->codice} approvata ({$prenotazione->cognome} {$prenotazione->nome})."
+        );
 
         return response()->json($prenotazione);
     }
@@ -330,25 +364,28 @@ class PrenotazioneController extends Controller
      * DELETE /api/enti/{ente}/prenotazioni/{prenotazione}
      * Annulla prenotazione da operatore.
      */
-    public function annullaAdmin(Ente $ente, Prenotazione $prenotazione): JsonResponse
+    public function annullaAdmin(Request $request, Ente $ente, Prenotazione $prenotazione): JsonResponse
     {
         abort_if((int) $prenotazione->ente_id !== (int) $ente->id, 403, 'Non autorizzato.');
         abort_if(in_array($prenotazione->stato, ['ANNULLATA_UTENTE', 'ANNULLATA_ADMIN', 'SCADUTA']),
             422, 'Prenotazione già annullata.');
 
-        return $this->eseguiAnnullamento($prenotazione, 'ANNULLATA_ADMIN');
+        $motivo = $request->input('motivo_annullamento');
+
+        return $this->eseguiAnnullamento($prenotazione, 'ANNULLATA_ADMIN', $motivo);
     }
 
     // ----------------------------------------
     // HELPERS
     // ----------------------------------------
 
-    private function eseguiAnnullamento(Prenotazione $prenotazione, string $nuovoStato): JsonResponse
+    private function eseguiAnnullamento(Prenotazione $prenotazione, string $nuovoStato, ?string $motivo = null): JsonResponse
     {
-        return DB::transaction(function () use ($prenotazione, $nuovoStato) {
+        return DB::transaction(function () use ($prenotazione, $nuovoStato, $motivo) {
             $prenotazione->update([
-                'stato'         => $nuovoStato,
-                'annullata_at'  => now(),
+                'stato'               => $nuovoStato,
+                'data_annullamento'   => now(),
+                'motivo_annullamento' => $motivo,
             ]);
 
             // Libera i posti
@@ -364,13 +401,26 @@ class PrenotazioneController extends Controller
                 }
             }
 
-            return response()->json(['message' => 'Prenotazione annullata.', 'codice' => $prenotazione->codice]);
+        // Notifica utente annullamento
+        $tipoNotifica = $nuovoStato === 'ANNULLATA_UTENTE' ? 'PRENOTAZIONE_ANNULLATA_UTENTE' : 'PRENOTAZIONE_ANNULLATA_OPERATORE';
+        $this->notifiche->invia($prenotazione, $tipoNotifica);
+
+        $attore = $nuovoStato === 'ANNULLATA_UTENTE' ? 'dall\'utente' : 'dall\'operatore';
+        $motivoLog = $motivo ? " Motivo: {$motivo}." : '';
+        $this->log->log(
+            $prenotazione->sessione->evento_id,
+            'prenotazione.annullata',
+            "Prenotazione {$prenotazione->codice} annullata {$attore} ({$prenotazione->cognome} {$prenotazione->nome}).{$motivoLog}",
+            $motivo ? ['motivo' => $motivo] : null
+        );
+
+        return response()->json(['message' => 'Prenotazione annullata.', 'codice' => $prenotazione->codice]);
         });
     }
 
     private function rilasciaLockInterno(PrenotazioneTemporanea $lock): void
     {
-        DB::transaction(function () use ($lock) {
+        $esegui = function () use ($lock) {
             $sessione = Sessione::find($lock->sessione_id);
             if ($sessione) {
                 $posti = collect($lock->dettaglio_tipologie);
@@ -384,7 +434,14 @@ class PrenotazioneController extends Controller
                 }
             }
             $lock->delete();
-        });
+        };
+
+        // Se siamo già dentro una transazione (es. purga durante lock), esegui direttamente
+        if (DB::transactionLevel() > 0) {
+            $esegui();
+        } else {
+            DB::transaction($esegui);
+        }
     }
 
     private function generaCodice(): string

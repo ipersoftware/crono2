@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\CampoForm;
 use App\Models\Ente;
 use App\Models\Evento;
+use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CampoFormController extends Controller
 {
+    public function __construct(protected EventoLogService $log) {}
+
     /** GET /api/enti/{ente}/eventi/{evento}/campi-form */
     public function index(Ente $ente, Evento $evento): JsonResponse
     {
@@ -46,6 +49,8 @@ class CampoFormController extends Controller
 
         $campo = CampoForm::create($data);
 
+        $this->log->log($evento->id, 'form.campo_aggiunto', "Campo form aggiunto: «{$campo->etichetta}» (tipo: {$campo->tipo})");
+
         return response()->json($campo, 201);
     }
 
@@ -67,7 +72,19 @@ class CampoFormController extends Controller
             'attivo'          => 'nullable|boolean',
         ]);
 
+        $etichetteCampo = [
+            'etichetta' => 'Etichetta', 'tipo' => 'Tipo', 'obbligatorio' => 'Obbligatorio',
+            'placeholder' => 'Placeholder', 'visibile_pubblico' => 'Visibile pubblico', 'attivo' => 'Attivo',
+        ];
+        $before = $campo->only(array_keys($etichetteCampo));
         $campo->update($data);
+        $diff = $this->log->diff($before, $campo->fresh()->only(array_keys($etichetteCampo)));
+        if (!empty($diff)) {
+            $this->log->log($evento->id, 'form.campo_modificato',
+                "Campo form «{$campo->etichetta}» modificato: " . $this->log->descriviDiff($diff, $etichetteCampo),
+                $diff
+            );
+        }
 
         return response()->json($campo);
     }
@@ -78,7 +95,10 @@ class CampoFormController extends Controller
         $this->autorizzaEvento($ente, $evento);
         $this->autorizzaCampo($evento, $campo);
 
+        $etichetta = $campo->etichetta;
         $campo->delete();
+
+        $this->log->log($evento->id, 'form.campo_rimosso', "Campo form rimosso: «{$etichetta}»");
 
         return response()->json(['message' => 'Campo eliminato.']);
     }
@@ -97,6 +117,8 @@ class CampoFormController extends Controller
             CampoForm::where('id', $id)->where('evento_id', $evento->id)
                 ->update(['ordine' => $pos]);
         }
+
+        $this->log->log($evento->id, 'form.riordinato', 'Campi form riordinati.');
 
         return response()->json(['message' => 'Ordine aggiornato.']);
     }

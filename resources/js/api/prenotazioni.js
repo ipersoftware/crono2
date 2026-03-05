@@ -17,8 +17,8 @@ export const prenotazioniApi = {
   show: (codice, token = null) =>
     api.get(`/prenotazioni/${codice}`, { params: token ? { token } : {} }),
 
-  annullaUtente: (codice, token = null) =>
-    api.delete(`/prenotazioni/${codice}`, { params: token ? { token } : {} }),
+  annullaUtente: (codice, token = null, motivo = '') =>
+    api.delete(`/prenotazioni/${codice}`, { params: token ? { token } : {}, data: { motivo_annullamento: motivo } }),
 
   // Admin
   indexAdmin: (enteId, params = {}) =>
@@ -27,6 +27,6 @@ export const prenotazioniApi = {
   approva: (enteId, prenotazioneId) =>
     api.patch(`/enti/${enteId}/prenotazioni/${prenotazioneId}/approva`),
 
-  annullaAdmin: (enteId, prenotazioneId) =>
-    api.delete(`/enti/${enteId}/prenotazioni/${prenotazioneId}`),
+  annullaAdmin: (enteId, prenotazioneId, motivo = '') =>
+    api.delete(`/enti/${enteId}/prenotazioni/${prenotazioneId}`, { data: { motivo_annullamento: motivo } }),
 }

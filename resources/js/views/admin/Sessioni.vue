@@ -14,6 +14,7 @@
       <span class="tab-btn active">🗓 Sessioni</span>
       <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=tipologie`" class="tab-btn">🪑 Tipologie posto</router-link>
       <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=form`" class="tab-btn">📋 Campi form</router-link>
+      <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=log`" class="tab-btn">🕑 Log attività</router-link>
     </div>
 
     <div class="page-subheader">

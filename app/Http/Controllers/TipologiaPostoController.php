@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Models\Ente;
 use App\Models\Evento;
 use App\Models\TipologiaPosto;
+use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class TipologiaPostoController extends Controller
 {
+    public function __construct(protected EventoLogService $log) {}
     /** GET /api/enti/{ente}/eventi/{evento}/tipologie */
     public function index(Ente $ente, Evento $evento): JsonResponse
     {
@@ -45,6 +47,9 @@ class TipologiaPostoController extends Controller
 
         $tipologia = TipologiaPosto::create($data);
 
+        $costo = $tipologia->gratuita ? 'gratuita' : '\u20ac ' . number_format((float) $tipologia->costo, 2);
+        $this->log->log($evento->id, 'tipologia.creata', "Tipologia posto aggiunta: \u00ab{$tipologia->nome}\u00bb ({$costo})");
+
         return response()->json($tipologia, 201);
     }
 
@@ -69,7 +74,20 @@ class TipologiaPostoController extends Controller
             $data['costo'] = null;
         }
 
+        $etichette = [
+            'nome' => 'Nome', 'costo' => 'Costo', 'gratuita' => 'Gratuita',
+            'min_prenotabili' => 'Min prenotabili', 'max_prenotabili' => 'Max prenotabili',
+            'attiva' => 'Attiva', 'descrizione' => 'Descrizione',
+        ];
+        $before = $tipologia->only(array_keys($etichette));
         $tipologia->update($data);
+        $diff = $this->log->diff($before, $tipologia->fresh()->only(array_keys($etichette)));
+        if (!empty($diff)) {
+            $this->log->log($evento->id, 'tipologia.modificata',
+                "Tipologia posto \u00ab{$tipologia->nome}\u00bb modificata: " . $this->log->descriviDiff($diff, $etichette),
+                $diff
+            );
+        }
 
         return response()->json($tipologia);
     }
@@ -80,7 +98,10 @@ class TipologiaPostoController extends Controller
         $this->autorizzaEvento($ente, $evento);
         $this->autorizzaTipologia($evento, $tipologia);
 
+        $nome = $tipologia->nome;
         $tipologia->delete();
+
+        $this->log->log($evento->id, 'tipologia.eliminata', "Tipologia posto rimossa: \u00ab{$nome}\u00bb");
 
         return response()->json(['message' => 'Tipologia eliminata.']);
     }

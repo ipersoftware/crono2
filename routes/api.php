@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampoFormController;
 use App\Http\Controllers\EnteController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\EventoLogController;
 use App\Http\Controllers\LuogoController;
 use App\Http\Controllers\MailTemplateController;
 use App\Http\Controllers\PrenotazioneController;
@@ -86,6 +87,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('eventi/{evento}/pubblica',  [EventoController::class, 'pubblica']);
             Route::post('eventi/{evento}/sospendi',  [EventoController::class, 'sospendi']);
             Route::post('eventi/{evento}/annulla',   [EventoController::class, 'annulla']);
+            Route::get('eventi/{evento}/log',        [EventoLogController::class, 'index']);
 
             // Sessioni (nested sotto evento)
             Route::apiResource('eventi/{evento}/sessioni', SessioneController::class)

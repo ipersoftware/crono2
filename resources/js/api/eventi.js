@@ -28,6 +28,10 @@ export const eventiApi = {
     api.post(`/enti/${enteId}/eventi/${eventoId}/sospendi`),
   annulla: (enteId, eventoId, data = {}) =>
     api.post(`/enti/${enteId}/eventi/${eventoId}/annulla`, data),
+
+  // Log attività
+  log: (enteId, eventoId, params = {}) =>
+    api.get(`/enti/${enteId}/eventi/${eventoId}/log`, { params }),
 }
 
 export const sessioniApi = {

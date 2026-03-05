@@ -15,7 +15,7 @@
         <div class="card">
           <h2>🗓 Evento</h2>
           <p><strong>{{ prenotazione.sessione?.evento?.titolo }}</strong></p>
-          <p class="muted">{{ formatDateTime(prenotazione.sessione?.inizio_at) }}</p>
+          <p class="muted">{{ formatDateTime(prenotazione.sessione?.data_inizio) }}</p>
         </div>
 
         <div class="card">
@@ -27,12 +27,12 @@
       </div>
 
       <!-- Posti -->
-      <div class="card" v-if="prenotazione.prenotazione_posti?.length">
+      <div class="card" v-if="prenotazione.posti?.length">
         <h2>🪑 Posti prenotati</h2>
         <table class="table">
           <thead><tr><th>Tipologia</th><th>Quantità</th><th>Costo unitario</th><th>Totale</th></tr></thead>
           <tbody>
-            <tr v-for="p in prenotazione.prenotazione_posti" :key="p.id">
+            <tr v-for="p in prenotazione.posti" :key="p.id">
               <td>{{ p.tipologia_posto?.nome ?? '–' }}</td>
               <td>{{ p.quantita }}</td>
               <td>€ {{ Number(p.costo_unitario).toFixed(2) }}</td>
@@ -42,7 +42,7 @@
           <tfoot>
             <tr>
               <td colspan="3"><strong>Totale</strong></td>
-              <td><strong>€ {{ Number(prenotazione.importo_totale).toFixed(2) }}</strong></td>
+              <td><strong>€ {{ Number(prenotazione.costo_totale).toFixed(2) }}</strong></td>
             </tr>
           </tfoot>
         </table>
@@ -67,14 +67,51 @@
 
       <!-- Azioni -->
       <div class="card" v-if="!['ANNULLATA_UTENTE','ANNULLATA_ADMIN','SCADUTA'].includes(prenotazione.stato)">
-        <button @click="annulla" :disabled="annullando" class="btn btn-danger">
-          {{ annullando ? 'Annullamento…' : '❌ Annulla prenotazione' }}
+        <button @click="apriModaleAnnulla" :disabled="annullando" class="btn btn-danger">
+          ❌ Annulla prenotazione
         </button>
         <p class="muted" style="margin-top: .5rem; font-size: .85rem;">
           L'annullamento è irreversibile.
         </p>
       </div>
     </template>
+
+    <!-- Modale annullamento -->
+    <teleport to="body">
+      <div v-if="mostraModaleAnnulla" class="modal-overlay" @click.self="mostraModaleAnnulla = false">
+      <div class="modal-box">
+        <h3>Annulla prenotazione</h3>
+        <p class="modal-avviso">Stai per annullare la prenotazione <strong>{{ prenotazione?.codice }}</strong>. L'operazione è irreversibile.</p>
+        <label class="modal-label" for="motivo-annulla">Motivo annullamento (opzionale)</label>
+        <div class="motivi-predefiniti">
+          <button
+            v-for="m in motiviPredefiniti" :key="m"
+            type="button"
+            :class="['motivo-chip', { active: motivoAnnullamento === m }]"
+            @click="motivoAnnullamento = motivoAnnullamento === m ? '' : m"
+            :disabled="annullando"
+          >{{ m }}</button>
+        </div>
+        <textarea
+          id="motivo-annulla"
+          v-model="motivoAnnullamento"
+          class="modal-textarea"
+          rows="3"
+          placeholder="Inserisci un motivo…"
+          :disabled="annullando"
+        />
+        <div class="modal-azioni">
+          <p v-if="erroreModale" class="modal-errore">{{ erroreModale }}</p>
+          <div class="modal-azioni-buttons">
+            <button class="btn btn-secondary" @click="mostraModaleAnnulla = false" :disabled="annullando">Torna indietro</button>
+            <button class="btn btn-danger" @click="confermAnnullamento" :disabled="annullando">
+              {{ annullando ? 'Annullamento…' : 'Conferma annullamento' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </teleport>
   </div>
 </template>
 
@@ -91,6 +128,16 @@ const prenotazione = ref(null)
 const loading   = ref(true)
 const annullando = ref(false)
 const errore    = ref('')
+const mostraModaleAnnulla = ref(false)
+const motivoAnnullamento  = ref('')
+const erroreModale        = ref('')
+const motiviPredefiniti = [
+  'Impegno sopravvenuto',
+  'Problemi di salute',
+  'Problemi di trasporto',
+  'Evento non più di interesse',
+  'Errore nella prenotazione',
+]
 
 const carica = async () => {
   loading.value = true
@@ -105,14 +152,21 @@ const carica = async () => {
   } finally { loading.value = false }
 }
 
-const annulla = async () => {
-  if (!confirm('Sei sicuro di voler annullare questa prenotazione?')) return
+const apriModaleAnnulla = () => {
+  motivoAnnullamento.value = ''
+  erroreModale.value = ''
+  mostraModaleAnnulla.value = true
+}
+
+const confermAnnullamento = async () => {
   annullando.value = true
+  erroreModale.value = ''
   try {
-    await prenotazioniApi.annullaUtente(codice, tokenGuest)
+    await prenotazioniApi.annullaUtente(codice, tokenGuest, motivoAnnullamento.value)
     prenotazione.value.stato = 'ANNULLATA_UTENTE'
+    mostraModaleAnnulla.value = false
   } catch (e) {
-    errore.value = e.response?.data?.message ?? 'Impossibile annullare la prenotazione.'
+    erroreModale.value = e.response?.data?.message ?? 'Impossibile annullare la prenotazione.'
   } finally { annullando.value = false }
 }
 
@@ -146,4 +200,43 @@ h1 { margin: 0; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 tfoot td { padding: .75rem; font-size: 1rem; }
 @media (max-width: 600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+/* Modale annullamento */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: #fff;
+  border-radius: 10px;
+  padding: 1.75rem 2rem;
+  width: min(480px, 92vw);
+  box-shadow: 0 8px 32px rgba(0,0,0,.18);
+}
+.modal-box h3 { margin: 0 0 .75rem; font-size: 1.15rem; }
+.modal-avviso { margin: 0 0 1.25rem; font-size: .95rem; color: #444; }
+.modal-label { display: block; font-weight: 600; font-size: .9rem; margin-bottom: .4rem; }
+.motivi-predefiniti { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .65rem; }
+.motivo-chip {
+  background: #f0f4f8; border: 1px solid #c5d3e0;
+  border-radius: 20px; padding: .3rem .85rem;
+  font-size: .82rem; cursor: pointer; transition: background .15s, border-color .15s;
+  font-family: inherit;
+}
+.motivo-chip:hover:not(:disabled) { background: #dce8f5; border-color: #3498db; }
+.motivo-chip.active { background: #d6eaf8; border-color: #2980b9; color: #1a5276; font-weight: 600; }
+.motivo-chip:disabled { opacity: .5; cursor: default; }
+.modal-textarea {
+  width: 100%; box-sizing: border-box;
+  padding: .55rem .75rem;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: .95rem; resize: vertical;
+  font-family: inherit;
+}
+.modal-textarea:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,.15); }
+.modal-azioni { margin-top: 1.25rem; }
+.modal-errore { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .6rem .9rem; font-size: .9rem; margin: 0 0 .75rem; }
+.modal-azioni-buttons { display: flex; justify-content: flex-end; gap: .75rem; }
 </style>

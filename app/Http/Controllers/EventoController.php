@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Ente;
 use App\Models\Evento;
+use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class EventoController extends Controller
 {
+    public function __construct(protected EventoLogService $log) {}
     /** GET /api/enti/{ente}/eventi */
     public function index(Request $request, Ente $ente): JsonResponse
     {
@@ -46,6 +48,8 @@ class EventoController extends Controller
             $evento->luoghi()->sync($luoghiPivot);
         }
 
+        $this->log->log($evento->id, 'evento.creato', "Evento \u00abcreato: {$evento->titolo}\u00bb (stato: {$evento->stato})");
+
         return response()->json($evento->load(['serie', 'tags', 'luoghi']), 201);
     }
 
@@ -74,6 +78,12 @@ class EventoController extends Controller
 
         $data = $this->validaEvento($request, partial: true);
 
+        $before = $evento->only(array_keys($data));
+
+        // Cattura tag prima del sync (IDs ordinati per confronto stabile)
+        $tagIdsPrima   = $evento->tags()->orderBy('id')->pluck('id')->toArray();
+        $tagNomiPrima  = $evento->tags()->orderBy('id')->pluck('nome', 'id')->toArray();
+
         // Aggiorna slug con storico se il titolo cambia
         if (isset($data['titolo']) && $data['titolo'] !== $evento->titolo) {
             $nuovoSlug = $this->generaSlug($data['titolo'], $ente->id, $evento->id);
@@ -89,6 +99,19 @@ class EventoController extends Controller
 
         if ($request->has('tag_ids')) {
             $evento->tags()->sync($request->tag_ids);
+            $tagIdsDopo   = $evento->tags()->orderBy('id')->pluck('id')->toArray();
+            if ($tagIdsPrima !== $tagIdsDopo) {
+                $tagNomiDopo  = $evento->tags()->orderBy('id')->pluck('nome', 'id')->toArray();
+                $idAggiunti   = array_diff($tagIdsDopo, $tagIdsPrima);
+                $idRimossi    = array_diff($tagIdsPrima, $tagIdsDopo);
+                $parti = [];
+                if (!empty($idAggiunti)) $parti[] = 'aggiunti: ' . implode(', ', array_map(fn($id) => $tagNomiDopo[$id] ?? "#$id", $idAggiunti));
+                if (!empty($idRimossi))  $parti[] = 'rimossi: '  . implode(', ', array_map(fn($id) => $tagNomiPrima[$id] ?? "#$id", $idRimossi));
+                $this->log->log($evento->id, 'evento.modificato', 'Tag aggiornati: ' . implode('; ', $parti), [
+                    'tag_prima' => array_values($tagNomiPrima),
+                    'tag_dopo'  => array_values($tagNomiDopo),
+                ]);
+            }
         }
 
         if ($request->has('luogo_ids')) {
@@ -96,6 +119,18 @@ class EventoController extends Controller
                 fn ($id, $index) => [$id => ['principale' => $index === 0]]
             );
             $evento->luoghi()->sync($luoghiPivot);
+        }
+
+        $etichette = [
+            'titolo' => 'Titolo', 'stato' => 'Stato', 'pubblico' => 'Pubblico',
+            'descrizione_breve' => 'Descrizione breve', 'posti_max_per_prenotazione' => 'Posti max per prenotazione',
+            'richiede_approvazione' => 'Richiede approvazione', 'cancellazione_consentita_ore' => 'Cancellazione consentita (ore)',
+            'prenotabile_dal' => 'Prenotabile dal', 'prenotabile_al' => 'Prenotabile al',
+        ];
+        $diff = $this->log->diff($before, $evento->fresh()->only(array_keys($before)), ['slug', 'slug_history', 'attributi']);
+        if (!empty($diff)) {
+            $descrizione = 'Dati evento aggiornati: ' . $this->log->descriviDiff($diff, $etichette);
+            $this->log->log($evento->id, 'evento.modificato', $descrizione, $diff);
         }
 
         return response()->json($evento->fresh(['serie', 'tags', 'luoghi']));
@@ -115,6 +150,7 @@ class EventoController extends Controller
     {
         $this->autorizza($ente, $evento);
         $evento->update(['stato' => 'PUBBLICATO', 'pubblico' => true]);
+        $this->log->log($evento->id, 'evento.pubblicato', 'Evento pubblicato.');
 
         return response()->json($evento);
     }
@@ -124,6 +160,7 @@ class EventoController extends Controller
     {
         $this->autorizza($ente, $evento);
         $evento->update(['stato' => 'SOSPESO', 'pubblico' => false]);
+        $this->log->log($evento->id, 'evento.sospeso', 'Evento sospeso.');
 
         return response()->json($evento);
     }
@@ -133,6 +170,7 @@ class EventoController extends Controller
     {
         $this->autorizza($ente, $evento);
         $evento->update(['stato' => 'ANNULLATO', 'pubblico' => false]);
+        $this->log->log($evento->id, 'evento.annullato', 'Evento annullato.');
 
         // TODO: inviare notifica EVENTO_ANNULLATO a tutti i prenotati
 

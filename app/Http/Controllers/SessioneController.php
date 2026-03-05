@@ -7,11 +7,15 @@ use App\Models\Evento;
 use App\Models\Sessione;
 use App\Models\TipologiaPosto;
 use App\Models\SessioneTipologiaPosto;
+use App\Models\Prenotazione;
+use App\Models\PrenotazionePosto;
+use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SessioneController extends Controller
 {
+    public function __construct(protected EventoLogService $log) {}
     /** GET /api/enti/{ente}/eventi/{evento}/sessioni */
     public function index(Ente $ente, Evento $evento): JsonResponse
     {
@@ -69,6 +73,9 @@ class SessioneController extends Controller
             }
         }
 
+        $sessioneLabel = $sessione->data_inizio ?? 'nuova';
+        $this->log->log($evento->id, 'sessione.creata', "Sessione aggiunta: {$sessioneLabel} — {$sessione->posti_totali} posti totali.");
+
         return response()->json($sessione->load(['luoghi', 'tipologiePosto']), 201);
     }
 
@@ -89,9 +96,22 @@ class SessioneController extends Controller
         $this->autorizzaEvento($ente, $evento);
         $this->autorizzaSessione($evento, $sessione);
 
+        $beforeSessione = $sessione->only(['data_inizio', 'data_fine', 'posti_totali', 'posti_disponibili', 'prenotabile', 'forza_non_disponibile']);
+
         $data = $this->valida($request, partial: true);
         if (array_key_exists('posti_totali', $data)) {
             $data['posti_totali'] = $data['posti_totali'] ?? 0;
+            // Conta le prenotazioni attive reali (fonte di verità)
+            $postiConfermati = Prenotazione::where('sessione_id', $sessione->id)
+                ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE', 'RISERVATA'])
+                ->sum('posti_prenotati');
+            // Blocca se il nuovo totale è inferiore alle prenotazioni già esistenti
+            abort_if(
+                $data['posti_totali'] > 0 && $data['posti_totali'] < $postiConfermati,
+                422,
+                "Impossibile impostare {$data['posti_totali']} posti totali: ci sono già {$postiConfermati} posti prenotati. Annullare prima le prenotazioni in eccesso."
+            );
+            $data['posti_disponibili'] = max(0, $data['posti_totali'] - $postiConfermati - $sessione->posti_riservati);
         }
         if (array_key_exists('durata_lock_minuti', $data)) {
             $data['durata_lock_minuti'] = $data['durata_lock_minuti'] ?? 15;
@@ -105,19 +125,48 @@ class SessioneController extends Controller
         // Aggiorna posti per tipologia
         if ($request->has('tipologie_posto')) {
             foreach ($request->tipologie_posto as $config) {
-                $postiTotali = $config['posti_totali'] ?? 0;
-                $riservati   = SessioneTipologiaPosto::where('sessione_id', $sessione->id)
-                    ->where('tipologia_posto_id', $config['tipologia_posto_id'])
+                $postiTotali  = $config['posti_totali'] ?? 0;
+                $tipologiaId  = $config['tipologia_posto_id'];
+                $riservati    = SessioneTipologiaPosto::where('sessione_id', $sessione->id)
+                    ->where('tipologia_posto_id', $tipologiaId)
                     ->value('posti_riservati') ?? 0;
+                // Conta i posti realmente prenotati per questa tipologia
+                $confermati = PrenotazionePosto::where('tipologia_posto_id', $tipologiaId)
+                    ->whereHas('prenotazione', fn($q) => $q
+                        ->where('sessione_id', $sessione->id)
+                        ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE', 'RISERVATA'])
+                    )
+                    ->sum('quantita');
+                // Blocca se il nuovo totale tipologia è inferiore ai già prenotati
+                abort_if(
+                    $postiTotali > 0 && $postiTotali < $confermati,
+                    422,
+                    "Impossibile impostare {$postiTotali} posti per la tipologia #{$tipologiaId}: ci sono già {$confermati} posti prenotati."
+                );
 
                 SessioneTipologiaPosto::where('sessione_id', $sessione->id)
-                    ->where('tipologia_posto_id', $config['tipologia_posto_id'])
+                    ->where('tipologia_posto_id', $tipologiaId)
                     ->update([
                         'posti_totali'      => $postiTotali,
-                        'posti_disponibili' => max(0, $postiTotali - $riservati),
+                        'posti_disponibili' => max(0, $postiTotali - $confermati - $riservati),
                         'attiva'            => $config['attiva'] ?? true,
                     ]);
             }
+        }
+
+        $etichette = [
+            'data_inizio' => 'Inizio', 'data_fine' => 'Fine',
+            'posti_totali' => 'Posti totali', 'posti_disponibili' => 'Posti disponibili',
+            'prenotabile' => 'Prenotabile', 'forza_non_disponibile' => 'Forzata non disponibile',
+        ];
+        $diff = $this->log->diff($beforeSessione, $sessione->fresh()->only(array_keys($beforeSessione)));
+        if (!empty($diff)) {
+            $this->log->log(
+                $evento->id,
+                'sessione.modificata',
+                'Sessione del ' . $sessione->data_inizio . ' modificata: ' . $this->log->descriviDiff($diff, $etichette),
+                $diff
+            );
         }
 
         return response()->json($sessione->fresh(['luoghi', 'tipologiePosto.tipologiaPosto']));
@@ -135,7 +184,9 @@ class SessioneController extends Controller
             'Impossibile eliminare una sessione con prenotazioni attive.'
         );
 
+        $sessioneLabel = $sessione->data_inizio;
         $sessione->delete();
+        $this->log->log($evento->id, 'sessione.eliminata', "Sessione del {$sessioneLabel} eliminata.");
 
         return response()->json(['message' => 'Sessione eliminata.']);
     }

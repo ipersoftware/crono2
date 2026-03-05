@@ -245,6 +245,7 @@
       <table v-else class="table">
         <thead>
           <tr>
+            <th style="width:60px"></th>
             <th>Tipo</th>
             <th>Etichetta</th>
             <th>Obbligatorio</th>
@@ -253,6 +254,10 @@
         </thead>
         <tbody>
           <tr v-for="(c, i) in campi" :key="c.id ?? i">
+            <td class="ordine-cell">
+              <button @click="spostaCampo(i, -1)" :disabled="i === 0" class="btn-ordine" title="Sposta su">↑</button>
+              <button @click="spostaCampo(i, 1)" :disabled="i === campi.length - 1" class="btn-ordine" title="Sposta giù">↓</button>
+            </td>
             <td><span class="tipo-badge">{{ c.tipo }}</span></td>
             <td>{{ c.etichetta }}</td>
             <td>{{ c.obbligatorio ? '✓' : '' }}</td>
@@ -263,6 +268,37 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- TAB: Log attività -->
+    <div v-if="tabAttivo === 'log'" class="card">
+      <h2 style="margin-bottom:1rem">🕑 Log attività</h2>
+      <div v-if="logLoading" class="empty">Caricamento log…</div>
+      <div v-else-if="logEntries.length === 0" class="empty">Nessuna attività registrata per questo evento.</div>
+      <table v-else class="table log-table">
+        <thead>
+          <tr>
+            <th style="width:160px">Data/ora</th>
+            <th style="width:140px">Operatore</th>
+            <th>Descrizione</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in logEntries" :key="entry.id">
+            <td class="log-ts">{{ formatLogDate(entry.created_at) }}</td>
+            <td class="log-user">{{ entry.user ? entry.user.nome + ' ' + entry.user.cognome : 'Sistema' }}</td>
+            <td>
+              <span :class="['log-badge', logBadgeClass(entry.azione)]">{{ logAzioneLabel(entry.azione) }}</span>
+              {{ entry.descrizione }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-if="logMeta.last_page > 1" class="log-pagination">
+        <button :disabled="logMeta.current_page <= 1" @click="caricaLog(logMeta.current_page - 1)" class="btn btn-sm">‹ Prec</button>
+        <span>Pagina {{ logMeta.current_page }} / {{ logMeta.last_page }}</span>
+        <button :disabled="logMeta.current_page >= logMeta.last_page" @click="caricaLog(logMeta.current_page + 1)" class="btn btn-sm">Succ ›</button>
+      </div>
     </div>
 
     <!-- Dialog Tipologia -->
@@ -352,6 +388,7 @@ const tabs = [
   { key: 'sessioni',  label: '🗓 Sessioni'        },
   { key: 'tipologie', label: '🪑 Tipologie posto' },
   { key: 'form',      label: '📋 Campi form'      },
+  { key: 'log',       label: '🕑 Log attività'    },
 ]
 
 const tabAttivo = ref(route.query.tab || 'dettagli')
@@ -360,6 +397,9 @@ const cambiaTab = (key) => {
   if (key === 'sessioni') {
     router.push(`/admin/${enteId.value}/eventi/${eventoId.value}/sessioni`)
     return
+  }
+  if (key === 'log' && eventoId.value) {
+    caricaLog()
   }
   tabAttivo.value = key
   router.replace({ query: { ...route.query, tab: key } })
@@ -652,7 +692,74 @@ const eliminaCampo = async (c, i) => {
   campi.value.splice(i, 1)
 }
 
-onMounted(caricaDati)
+const spostaCampo = async (i, direzione) => {
+  const j = i + direzione
+  if (j < 0 || j >= campi.value.length) return
+  const arr = [...campi.value]
+  ;[arr[i], arr[j]] = [arr[j], arr[i]]
+  campi.value = arr
+  const ordine = arr.map(c => c.id).filter(Boolean)
+  if (ordine.length === arr.length) {
+    await campiFormApi.riordina(enteId.value, eventoId.value, ordine)
+  }
+}
+
+onMounted(async () => {
+  await caricaDati()
+  if (tabAttivo.value === 'log' && eventoId.value) {
+    caricaLog()
+  }
+})
+
+// ─── Log attività ──────────────────────────────────────────────────────────
+const logEntries  = ref([])
+const logLoading  = ref(false)
+const logMeta     = ref({ current_page: 1, last_page: 1 })
+
+const caricaLog = async (page = 1) => {
+  if (!eventoId.value) return
+  logLoading.value = true
+  try {
+    const res = await eventiApi.log(enteId.value, eventoId.value, { page, per_page: 50 })
+    logEntries.value = res.data.data
+    logMeta.value    = { current_page: res.data.current_page, last_page: res.data.last_page }
+  } catch (e) {
+    console.error('Errore caricamento log:', e)
+  } finally {
+    logLoading.value = false
+  }
+}
+
+const formatLogDate = (d) =>
+  d ? new Date(d).toLocaleString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
+
+const AZIONE_LABELS = {
+  'evento.creato':           'Creazione',
+  'evento.modificato':       'Modifica',
+  'evento.pubblicato':       'Pubblicazione',
+  'evento.sospeso':          'Sospensione',
+  'evento.annullato':        'Annullamento',
+  'sessione.creata':         'Sessione aggiunta',
+  'sessione.modificata':     'Sessione modificata',
+  'sessione.eliminata':      'Sessione eliminata',
+  'prenotazione.approvata':  'Pren. approvata',
+  'prenotazione.annullata':  'Pren. annullata',
+  'form.campo_aggiunto':     'Campo aggiunto',
+  'form.campo_modificato':   'Campo modificato',
+  'form.campo_rimosso':      'Campo rimosso',
+  'form.riordinato':         'Campi riordinati',
+  'tipologia.creata':        'Tipologia aggiunta',
+  'tipologia.modificata':    'Tipologia modificata',
+  'tipologia.eliminata':     'Tipologia rimossa',
+}
+const logAzioneLabel = (azione) => AZIONE_LABELS[azione] ?? azione
+
+const logBadgeClass = (azione) => {
+  if (azione.includes('annullat') || azione.includes('eliminat') || azione.includes('sospeso') || azione === 'form.campo_rimosso' || azione === 'tipologia.eliminata') return 'log-badge-danger'
+  if (azione.includes('pubblicat') || azione.includes('approvata')) return 'log-badge-success'
+  if (azione.includes('creata') || azione.includes('creato') || azione === 'form.campo_aggiunto' || azione === 'tipologia.creata') return 'log-badge-info'
+  return 'log-badge-default'
+}
 
 // Ricarica dati se l'eventoId cambia senza smontare il componente
 watch(() => route.params.eventoId, (newId) => {
@@ -714,6 +821,10 @@ watch(() => route.params.eventoId, (newId) => {
 .table th { background: #f8f9fa; font-weight: 600; }
 .actions-cell { display: flex; gap: .4rem; }
 .tipo-badge { background: #e8f4fd; color: #2980b9; padding: .15rem .5rem; border-radius: 4px; font-size: .8rem; font-weight: 600; }
+.ordine-cell { white-space: nowrap; }
+.btn-ordine { background: none; border: 1px solid #ddd; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: .85rem; line-height: 1; padding: 0; color: #555; }
+.btn-ordine:hover:not(:disabled) { background: #f0f0f0; border-color: #bbb; }
+.btn-ordine:disabled { opacity: .3; cursor: default; }
 .link-pubblico-group { margin-top: .25rem; }
 .link-pubblico-row { display: flex; gap: .5rem; align-items: center; }
 .link-pubblico-input { flex: 1; font-size: .82rem; color: #555; cursor: text; }
@@ -724,4 +835,13 @@ watch(() => route.params.eventoId, (newId) => {
 .modal-dialog { background: white; border-radius: 10px; padding: 1.75rem; width: 90%; max-width: 480px; box-shadow: 0 8px 30px rgba(0,0,0,.2); }
 .modal-dialog h3 { margin: 0 0 1.25rem; font-size: 1.1rem; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: .75rem; margin-top: 1.25rem; }
+/* ── Log attività ────────────────────────────────────────────── */
+.log-table .log-ts   { white-space: nowrap; color: #777; font-size: .82rem; }
+.log-table .log-user { font-size: .85rem; color: #444; }
+.log-badge { display: inline-block; padding: .15rem .5rem; border-radius: 4px; font-size: .75rem; font-weight: 700; margin-right: .4rem; text-transform: uppercase; vertical-align: middle; }
+.log-badge-danger  { background: #fadbd8; color: #a93226; }
+.log-badge-success { background: #d5f5e3; color: #1a7a45; }
+.log-badge-info    { background: #d6eaf8; color: #1a5276; }
+.log-badge-default { background: #f0f0f0; color: #555; }
+.log-pagination { display: flex; align-items: center; gap: 1rem; justify-content: center; margin-top: 1rem; font-size: .9rem; }
 </style>
