@@ -171,8 +171,9 @@ class PrenotazioneController extends Controller
                 'telefono'          => $data['telefono'] ?? null,
                 'note'              => $data['note'] ?? null,
                 'stato'             => $statoIniziale,
-                'importo_totale'    => $totale,
-                'token_accesso'     => Str::random(32),
+                'posti_prenotati'   => collect($data['posti'])->sum('quantita'),
+                'costo_totale'      => $totale,
+                'data_prenotazione' => now(),
             ]);
 
             // Crea i posti prenotati
@@ -214,7 +215,7 @@ class PrenotazioneController extends Controller
             // Elimina il lock
             $lock->delete();
 
-            return response()->json($prenotazione->load(['prenotazionePosti', 'risposteForm']), 201);
+            return response()->json($prenotazione->load(['posti', 'risposteForm']), 201);
         });
     }
 
@@ -227,7 +228,7 @@ class PrenotazioneController extends Controller
         abort_if(!$request->user(), 401, 'Non autenticato.');
 
         $prenotazioni = Prenotazione::where('user_id', $request->user()->id)
-            ->with(['sessione.evento', 'prenotazionePosti.tipologiaPosto'])
+            ->with(['sessione.evento', 'posti.tipologiaPosto'])
             ->orderByDesc('created_at')
             ->paginate(20);
 
@@ -251,7 +252,7 @@ class PrenotazioneController extends Controller
         abort_if(!$autorizzato, 403, 'Accesso non autorizzato.');
 
         return response()->json(
-            $prenotazione->load(['sessione.evento', 'prenotazionePosti.tipologiaPosto', 'risposteForm.campoForm'])
+            $prenotazione->load(['sessione.evento', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
         );
     }
 
@@ -286,7 +287,7 @@ class PrenotazioneController extends Controller
     public function indexAdmin(Request $request, Ente $ente): JsonResponse
     {
         $q = Prenotazione::where('ente_id', $ente->id)
-            ->with(['sessione.evento', 'prenotazionePosti.tipologiaPosto'])
+            ->with(['sessione.evento', 'posti.tipologiaPosto'])
             ->orderByDesc('created_at');
 
         if ($request->filled('sessione_id')) {
@@ -353,10 +354,10 @@ class PrenotazioneController extends Controller
             // Libera i posti
             $sessione = Sessione::find($prenotazione->sessione_id);
             if ($sessione) {
-                $totale = $prenotazione->prenotazionePosti()->sum('quantita');
+                $totale = $prenotazione->posti()->sum('quantita');
                 $sessione->increment('posti_disponibili', $totale);
 
-                foreach ($prenotazione->prenotazionePosti as $posto) {
+                foreach ($prenotazione->posti as $posto) {
                     SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                         ->where('tipologia_posto_id', $posto->tipologia_posto_id)
                         ->increment('posti_disponibili', $posto->quantita);
