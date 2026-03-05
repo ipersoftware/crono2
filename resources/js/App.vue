@@ -4,7 +4,11 @@
       <div class="nav-container">
         <router-link to="/" class="nav-brand">🗓 Crono2</router-link>
 
-        <div class="nav-links">
+        <button class="nav-hamburger" @click="menuAperto = !menuAperto" :aria-expanded="menuAperto">
+          <span></span><span></span><span></span>
+        </button>
+
+        <div class="nav-links" :class="{ 'nav-links--open': menuAperto }" @click="menuAperto = false">
           <!-- Admin sistema -->
           <template v-if="isAdmin">
             <router-link to="/users">Utenti</router-link>
@@ -43,11 +47,12 @@
 
 <script setup>
 import { useAuthStore } from '@/stores/auth'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const menuAperto = ref(false)
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
@@ -110,6 +115,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: .5rem;
 }
 
 .nav-container h1 {
@@ -148,6 +155,65 @@ body {
 
 .btn-logout:hover {
   background-color: #c0392b;
+}
+
+.nav-hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 28px;
+  height: 20px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+.nav-hamburger span {
+  display: block;
+  height: 3px;
+  background: white;
+  border-radius: 2px;
+  transition: opacity .2s;
+}
+
+@media (max-width: 768px) {
+  .nav-hamburger { display: flex; }
+
+  .nav-links {
+    display: none;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    width: 100%;
+    padding: .5rem 0 .75rem;
+    border-top: 1px solid rgba(255,255,255,.15);
+    margin-top: .25rem;
+  }
+  .nav-links--open { display: flex; }
+
+  .nav-links a, .nav-links button {
+    width: 100%;
+    padding: .65rem .5rem;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    font-size: 1rem;
+  }
+  .nav-links a.router-link-active {
+    border-bottom-color: rgba(255,255,255,.08);
+    background: rgba(255,255,255,.08);
+    border-radius: 4px;
+  }
+  .btn-logout {
+    border-radius: 4px;
+    margin-top: .25rem;
+    text-align: left;
+  }
+
+  .impersonate-banner {
+    flex-direction: column;
+    gap: .5rem;
+    text-align: center;
+    padding: .75rem 1rem;
+  }
 }
 
 .impersonate-banner {

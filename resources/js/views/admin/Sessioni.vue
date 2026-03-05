@@ -36,11 +36,11 @@
         </thead>
         <tbody>
           <tr v-for="s in sessioni" :key="s.id">
-            <td>{{ formatDateTime(s.data_inizio) }}</td>
-            <td>{{ formatDateTime(s.data_fine) }}</td>
-            <td>{{ s.posti_totali ?? '∞' }}</td>
-            <td>{{ s.posti_disponibili ?? '—' }}</td>
-            <td class="actions">
+            <td data-label="Inizio">{{ formatDateTime(s.data_inizio) }}</td>
+            <td data-label="Fine">{{ formatDateTime(s.data_fine) }}</td>
+            <td data-label="Posti totali">{{ s.posti_totali ?? '∞' }}</td>
+            <td data-label="Disponibili">{{ s.posti_disponibili ?? '—' }}</td>
+            <td data-label="Azioni" class="actions">
               <button @click="apriModal(s)" class="btn btn-sm btn-primary">Modifica</button>
               <button @click="elimina(s)" class="btn btn-sm btn-danger">Elimina</button>
             </td>
@@ -259,8 +259,8 @@ onMounted(carica)
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.page-subheader { display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 0 1rem; font-size: 1.1rem; font-weight: 600; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
+.page-subheader { display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 0 1rem; font-size: 1.1rem; font-weight: 600; flex-wrap: wrap; gap: .5rem; }
 .page-subheader em { font-weight: 400; }
 .tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
 .tab-btn {
@@ -295,4 +295,38 @@ onMounted(carica)
 .table-tipologie th, .table-tipologie td { padding: .35rem .5rem; border-bottom: 1px solid #eee; }
 .table-tipologie th { font-weight: 600; text-align: left; background: #f8f9fa; }
 .input-sm { width: 90px; padding: .3rem .5rem; }
+
+@media (max-width: 640px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr {
+    border: 1px solid #e8eaed;
+    border-radius: 8px;
+    margin-bottom: .75rem;
+    padding: .5rem .75rem;
+    background: white;
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .5rem;
+    padding: .4rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: .9rem;
+  }
+  .table td:last-child { border-bottom: none; }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #777;
+    font-size: .78rem;
+    white-space: nowrap;
+  }
+  .actions { justify-content: flex-end; }
+  .tabs { flex-wrap: wrap; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions button { width: 100%; }
+}
 </style>

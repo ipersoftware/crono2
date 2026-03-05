@@ -32,21 +32,21 @@
         </thead>
         <tbody>
           <tr v-for="p in prenotazioni" :key="p.id">
-            <td class="mono">{{ p.codice }}</td>
-            <td>
+            <td data-label="Codice" class="mono">{{ p.codice }}</td>
+            <td data-label="Nominativo">
               {{ p.cognome }} {{ p.nome }}
               <div class="muted">{{ p.email }}</div>
             </td>
-            <td>
+            <td data-label="Evento / Sessione">
               {{ p.sessione?.evento?.titolo ?? '–' }}
-              <div class="muted">{{ formatDateTime(p.sessione?.inizio_at) }}</div>
+              <div class="muted">{{ formatDateTime(p.sessione?.data_inizio) }}</div>
             </td>
-            <td>{{ totPosti(p) }}</td>
-            <td>€ {{ Number(p.importo_totale).toFixed(2) }}</td>
-            <td>
+            <td data-label="Posti">{{ totPosti(p) }}</td>
+            <td data-label="Importo">€ {{ Number(p.importo_totale).toFixed(2) }}</td>
+            <td data-label="Stato">
               <span :class="['badge', `badge-${statoClass(p.stato)}`]">{{ p.stato }}</span>
             </td>
-            <td class="actions">
+            <td data-label="Azioni" class="actions">
               <button
                 v-if="p.stato === 'DA_CONFERMARE'"
                 @click="approva(p)"
@@ -140,4 +140,14 @@ onMounted(carica)
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 4px; cursor: pointer; }
 .btn-success { background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; }
 .paginazione { display: flex; gap: .4rem; justify-content: center; margin-top: 1.25rem; flex-wrap: wrap; }
+
+@media (max-width: 640px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr { border: 1px solid #e8eaed; border-radius: 8px; margin-bottom: .75rem; padding: .5rem .75rem; background: white; }
+  .table td { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid #f0f0f0; font-size: .88rem; }
+  .table td:last-child { border-bottom: none; }
+  .table td::before { content: attr(data-label); font-weight: 600; color: #777; font-size: .75rem; white-space: nowrap; padding-top: .1rem; }
+  .actions { justify-content: flex-end; }
+}
 </style>

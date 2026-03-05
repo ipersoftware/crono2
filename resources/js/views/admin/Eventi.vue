@@ -38,18 +38,18 @@
         </thead>
         <tbody>
           <tr v-for="ev in eventi" :key="ev.id">
-            <td>
+            <td data-label="Titolo">
               <strong>{{ ev.titolo }}</strong>
               <div class="muted">{{ ev.slug }}</div>
             </td>
-            <td>
+            <td data-label="Stato">
               <span :class="['badge', `badge-${ev.stato.toLowerCase()}`]">
                 {{ ev.stato }}
               </span>
             </td>
-            <td>{{ ev.sessioni_count ?? '–' }}</td>
-            <td>{{ formatData(ev.created_at) }}</td>
-            <td class="actions">
+            <td data-label="Sessioni">{{ ev.sessioni_count ?? '–' }}</td>
+            <td data-label="Creato il">{{ formatData(ev.created_at) }}</td>
+            <td data-label="Azioni" class="actions">
               <router-link :to="`/admin/${enteId}/eventi/${ev.id}/sessioni`" class="btn btn-sm btn-secondary">
                 Sessioni
               </router-link>
@@ -119,7 +119,7 @@ onMounted(carica)
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
 .filtri { margin-bottom: 1rem; }
 .filtri-row { display: flex; gap: .75rem; flex-wrap: wrap; }
 .input { padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; }
@@ -135,4 +135,35 @@ onMounted(carica)
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; }
 .btn-success  { background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; }
 .btn-warning  { background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; }
+
+@media (max-width: 640px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr {
+    border: 1px solid #e8eaed;
+    border-radius: 8px;
+    margin-bottom: .75rem;
+    padding: .5rem .75rem;
+    background: white;
+  }
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .5rem;
+    padding: .45rem 0;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: .9rem;
+  }
+  .table td:last-child { border-bottom: none; }
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #777;
+    font-size: .78rem;
+    white-space: nowrap;
+    padding-top: .1rem;
+  }
+  .actions { justify-content: flex-end; flex-wrap: wrap; }
+}
 </style>

@@ -14,14 +14,14 @@
         </thead>
         <tbody>
           <tr v-for="l in luoghi" :key="l.id">
-            <td>{{ l.nome }}</td>
-            <td class="muted">{{ l.indirizzo }}</td>
-            <td>
+            <td data-label="Nome">{{ l.nome }}</td>
+            <td data-label="Indirizzo" class="muted">{{ l.indirizzo }}</td>
+            <td data-label="Stato">
               <span :class="['badge', l.stato === 'ATTIVO' ? 'badge-attivo' : 'badge-inattivo']">
                 {{ l.stato }}
               </span>
             </td>
-            <td class="actions">
+            <td data-label="Azioni" class="actions">
               <button @click="apriModal(l)" class="btn btn-sm btn-primary">Modifica</button>
               <button @click="elimina(l)" class="btn btn-sm btn-danger">Elimina</button>
             </td>
@@ -135,7 +135,7 @@ onMounted(carica)
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
 .loading, .empty { padding: 2rem; text-align: center; color: #aaa; }
 .muted { color: #999; font-size: .85rem; }
 .actions { display: flex; gap: .4rem; }
@@ -152,4 +152,17 @@ onMounted(carica)
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; }
+
+@media (max-width: 640px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+  .table tr { border: 1px solid #e8eaed; border-radius: 8px; margin-bottom: .75rem; padding: .5rem .75rem; background: white; }
+  .table td { display: flex; justify-content: space-between; align-items: center; gap: .5rem; padding: .4rem 0; border-bottom: 1px solid #f0f0f0; font-size: .9rem; }
+  .table td:last-child { border-bottom: none; }
+  .table td::before { content: attr(data-label); font-weight: 600; color: #777; font-size: .78rem; white-space: nowrap; }
+  .actions { justify-content: flex-end; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions button { width: 100%; }
+}
 </style>
