@@ -169,6 +169,17 @@
             </tfoot>
           </table>
         </div>
+
+        <!-- Risposte campi form -->
+        <div v-if="dettaglio.risposte_form?.length" class="detail-section" style="margin-top:1rem">
+          <h4>Dati aggiuntivi</h4>
+          <dl>
+            <template v-for="r in dettaglio.risposte_form" :key="r.id">
+              <dt>{{ r.campo_form?.etichetta ?? '–' }}</dt>
+              <dd>{{ r.risposta }}</dd>
+            </template>
+          </dl>
+        </div>
       </div>
     </div>
   </div>

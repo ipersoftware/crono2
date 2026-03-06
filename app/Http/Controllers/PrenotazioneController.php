@@ -158,18 +158,29 @@ class PrenotazioneController extends Controller
         $sessione = Sessione::findOrFail($lock->sessione_id);
         $evento   = $sessione->evento;
 
-        // Verifica duplicato
-        $duplicato = Prenotazione::where('sessione_id', $sessione->id)
-            ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE', 'RISERVATA'])
+        // Verifica duplicato:
+        // - sempre: stessa sessione (non ha senso prenotare due volte la stessa data)
+        // - se consenti_multi_sessione = false: anche qualsiasi altra sessione dello stesso evento
+        $queryDuplicato = Prenotazione::whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE', 'RISERVATA'])
             ->where(function ($q) use ($request, $data) {
                 if ($request->user()) {
                     $q->where('user_id', $request->user()->id);
                 } else {
                     $q->where('email', $data['email']);
                 }
-            })->exists();
+            });
 
-        abort_if($duplicato, 422, 'Esiste già una prenotazione attiva per questa sessione.');
+        if ($evento->consenti_multi_sessione) {
+            // Permette prenotazioni su sessioni diverse, ma non sulla stessa sessione due volte
+            $queryDuplicato->where('sessione_id', $sessione->id);
+            $messaggioDuplicato = 'Esiste già una prenotazione attiva per questa sessione.';
+        } else {
+            // Non permette più prenotazioni sullo stesso evento
+            $queryDuplicato->whereHas('sessione', fn($q) => $q->where('evento_id', $evento->id));
+            $messaggioDuplicato = 'Esiste già una prenotazione attiva per questo evento.';
+        }
+
+        abort_if($queryDuplicato->exists(), 422, $messaggioDuplicato);
 
         return DB::transaction(function () use ($data, $lock, $sessione, $evento, $request) {
             $codice = $this->generaCodice();
@@ -315,7 +326,7 @@ class PrenotazioneController extends Controller
     public function indexAdmin(Request $request, Ente $ente): JsonResponse
     {
         $q = Prenotazione::where('ente_id', $ente->id)
-            ->with(['sessione.evento', 'posti.tipologiaPosto'])
+            ->with(['sessione.evento', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
             ->orderByDesc('created_at');
 
         if ($request->filled('sessione_id')) {

@@ -160,8 +160,8 @@ class NotificaService
             '{{dettaglio_posti}}'       => $dettaglioPosti,
             '{{costo_totale}}'          => number_format($prenotazione->costo_totale ?? 0, 2, ',', '.') . ' €',
             '{{note_prenotazione}}'     => $prenotazione->note ?? '',
-            '{{link_prenotazione}}'     => $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? ''),
-            '{{link_annullamento}}'     => $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? '') . '/annulla',
+            '{{link_prenotazione}}'     => $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? '') . '?token=' . ($prenotazione->token_accesso ?? ''),
+            '{{link_annullamento}}'     => $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? '') . '/annulla?token=' . ($prenotazione->token_accesso ?? ''),
             '{{motivo_annullamento}}'   => $prenotazione->motivo_annullamento ?? '',
 
             // Ente
