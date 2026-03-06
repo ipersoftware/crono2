@@ -32,6 +32,7 @@ class Ente extends Model
         'logo',
         'copertina',
         'contenuto_vetrina',
+        'privacy_url',
         'eventi_in_evidenza',
         'stato',
         'licenza',

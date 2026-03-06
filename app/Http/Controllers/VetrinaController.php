@@ -114,6 +114,7 @@ class VetrinaController extends Controller
         // Se lo slug è nella history, reindirizza logicamente con il nuovo slug
         $risposta = $evento->toArray();
         $risposta['redirect_slug'] = ($evento->slug !== $slug) ? $evento->slug : null;
+        $risposta['ente_privacy_url'] = $ente->privacy_url;
 
         return response()->json($risposta);
     }

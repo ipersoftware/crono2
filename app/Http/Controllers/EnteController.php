@@ -88,6 +88,7 @@ class EnteController extends Controller
             'provincia' => ['nullable', 'string', 'size:2'],
             'cap' => ['nullable', 'string', 'size:5'],
             'descrizione' => ['nullable', 'string'],
+            'privacy_url' => ['nullable', 'url', 'max:500'],
             'attivo' => ['boolean'],
         ]);
 

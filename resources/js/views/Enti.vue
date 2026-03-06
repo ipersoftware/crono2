@@ -54,6 +54,13 @@
                 >
                   {{ sincronizzandoId === ente.id ? '⏳…' : '📧 Template mail' }}
                 </button>
+                <button
+                  @click="apriPrivacyModal(ente)"
+                  class="btn btn-secondary btn-sm"
+                  title="Configura URL informativa privacy"
+                >
+                  🔒 Privacy URL
+                </button>
                 <button @click="deleteEnte(ente.id)" class="btn btn-danger btn-sm">
                   Elimina
                 </button>
@@ -189,6 +196,30 @@
             class="btn btn-primary"
           >
             {{ govImporting ? 'Importazione…' : `Importa (${govSelezionati.length})` }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Privacy URL -->
+    <div v-if="privacyModal.show" class="modal">
+      <div class="modal-content">
+        <h2>🔒 Privacy URL — {{ privacyModal.ente?.nome }}</h2>
+        <p class="modal-desc">URL della pagina informativa sulla privacy (link &ldquo;Maggiori informazioni&rdquo; mostrato in fase di prenotazione).</p>
+        <div class="form-group">
+          <label>URL Informativa Privacy</label>
+          <input
+            v-model="privacyModal.url"
+            type="url"
+            class="input"
+            placeholder="https://..."
+          />
+        </div>
+        <div v-if="privacyModal.errore" class="modal-error">{{ privacyModal.errore }}</div>
+        <div class="modal-actions">
+          <button type="button" @click="privacyModal.show = false" class="btn">Annulla</button>
+          <button type="button" @click="salvaPrivacyUrl" :disabled="privacyModal.saving" class="btn btn-primary">
+            {{ privacyModal.saving ? 'Salvataggio…' : 'Salva' }}
           </button>
         </div>
       </div>
@@ -358,6 +389,29 @@ const eseguiImportazione = async () => {
     govErrore.value = true
   } finally {
     govImporting.value = false
+  }
+}
+
+// ──────────────────────────── Privacy URL ────────────────────────────
+const privacyModal = ref({ show: false, ente: null, url: '', errore: '', saving: false })
+
+const apriPrivacyModal = (ente) => {
+  privacyModal.value = { show: true, ente, url: ente.privacy_url ?? '', errore: '', saving: false }
+}
+
+const salvaPrivacyUrl = async () => {
+  privacyModal.value.errore = ''
+  privacyModal.value.saving = true
+  try {
+    await api.put(`/enti/${privacyModal.value.ente.id}`, { privacy_url: privacyModal.value.url || null })
+    // Aggiorna locale
+    const idx = enti.value.findIndex(e => e.id === privacyModal.value.ente.id)
+    if (idx !== -1) enti.value[idx].privacy_url = privacyModal.value.url || null
+    privacyModal.value.show = false
+  } catch (e) {
+    privacyModal.value.errore = e.response?.data?.message ?? 'Errore durante il salvataggio.'
+  } finally {
+    privacyModal.value.saving = false
   }
 }
 
@@ -532,4 +586,8 @@ onMounted(() => {
   background-color: #f8d7da;
   color: #721c24;
 }
+
+.modal-desc { font-size: .88rem; color: #555; margin: 0 0 1rem; }
+.modal-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .6rem .8rem; margin-top: .5rem; font-size: .88rem; }
+.input { width: 100%; padding: .45rem .6rem; border: 1px solid #ccc; border-radius: 5px; font-size: .95rem; box-sizing: border-box; }
 </style>

@@ -29,6 +29,7 @@ class Prenotazione extends Model
         'email',
         'telefono',
         'note',
+        'privacy_ok',
         'costo_totale',
         'evento_snapshot',
         'data_annullamento',
@@ -41,6 +42,7 @@ class Prenotazione extends Model
         'scadenza_riserva'   => 'datetime',
         'data_annullamento'  => 'datetime',
         'costo_totale'       => 'decimal:2',
+        'privacy_ok'         => 'boolean',
         'evento_snapshot'    => 'array',
     ];
 

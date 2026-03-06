@@ -178,6 +178,20 @@
 
             <div v-if="errore" class="alert-error">{{ errore }}</div>
 
+            <!-- GDPR / Trattamento dati personali -->
+            <div class="gdpr-box">
+              <p class="gdpr-text">
+                Trattamento dei dati personali secondo le informazioni di cui al GDPR Regolamento Europeo UE 2016/679.
+                <a v-if="privacyUrl" :href="privacyUrl" target="_blank" rel="noopener" class="gdpr-link">Maggiori informazioni</a>
+              </p>
+              <label class="gdpr-option" :class="{ 'gdpr-option--selected': privacyOk === true }">
+                <input type="radio" :value="true" v-model="privacyOk" /> Acconsento
+              </label>
+              <label class="gdpr-option" :class="{ 'gdpr-option--selected': privacyOk === false }">
+                <input type="radio" :value="false" v-model="privacyOk" /> Non acconsento
+              </label>
+            </div>
+
             <div class="step-actions">
               <button type="button" @click="step = 1; rilasciaLock()" class="btn btn-secondary">← Modifica posti</button>
               <button type="submit" :disabled="confermando" class="btn btn-primary">
@@ -297,6 +311,8 @@ const risposte          = reactive({})
 const lockToken         = ref(null)
 const scadenzaSecondi   = ref(0)
 const prenotazioneConfermata = ref(null)
+const privacyOk         = ref(null)   // null = non ancora scelto, true = acconsento
+const privacyUrl        = ref('')
 let timer = null
 
 const getQty = (id) => posti[id] ?? 0
@@ -399,6 +415,7 @@ const carica = async () => {
     sessione.value  = res.data.sessioni?.find(s => s.id === sessioneId) ?? null
     tipologie.value = sessione.value?.tipologie_posto?.filter(t => t.attiva) ?? []
     campiForm.value = res.data.campi_form ?? []
+    privacyUrl.value = res.data.ente_privacy_url ?? ''
 
     if (!sessione.value) {
       erroreCaricamento.value = 'Sessione non trovata o non disponibile.'
@@ -463,6 +480,10 @@ const confermaPrenot = async () => {
     errore.value = 'Il numero di telefono non è valido.'
     return
   }
+  if (privacyOk.value !== true) {
+    errore.value = 'Devi acconsentire al trattamento dei dati personali per procedere.'
+    return
+  }
   confermando.value = true
   try {
     const postiPayload = Object.entries(posti)
@@ -483,6 +504,7 @@ const confermaPrenot = async () => {
     const res = await prenotazioniApi.store({
       token: lockToken.value,
       ...datiPersonali,
+      privacy_ok: privacyOk.value === true,
       posti: postiPayload,
       risposte: rispostePayload,
     })
@@ -534,6 +556,13 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .posti-left-tp { color: #7f8c8d; font-size: .8rem; margin-top: .1rem; }
 .posti-esauriti { color: #e74c3c; font-size: .8rem; font-weight: 600; margin-top: .1rem; }
 .qty-hint { color: #e67e22; font-size: .78rem; margin-top: .1rem; }
+/* GDPR */
+.gdpr-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: .9rem 1rem; margin-top: 1.25rem; }
+.gdpr-text { font-size: .88rem; color: #444; margin: 0 0 .65rem; line-height: 1.45; }
+.gdpr-link { color: #2980b9; text-decoration: underline; }
+.gdpr-option { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; padding: .2rem 0; }
+.gdpr-option input[type="radio"] { accent-color: #2980b9; width: 1rem; height: 1rem; cursor: pointer; }
+.gdpr-option--selected { font-weight: 600; color: #1a5276; }
 .tipologia-row--esaurita { opacity: .6; }
 .tipologia-row--esaurita .qty-btn:disabled,
 .tipologia-row--esaurita .qty-input:disabled { cursor: not-allowed; background: #f0f0f0; color: #aaa; }

@@ -158,6 +158,7 @@ class PrenotazioneController extends Controller
             'risposte'                   => 'nullable|array',
             'risposte.*.campo_form_id'   => 'required|integer|exists:campi_form,id',
             'risposte.*.risposta'        => 'required|string',
+            'privacy_ok'                 => 'required|boolean|accepted',
         ]);
 
         $lock = PrenotazioneTemporanea::where('token', $data['token'])
@@ -210,6 +211,7 @@ class PrenotazioneController extends Controller
                 'email'             => $data['email'],
                 'telefono'          => $data['telefono'] ?? null,
                 'note'              => $data['note'] ?? null,
+                'privacy_ok'        => true,
                 'stato'             => $statoIniziale,
                 'posti_prenotati'   => collect($data['posti'])->sum('quantita'),
                 'costo_totale'      => $totale,
