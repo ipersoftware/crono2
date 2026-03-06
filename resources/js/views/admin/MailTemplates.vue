@@ -44,7 +44,12 @@
           <div class="form-group">
             <label>Corpo HTML</label>
             <div class="helper">Usa <code v-pre>{{nome}}</code>, <code v-pre>{{codice}}</code>, <code v-pre>{{evento}}</code>, <code v-pre>{{link}}</code>, ecc.</div>
-            <textarea v-model="form.corpo_html" rows="16" class="input mono-area"></textarea>
+            <div class="corpo-tabs">
+              <button type="button" :class="['tab-btn', { active: corpoTab === 'modifica' }]" @click="corpoTab = 'modifica'">✏️ Modifica</button>
+              <button type="button" :class="['tab-btn', { active: corpoTab === 'anteprima' }]" @click="corpoTab = 'anteprima'">👁 Anteprima</button>
+            </div>
+            <textarea v-if="corpoTab === 'modifica'" v-model="form.corpo" rows="16" class="input mono-area"></textarea>
+            <div v-else class="anteprima-corpo" v-html="form.corpo"></div>
           </div>
 
           <div v-if="errore" class="alert-error">{{ errore }}</div>
@@ -63,10 +68,19 @@ const route  = useRoute()
 const enteId = route.params.enteId
 
 const tipiDisponibili = [
-  'CONFERMA_PRENOTAZIONE','ANNULLAMENTO_PRENOTAZIONE','PROMEMORIA',
-  'LISTA_ATTESA_NOTIFICA','LISTA_ATTESA_CONFERMA','RICHIESTA_APPROVAZIONE',
-  'APPROVAZIONE_ADMIN','RIFIUTO_ADMIN','MODIFICA_EVENTO','ANNULLAMENTO_EVENTO',
-  'RESET_PASSWORD','BENVENUTO',
+  'PRENOTAZIONE_CONFERMATA',
+  'PRENOTAZIONE_DA_CONFERMARE',
+  'PRENOTAZIONE_APPROVATA',
+  'PRENOTAZIONE_ANNULLATA_UTENTE',
+  'PRENOTAZIONE_ANNULLATA_OPERATORE',
+  'PRENOTAZIONE_NOTIFICA_STAFF',
+  'EVENTO_ANNULLATO',
+  'LISTA_ATTESA_ISCRIZIONE',
+  'LISTA_ATTESA_POSTO_DISPONIBILE',
+  'LISTA_ATTESA_SCADENZA',
+  'REMINDER_EVENTO',
+  'REGISTRAZIONE_CONFERMATA',
+  'RESET_PASSWORD',
 ]
 
 const templates            = ref([])
@@ -74,7 +88,8 @@ const templatePersonalizzati = ref(new Set())
 const tipoAttivo           = ref(null)
 const saving               = ref(false)
 const errore               = ref('')
-const form                 = reactive({ oggetto: '', corpo_html: '' })
+const form = reactive({ oggetto: '', corpo: '' })
+const corpoTab = ref('modifica')
 
 const carica = async () => {
   const res = await mailTemplatesApi.index(enteId)
@@ -87,9 +102,10 @@ const seleziona = async (tipo) => {
   errore.value     = ''
   try {
     const res = await mailTemplatesApi.show(enteId, tipo)
-    Object.assign(form, { oggetto: res.data.oggetto, corpo_html: res.data.corpo_html })
+    Object.assign(form, { oggetto: res.data.oggetto, corpo: res.data.corpo })
+    corpoTab.value = 'modifica'
   } catch {
-    Object.assign(form, { oggetto: '', corpo_html: '' })
+    Object.assign(form, { oggetto: '', corpo: '' })
   }
 }
 
@@ -115,18 +131,19 @@ const ripristina = async () => {
 }
 
 const tipoLabel = (tipo) => ({
-  CONFERMA_PRENOTAZIONE:   '✅ Conferma prenotazione',
-  ANNULLAMENTO_PRENOTAZIONE:'❌ Annullamento prenotazione',
-  PROMEMORIA:              '⏰ Promemoria',
-  LISTA_ATTESA_NOTIFICA:   '🔔 Lista attesa — notifica',
-  LISTA_ATTESA_CONFERMA:   '✔ Lista attesa — conferma',
-  RICHIESTA_APPROVAZIONE:  '📩 Richiesta approvazione',
-  APPROVAZIONE_ADMIN:      '👍 Approvazione admin',
-  RIFIUTO_ADMIN:           '👎 Rifiuto admin',
-  MODIFICA_EVENTO:         '✏ Modifica evento',
-  ANNULLAMENTO_EVENTO:     '🚫 Annullamento evento',
-  RESET_PASSWORD:          '🔑 Reset password',
-  BENVENUTO:               '👋 Benvenuto',
+  PRENOTAZIONE_CONFERMATA:       '✅ Conferma prenotazione',
+  PRENOTAZIONE_DA_CONFERMARE:    '📩 Prenotazione da confermare',
+  PRENOTAZIONE_APPROVATA:        '👍 Prenotazione approvata',
+  PRENOTAZIONE_ANNULLATA_UTENTE: '❌ Annullamento (utente)',
+  PRENOTAZIONE_ANNULLATA_OPERATORE: '❌ Annullamento (operatore)',
+  PRENOTAZIONE_NOTIFICA_STAFF:   '👤 Notifica staff',
+  EVENTO_ANNULLATO:              '🚫 Evento annullato',
+  LISTA_ATTESA_ISCRIZIONE:       '🔔 Lista attesa — iscrizione',
+  LISTA_ATTESA_POSTO_DISPONIBILE:'✔ Lista attesa — posto disponibile',
+  LISTA_ATTESA_SCADENZA:         '⏰ Lista attesa — scadenza',
+  REMINDER_EVENTO:               '⏰ Promemoria evento',
+  REGISTRAZIONE_CONFERMATA:      '👋 Registrazione confermata',
+  RESET_PASSWORD:                '🔑 Reset password',
 }[tipo] ?? tipo)
 
 onMounted(carica)
@@ -148,6 +165,10 @@ onMounted(carica)
 .form-group label { display: block; margin-bottom: .3rem; font-weight: 500; font-size: .9rem; }
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
 .mono-area { font-family: 'Courier New', monospace; font-size: .85rem; }
+.corpo-tabs { display: flex; gap: .35rem; margin-bottom: .4rem; }
+.tab-btn { padding: .25rem .75rem; border: 1px solid #ddd; border-radius: 6px 6px 0 0; background: #f8f9fa; cursor: pointer; font-size: .82rem; }
+.tab-btn.active { background: #fff; border-bottom-color: #fff; font-weight: 600; color: #1a5276; }
+.anteprima-corpo { border: 1px solid #ddd; border-radius: 0 6px 6px 6px; padding: 1rem 1.25rem; min-height: 260px; background: #fff; font-size: .9rem; line-height: 1.6; overflow-y: auto; }
 .helper { font-size: .8rem; color: #888; margin-bottom: .35rem; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; }

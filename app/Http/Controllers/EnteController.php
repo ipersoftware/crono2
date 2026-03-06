@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Ente;
+use App\Models\MailTemplate;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -62,6 +63,8 @@ class EnteController extends Controller
         ]);
 
         $ente = Ente::create($validated);
+
+        $this->duplicaTemplateDefault($ente);
 
         return response()->json([
             'message' => 'Ente creato con successo',
@@ -188,6 +191,10 @@ class EnteController extends Controller
                     ]
                 );
 
+                if ($ente->wasRecentlyCreated) {
+                    $this->duplicaTemplateDefault($ente);
+                }
+
                 $importati[] = [
                     'governance_id' => $govId,
                     'ente_id'       => $ente->id,
@@ -207,5 +214,85 @@ class EnteController extends Controller
             'message'   => count($importati) . ' ente/i importato/i con successo' .
                            (count($errori) ? ', ' . count($errori) . ' errore/i.' : '.'),
         ], count($importati) > 0 ? 200 : 422);
+    }
+
+    /**
+     * Copia o aggiorna i template di sistema per un ente.
+     * Aggiorna i template esistenti se già presenti (eccetto quelli marcati come personalizzati).
+     * Solo per admin.
+     */
+    public function sincronizzaTemplate(Ente $ente)
+    {
+        $defaultTemplates = MailTemplate::whereNull('ente_id')->get();
+
+        if ($defaultTemplates->isEmpty()) {
+            return response()->json(['message' => 'Nessun template di sistema trovato.'], 422);
+        }
+
+        $creati   = 0;
+        $aggiornati = 0;
+
+        foreach ($defaultTemplates as $tmpl) {
+            $esistente = MailTemplate::where('ente_id', $ente->id)
+                ->where('tipo', $tmpl->tipo)
+                ->first();
+
+            if ($esistente) {
+                $esistente->update([
+                    'oggetto' => $tmpl->oggetto,
+                    'corpo'   => $tmpl->corpo,
+                    'attivo'  => $tmpl->attivo,
+                ]);
+                $aggiornati++;
+            } else {
+                MailTemplate::create([
+                    'ente_id' => $ente->id,
+                    'tipo'    => $tmpl->tipo,
+                    'oggetto' => $tmpl->oggetto,
+                    'corpo'   => $tmpl->corpo,
+                    'sistema' => false,
+                    'attivo'  => $tmpl->attivo,
+                ]);
+                $creati++;
+            }
+        }
+
+        return response()->json([
+            'message'    => "Template sincronizzati: {$creati} creati, {$aggiornati} aggiornati.",
+            'creati'     => $creati,
+            'aggiornati' => $aggiornati,
+        ]);
+    }
+
+    /**
+     * Duplica i template di sistema (ente_id = NULL) per il nuovo ente.
+     * Salta i tipi per cui l'ente ha già un template.
+     */
+    private function duplicaTemplateDefault(Ente $ente): void
+    {
+        $defaultTemplates = MailTemplate::whereNull('ente_id')->get();
+
+        if ($defaultTemplates->isEmpty()) {
+            return;
+        }
+
+        $tipiEsistenti = MailTemplate::where('ente_id', $ente->id)
+            ->pluck('tipo')
+            ->all();
+
+        foreach ($defaultTemplates as $tmpl) {
+            if (in_array($tmpl->tipo, $tipiEsistenti, true)) {
+                continue;
+            }
+
+            MailTemplate::create([
+                'ente_id' => $ente->id,
+                'tipo'    => $tmpl->tipo,
+                'oggetto' => $tmpl->oggetto,
+                'corpo'   => $tmpl->corpo,
+                'sistema' => false,
+                'attivo'  => $tmpl->attivo,
+            ]);
+        }
     }
 }

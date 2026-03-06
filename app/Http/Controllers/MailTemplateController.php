@@ -49,18 +49,18 @@ class MailTemplateController extends Controller
     public function store(Request $request, Ente $ente): JsonResponse
     {
         $data = $request->validate([
-            'tipo'        => 'required|in:CONFERMA_PRENOTAZIONE,ANNULLAMENTO_PRENOTAZIONE,PROMEMORIA,LISTA_ATTESA_NOTIFICA,LISTA_ATTESA_CONFERMA,RICHIESTA_APPROVAZIONE,APPROVAZIONE_ADMIN,RIFIUTO_ADMIN,MODIFICA_EVENTO,ANNULLAMENTO_EVENTO,RESET_PASSWORD,BENVENUTO,CUSTOM',
-            'oggetto'     => 'required|string|max:255',
-            'corpo_html'  => 'required|string',
-            'attivo'      => 'nullable|boolean',
+            'tipo'    => 'required|in:PRENOTAZIONE_CONFERMATA,PRENOTAZIONE_DA_CONFERMARE,PRENOTAZIONE_APPROVATA,PRENOTAZIONE_ANNULLATA_UTENTE,PRENOTAZIONE_ANNULLATA_OPERATORE,PRENOTAZIONE_NOTIFICA_STAFF,EVENTO_ANNULLATO,LISTA_ATTESA_ISCRIZIONE,LISTA_ATTESA_POSTO_DISPONIBILE,LISTA_ATTESA_SCADENZA,REMINDER_EVENTO,REGISTRAZIONE_CONFERMATA,RESET_PASSWORD',
+            'oggetto' => 'required|string|max:255',
+            'corpo'   => 'required|string',
+            'attivo'  => 'nullable|boolean',
         ]);
 
         $template = MailTemplate::updateOrCreate(
             ['ente_id' => $ente->id, 'tipo' => $data['tipo']],
             [
-                'oggetto'    => $data['oggetto'],
-                'corpo_html' => $data['corpo_html'],
-                'attivo'     => $data['attivo'] ?? true,
+                'oggetto' => $data['oggetto'],
+                'corpo'   => $data['corpo'],
+                'attivo'  => $data['attivo'] ?? true,
             ]
         );
 
@@ -73,9 +73,9 @@ class MailTemplateController extends Controller
         $this->autorizza($ente, $mailTemplate);
 
         $data = $request->validate([
-            'oggetto'    => 'nullable|string|max:255',
-            'corpo_html' => 'nullable|string',
-            'attivo'     => 'nullable|boolean',
+            'oggetto' => 'nullable|string|max:255',
+            'corpo'   => 'nullable|string',
+            'attivo'  => 'nullable|boolean',
         ]);
 
         $mailTemplate->update($data);
@@ -113,8 +113,8 @@ class MailTemplateController extends Controller
         ]);
 
         return response()->json([
-            'oggetto'    => $mailTemplate->renderizza($datiEsempio)['oggetto'],
-            'corpo_html' => $mailTemplate->renderizza($datiEsempio)['corpo_html'],
+            'oggetto' => $mailTemplate->renderizza($datiEsempio)['oggetto'],
+            'corpo'   => $mailTemplate->renderizza($datiEsempio)['corpo'],
         ]);
     }
 

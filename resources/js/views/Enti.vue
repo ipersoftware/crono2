@@ -46,6 +46,14 @@
                 >
                   👁 Impersona
                 </button>
+                <button
+                  @click="sincronizzaTemplate(ente)"
+                  :disabled="sincronizzandoId === ente.id"
+                  class="btn btn-info btn-sm"
+                  title="Copia/aggiorna i template mail di sistema per questo ente"
+                >
+                  {{ sincronizzandoId === ente.id ? '⏳…' : '📧 Template mail' }}
+                </button>
                 <button @click="deleteEnte(ente.id)" class="btn btn-danger btn-sm">
                   Elimina
                 </button>
@@ -255,6 +263,22 @@ const impersonaEnte = async (ente) => {
   }
 }
 
+// ───────────────────────── Sincronizza template mail ─────────────────────────
+const sincronizzandoId = ref(null)
+
+const sincronizzaTemplate = async (ente) => {
+  if (!confirm(`Vuoi copiare/aggiornare i template mail di sistema per "${ente.nome}"?\nI template esistenti verranno sovrascritti con i valori di default.`)) return
+  sincronizzandoId.value = ente.id
+  try {
+    const res = await api.post(`/enti/${ente.id}/sincronizza-template`)
+    alert(res.data.message)
+  } catch (e) {
+    alert('Errore: ' + (e.response?.data?.message || e.message))
+  } finally {
+    sincronizzandoId.value = null
+  }
+}
+
 // ───────────────────────── Import da Governance ─────────────────────────
 const showGovernanceModal = ref(false)
 const govSearch = ref('')
@@ -385,6 +409,20 @@ onMounted(() => {
 
 .btn-warning:disabled {
   background-color: #f8c471;
+  cursor: not-allowed;
+}
+
+.btn-info {
+  background-color: #3498db;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #2980b9;
+}
+
+.btn-info:disabled {
+  background-color: #85c1e9;
   cursor: not-allowed;
 }
 
