@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>{{ isNuovo ? '+ Nuovo evento' : '✏️ Modifica evento' }}</h1>
+      <h1>{{ isNuovo ? '+ Nuovo evento' : (form.titolo ? `✏️ ${form.titolo}` : '✏️ Modifica evento') }}</h1>
       <div style="display:flex;gap:.6rem;align-items:center">
         <a v-if="urlVetrina" :href="urlVetrina" target="_blank" class="btn btn-outline">👁 Vedi in vetrina</a>
         <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>

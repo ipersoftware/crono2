@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>✏️ Modifica evento</h1>
+      <h1>{{ evento?.titolo ? `✏️ ${evento.titolo}` : '✏️ Modifica evento' }}</h1>
       <div style="display:flex;gap:.6rem;align-items:center">
         <a v-if="urlVetrina" :href="urlVetrina" target="_blank" class="btn btn-outline">👁 Vedi in vetrina</a>
         <router-link :to="`/admin/${enteId}/eventi`" class="btn btn-secondary">← Torna agli eventi</router-link>
@@ -80,29 +80,45 @@
 
           <div class="grid-2">
             <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.controlla_posti_globale" />
-                Controlla posti a livello globale
+              <label class="toggle-label">
+                <span class="toggle-text">Controlla posti a livello globale</span>
+                <span class="toggle-state">{{ form.controlla_posti_globale ? 'Sì' : 'No' }}</span>
+                <span class="toggle-wrap">
+                  <input type="checkbox" v-model="form.controlla_posti_globale" class="toggle-input" />
+                  <span class="toggle-slider"></span>
+                </span>
               </label>
             </div>
             <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.prenotabile" />
-                Prenotabile
+              <label class="toggle-label">
+                <span class="toggle-text">Prenotabile</span>
+                <span class="toggle-state">{{ form.prenotabile ? 'Sì' : 'No' }}</span>
+                <span class="toggle-wrap">
+                  <input type="checkbox" v-model="form.prenotabile" class="toggle-input" />
+                  <span class="toggle-slider"></span>
+                </span>
               </label>
             </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
-              <label class="checkbox-label" style="color:#c0392b">
-                <input type="checkbox" v-model="form.forza_non_disponibile" />
-                Forza chiusura (non prenotabile)
+              <label class="toggle-label">
+                <span class="toggle-text" style="color:#c0392b">Forza chiusura</span>
+                <span class="toggle-state" style="color:#c0392b">{{ form.forza_non_disponibile ? 'Sì' : 'No' }}</span>
+                <span class="toggle-wrap">
+                  <input type="checkbox" v-model="form.forza_non_disponibile" class="toggle-input" />
+                  <span class="toggle-slider"></span>
+                </span>
               </label>
             </div>
             <div class="form-group">
-              <label class="checkbox-label">
-                <input type="checkbox" v-model="form.attiva_lista_attesa" />
-                Attiva lista d'attesa
+              <label class="toggle-label">
+                <span class="toggle-text">Attiva lista d'attesa</span>
+                <span class="toggle-state">{{ form.attiva_lista_attesa ? 'Sì' : 'No' }}</span>
+                <span class="toggle-wrap">
+                  <input type="checkbox" v-model="form.attiva_lista_attesa" class="toggle-input" />
+                  <span class="toggle-slider"></span>
+                </span>
               </label>
             </div>
           </div>
@@ -288,6 +304,17 @@ onMounted(carica)
 .form-group label { display: block; margin-bottom: .3rem; font-weight: 500; font-size: .9rem; }
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
 .checkbox-label { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+
+/* Toggle switch */
+.toggle-label { display: flex; align-items: center; gap: .75rem; cursor: pointer; user-select: none; }
+.toggle-text   { flex: 1; font-size: .9rem; }
+.toggle-state  { font-size: .8rem; color: #888; min-width: 1.8rem; text-align: right; }
+.toggle-wrap   { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+.toggle-input  { opacity: 0; width: 0; height: 0; position: absolute; }
+.toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 22px; transition: background .2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .2s; }
+.toggle-input:checked + .toggle-slider { background: #3498db; }
+.toggle-input:checked + .toggle-slider::before { transform: translateX(18px); }
 .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.25rem; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; }
