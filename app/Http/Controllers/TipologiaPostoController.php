@@ -32,10 +32,11 @@ class TipologiaPostoController extends Controller
             'descrizione'     => 'nullable|string',
             'gratuita'        => 'required|boolean',
             'costo'           => 'nullable|numeric|min:0',
-            'min_prenotabili' => 'nullable|integer|min:1',
-            'max_prenotabili' => 'nullable|integer|min:1',
-            'ordinamento'     => 'nullable|integer|min:0',
-            'attiva'          => 'nullable|boolean',
+            'min_prenotabili'          => 'nullable|integer|min:1',
+            'max_prenotabili'          => 'nullable|integer|min:1',
+            'ordinamento'              => 'nullable|integer|min:0',
+            'attiva'                   => 'nullable|boolean',
+            'visualizza_disponibili'   => 'nullable|boolean',
         ]);
 
         $data['evento_id'] = $evento->id;
@@ -64,10 +65,11 @@ class TipologiaPostoController extends Controller
             'descrizione'     => 'nullable|string',
             'gratuita'        => 'nullable|boolean',
             'costo'           => 'nullable|numeric|min:0',
-            'min_prenotabili' => 'nullable|integer|min:1',
-            'max_prenotabili' => 'nullable|integer|min:1',
-            'ordinamento'     => 'nullable|integer|min:0',
-            'attiva'          => 'nullable|boolean',
+            'min_prenotabili'          => 'nullable|integer|min:1',
+            'max_prenotabili'          => 'nullable|integer|min:1',
+            'ordinamento'              => 'nullable|integer|min:0',
+            'attiva'                   => 'nullable|boolean',
+            'visualizza_disponibili'   => 'nullable|boolean',
         ]);
 
         if (isset($data['gratuita']) && $data['gratuita']) {

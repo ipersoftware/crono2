@@ -11,7 +11,7 @@
         <h1>🎟 Prenota — {{ evento?.titolo }}</h1>
         <div class="sessione-info card">
           <strong>📅 {{ formatDateTime(sessione?.data_inizio) }}</strong>
-          <span v-if="sessione?.posti_totali !== null" class="posti-left">
+          <span v-if="sessione?.visualizza_disponibili && sessione?.posti_totali > 0" class="posti-left">
             — {{ postiRimasti }} posti disponibili
           </span>
         </div>
@@ -25,6 +25,9 @@
               <strong>{{ t.tipologia_posto.nome }}</strong>
               <span class="prezzo">
                 {{ t.tipologia_posto.gratuita ? 'Gratuito' : `€ ${Number(t.tipologia_posto.costo).toFixed(2)}` }}
+              </span>
+              <span v-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali > 0" class="posti-left-tp">
+                {{ t.posti_disponibili ?? 0 }} disponibili
               </span>
             </div>
             <div class="qty-control">
@@ -439,6 +442,7 @@ onUnmounted(() => fermaTimer())
 h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .sessione-info { background: #ebf5fb; margin-bottom: 1.25rem; }
 .posti-left { color: #27ae60; font-size: .9rem; }
+.posti-left-tp { color: #7f8c8d; font-size: .8rem; margin-top: .1rem; }
 .tipologia-row { display: flex; justify-content: space-between; align-items: center; padding: .75rem; border: 1px solid #eee; border-radius: 8px; margin-bottom: .6rem; }
 .tipologia-info { display: flex; flex-direction: column; }
 .prezzo { color: #27ae60; font-size: .9rem; margin-top: .15rem; }

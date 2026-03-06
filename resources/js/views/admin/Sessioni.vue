@@ -37,22 +37,37 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="s in sessioni" :key="s.id">
-            <td data-label="Inizio">{{ formatDateTime(s.data_inizio) }}</td>
-            <td data-label="Fine">{{ formatDateTime(s.data_fine) }}</td>
-            <td data-label="Posti totali">{{ s.posti_totali ?? '∞' }}</td>
-            <td data-label="Disponibili">{{ s.posti_disponibili ?? '—' }}</td>
-            <td data-label="Azioni" class="actions">
-              <button @click="apriModal(s)" class="btn btn-sm btn-primary">Modifica</button>
-              <button @click="elimina(s)" class="btn btn-sm btn-danger">Elimina</button>
-            </td>
-          </tr>
+          <template v-for="s in sessioni" :key="s.id">
+            <tr>
+              <td data-label="Inizio">{{ formatDateTime(s.data_inizio) }}</td>
+              <td data-label="Fine">{{ formatDateTime(s.data_fine) }}</td>
+              <td data-label="Posti totali">{{ s.posti_totali ?? '∞' }}</td>
+              <td data-label="Disponibili">{{ s.posti_disponibili ?? '—' }}</td>
+              <td data-label="Azioni" class="actions">
+                <button @click="apriModal(s)" class="btn btn-sm btn-primary">Modifica</button>
+                <button @click="elimina(s)" class="btn btn-sm btn-danger">Elimina</button>
+              </td>
+            </tr>
+            <tr v-if="s.tipologie_posto?.length" class="row-tipologie">
+              <td colspan="5">
+                <div class="tipologie-breakdown">
+                  <span
+                    v-for="tp in s.tipologie_posto" :key="tp.id"
+                    :class="['tp-badge', tp.attiva ? '' : 'tp-badge--inattiva']"
+                  >
+                    <span class="tp-nome">{{ tp.tipologia_posto?.nome ?? '–' }}</span>
+                    <span class="tp-disp">{{ tp.posti_disponibili ?? '∞' }} / {{ tp.posti_totali || '∞' }}</span>
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </template>
         </tbody>
       </table>
     </div>
 
     <!-- Modal sessione -->
-    <div v-if="modal" class="modal-backdrop" @click.self="modal = false">
+    <div v-if="modal" class="modal-backdrop">
       <div class="modal-box">
         <h2>{{ form.id ? 'Modifica sessione' : 'Nuova sessione' }}</h2>
         <form @submit.prevent="salva">
@@ -145,6 +160,17 @@
             <textarea v-model="form.note_pubbliche" rows="2" class="input"></textarea>
           </div>
 
+          <div class="form-group">
+            <label class="toggle-label">
+              <span class="toggle-text">Mostra posti disponibili in fase di prenotazione</span>
+              <span class="toggle-state">{{ form.visualizza_disponibili ? 'Sì' : 'No' }}</span>
+              <span class="toggle-wrap">
+                <input type="checkbox" v-model="form.visualizza_disponibili" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </span>
+            </label>
+          </div>
+
           <div v-if="errore" class="alert-error">{{ errore }}</div>
 
           <div class="modal-actions">
@@ -188,7 +214,7 @@ const formDefault = () => ({
   id: null, data_inizio: '', data_fine: '', posti_totali: null,
   controlla_posti_globale: true, prenotabile: true,
   forza_non_disponibile: false, attiva_lista_attesa: false,
-  durata_lock_minuti: null, note_pubbliche: '',
+  durata_lock_minuti: null, note_pubbliche: '', visualizza_disponibili: false,
   tipologie_posto: [],
 })
 const form = reactive(formDefault())
@@ -230,6 +256,7 @@ const apriModal = (s = null) => {
       attiva_lista_attesa: s.attiva_lista_attesa ?? false,
       durata_lock_minuti: s.durata_lock_minuti ?? null,
       note_pubbliche: s.note_pubbliche ?? '',
+      visualizza_disponibili: s.visualizza_disponibili ?? false,
     })
     // Sovrascrive i posti per tipologia con i valori già salvati
     form.tipologie_posto = form.tipologie_posto.map(tp => {
@@ -243,8 +270,23 @@ const apriModal = (s = null) => {
 }
 
 const salva = async () => {
-  saving.value = true
   errore.value = ''
+
+  // Controllo coerenza posti totali vs tipologie
+  const totaleSessione = form.posti_totali
+  if (totaleSessione > 0 && form.tipologie_posto.length > 0) {
+    const tipologieAttive = form.tipologie_posto.filter(tp => tp.attiva)
+    const tutteLimitate   = tipologieAttive.every(tp => tp.posti_totali > 0)
+    if (tutteLimitate) {
+      const sommaTipologie = tipologieAttive.reduce((acc, tp) => acc + (tp.posti_totali || 0), 0)
+      if (sommaTipologie > totaleSessione) {
+        errore.value = `La somma dei posti per tipologia (${sommaTipologie}) supera il totale della sessione (${totaleSessione}).`
+        return
+      }
+    }
+  }
+
+  saving.value = true
   try {
     if (form.id) {
       const res = await sessioniApi.update(enteId, eventoId, form.id, form)
@@ -304,6 +346,16 @@ onMounted(carica)
 .form-group label { display: block; margin-bottom: .3rem; font-weight: 500; font-size: .9rem; }
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
 .checkbox-label { display: flex; align-items: center; gap: .5rem; cursor: pointer; }
+
+/* Sotto-riga tipologie in lista sessioni */
+.row-tipologie td { padding: .3rem 1rem .6rem; background: #f8f9fb; border-top: none; }
+.tipologie-breakdown { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tp-badge { display: inline-flex; align-items: center; gap: .35rem; background: #e8f0fe; border: 1px solid #c5d5f7; border-radius: 20px; padding: .15rem .65rem; font-size: .8rem; }
+.tp-badge--inattiva { background: #f0f0f0; border-color: #ccc; color: #999; }
+.tp-nome { font-weight: 600; }
+.tp-disp { color: #555; }
+.tp-badge--inattiva .tp-nome,
+.tp-badge--inattiva .tp-disp { color: #aaa; }
 
 /* Toggle switch */
 .toggle-label { display: flex; align-items: center; gap: .75rem; cursor: pointer; user-select: none; }

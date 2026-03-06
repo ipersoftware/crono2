@@ -25,12 +25,14 @@ class TipologiaPosto extends Model
         'max_prenotabili',
         'ordinamento',
         'attiva',
+        'visualizza_disponibili',
     ];
 
     protected $casts = [
-        'gratuita'        => 'boolean',
-        'attiva'          => 'boolean',
-        'costo'           => 'decimal:2',
+        'gratuita'                => 'boolean',
+        'attiva'                  => 'boolean',
+        'costo'                   => 'decimal:2',
+        'visualizza_disponibili'  => 'boolean',
     ];
 
     // ─── Relazioni ────────────────────────────────────────────────────────────

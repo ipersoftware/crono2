@@ -35,6 +35,7 @@ class Sessione extends Model
         'lista_attesa_finestra_conferma_ore',
         'durata_lock_minuti',
         'note_pubbliche',
+        'visualizza_disponibili',
         'attributi',
     ];
 
@@ -45,6 +46,7 @@ class Sessione extends Model
         'prenotabile'               => 'boolean',
         'forza_non_disponibile'     => 'boolean',
         'attiva_lista_attesa'       => 'boolean',
+        'visualizza_disponibili'    => 'boolean',
         'attributi'                 => 'array',
     ];
 

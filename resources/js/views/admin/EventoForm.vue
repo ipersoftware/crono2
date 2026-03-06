@@ -343,6 +343,16 @@
             <input v-model.number="dialogTipologia.form.max_prenotabili" type="number" min="1" class="input" placeholder="lascia vuoto = nessun limite" />
           </div>
         </div>
+        <div class="form-group">
+          <label class="toggle-label">
+            <span class="toggle-text">Mostra posti disponibili in prenotazione</span>
+            <span class="toggle-state">{{ dialogTipologia.form.visualizza_disponibili ? 'Sì' : 'No' }}</span>
+            <span class="toggle-wrap">
+              <input type="checkbox" v-model="dialogTipologia.form.visualizza_disponibili" class="toggle-input" />
+              <span class="toggle-slider"></span>
+            </span>
+          </label>
+        </div>
         <div v-if="dialogTipologia.errore" class="alert-error">{{ dialogTipologia.errore }}</div>
         <div class="dialog-actions">
           <button @click="dialogTipologia.aperto = false" class="btn">Annulla</button>
@@ -654,8 +664,8 @@ const apriDialogTipologia = (t = null, i = null) => {
   dialogTipologia.indice = i
   dialogTipologia.errore = ''
   dialogTipologia.form = t
-    ? { id: t.id, nome: t.nome, costo: t.costo ?? 0, gratuita: !!t.gratuita, min_prenotabili: t.min_prenotabili ?? null, max_prenotabili: t.max_prenotabili ?? null }
-    : { nome: '', costo: 0, gratuita: false, min_prenotabili: null, max_prenotabili: null }
+    ? { id: t.id, nome: t.nome, costo: t.costo ?? 0, gratuita: !!t.gratuita, min_prenotabili: t.min_prenotabili ?? null, max_prenotabili: t.max_prenotabili ?? null, visualizza_disponibili: !!t.visualizza_disponibili }
+    : { nome: '', costo: 0, gratuita: false, min_prenotabili: null, max_prenotabili: null, visualizza_disponibili: false }
   dialogTipologia.aperto = true
 }
 

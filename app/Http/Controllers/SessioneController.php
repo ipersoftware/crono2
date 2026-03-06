@@ -58,6 +58,9 @@ class SessioneController extends Controller
         if (!$evento->tipologiePosto->isEmpty()) {
             $tipologiePosto = $request->tipologie_posto ?? [];
 
+            // Controlla coerenza: somma tipologie attive con limite non deve superare totale sessione
+            $this->verificaCoerenzaPosti($data['posti_totali'], $tipologiePosto);
+
             foreach ($evento->tipologiePosto as $tipologia) {
                 $config = collect($tipologiePosto)->firstWhere('tipologia_posto_id', $tipologia->id) ?? [];
                 $postiTotali = $config['posti_totali'] ?? 0;
@@ -124,6 +127,10 @@ class SessioneController extends Controller
 
         // Aggiorna posti per tipologia
         if ($request->has('tipologie_posto')) {
+            // Controlla coerenza: somma tipologie attive non deve superare totale sessione
+            $postiTotaleSessione = $data['posti_totali'] ?? $sessione->posti_totali;
+            $this->verificaCoerenzaPosti($postiTotaleSessione, $request->tipologie_posto);
+
             foreach ($request->tipologie_posto as $config) {
                 $postiTotali  = $config['posti_totali'] ?? 0;
                 $tipologiaId  = $config['tipologia_posto_id'];
@@ -213,6 +220,7 @@ class SessioneController extends Controller
             'lista_attesa_finestra_conferma_ore' => 'nullable|integer|min:1',
             'durata_lock_minuti'               => 'nullable|integer|min:1',
             'note_pubbliche'                   => 'nullable|string',
+            'visualizza_disponibili'            => 'nullable|boolean',
         ]);
     }
 
@@ -228,5 +236,27 @@ class SessioneController extends Controller
     private function autorizzaSessione(Evento $evento, Sessione $sessione): void
     {
         abort_if((int) $sessione->evento_id !== (int) $evento->id, 404, 'Sessione non trovata.');
+    }
+
+    /**
+     * Verifica che la somma dei posti per tipologia (attive e limitate) non superi il totale sessione.
+     */
+    private function verificaCoerenzaPosti(int $postiTotaleSessione, array $tipologiePosto): void
+    {
+        if ($postiTotaleSessione <= 0) {
+            return; // sessione illimitata, nessun vincolo
+        }
+
+        $tipologieAttive = collect($tipologiePosto)->filter(fn($tp) => ($tp['attiva'] ?? true));
+        $tutteConLimite  = $tipologieAttive->every(fn($tp) => ($tp['posti_totali'] ?? 0) > 0);
+
+        if ($tutteConLimite && $tipologieAttive->isNotEmpty()) {
+            $somma = $tipologieAttive->sum(fn($tp) => $tp['posti_totali'] ?? 0);
+            abort_if(
+                $somma > $postiTotaleSessione,
+                422,
+                "La somma dei posti per tipologia ({$somma}) supera il totale della sessione ({$postiTotaleSessione})."
+            );
+        }
     }
 }
