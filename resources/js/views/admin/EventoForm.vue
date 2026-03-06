@@ -43,15 +43,6 @@
           <textarea v-model="form.descrizione_breve" rows="2" class="input" placeholder="Breve descrizione (max 300 caratteri)"></textarea>
         </div>
 
-        <div class="form-group">
-          <label>Descrizione completa</label>
-          <Editor
-            tinymce-script-src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"
-            v-model="form.descrizione"
-            :init="tinyInit"
-          />
-        </div>
-
         <div class="grid-3">
           <div class="form-group">
             <label>Serie</label>
@@ -195,6 +186,29 @@
           </button>
         </div>
       </form>
+    </div>
+
+    <!-- TAB: Layout (descrizione completa) -->
+    <div v-if="tabAttivo === 'layout'" class="card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <h2 style="margin:0">🖋 Descrizione completa</h2>
+        <div style="display:flex;gap:.6rem">
+          <a v-if="urlVetrina" :href="urlVetrina" target="_blank" class="btn btn-outline btn-sm">👁 Anteprima vetrina</a>
+          <button @click.prevent="salva" :disabled="saving" class="btn btn-primary btn-sm">
+            {{ saving ? 'Salvataggio…' : 'Salva' }}
+          </button>
+        </div>
+      </div>
+      <p style="color:#888;font-size:.85rem;margin:-0.5rem 0 1rem">
+        Questo testo viene mostrato sulla pagina pubblica dell'evento. Puoi usare titoli, elenchi, immagini e link.
+      </p>
+      <Editor
+        tinymce-script-src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"
+        v-model="form.descrizione"
+        :init="tinyInitLayout"
+      />
+      <div v-if="errore" class="alert-error" style="margin-top:1rem">{{ errore }}</div>
+      <div v-if="successo" class="alert-success" style="margin-top:1rem">{{ successo }}</div>
     </div>
 
     <!-- TAB: Tipologie posto -->
@@ -385,6 +399,7 @@ const isNuovo = computed(() => !route.params.eventoId)
 
 const tabs = [
   { key: 'dettagli',  label: '📝 Dettagli'       },
+  { key: 'layout',    label: '🖋 Layout'          },
   { key: 'sessioni',  label: '🗓 Sessioni'        },
   { key: 'tipologie', label: '🪑 Tipologie posto' },
   { key: 'form',      label: '📋 Campi form'      },
@@ -453,6 +468,30 @@ const tinyInit = {
   promotion: false,
   statusbar: false,
   content_style: 'body { font-family: system-ui, sans-serif; font-size: 14px; }',
+}
+
+const tinyInitLayout = {
+  height: 620,
+  menubar: true,
+  language: 'it',
+  language_url: 'https://cdn.jsdelivr.net/npm/tinymce-i18n@23.7.24/langs7/it.js',
+  plugins: [
+    'lists', 'link', 'image', 'table', 'code', 'fullscreen',
+    'searchreplace', 'autolink', 'media', 'charmap', 'anchor',
+    'visualblocks', 'wordcount',
+  ],
+  toolbar: [
+    'undo redo | styles | bold italic underline strikethrough',
+    'alignleft aligncenter alignright alignjustify | bullist numlist outdent indent',
+    'link image media table | blockquote hr charmap | removeformat code fullscreen',
+  ].join(' | '),
+  toolbar_mode: 'sliding',
+  image_advtab: true,
+  branding: false,
+  promotion: false,
+  resize: true,
+  statusbar: true,
+  content_style: 'body { font-family: system-ui, sans-serif; font-size: 15px; line-height: 1.6; max-width: 860px; margin: 1rem auto; padding: 0 1rem; }',
 }
 
 const tipiCampo = ['TEXT','TEXTAREA','SELECT','CHECKBOX','RADIO','DATE','EMAIL','PHONE','NUMBER']

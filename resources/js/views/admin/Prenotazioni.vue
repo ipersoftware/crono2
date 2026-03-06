@@ -176,7 +176,7 @@
           <dl>
             <template v-for="r in dettaglio.risposte_form" :key="r.id">
               <dt>{{ r.campo_form?.etichetta ?? '–' }}</dt>
-              <dd>{{ r.risposta }}</dd>
+              <dd>{{ r.valore ?? '–' }}</dd>
             </template>
           </dl>
         </div>

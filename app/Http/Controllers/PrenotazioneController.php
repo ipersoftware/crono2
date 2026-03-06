@@ -222,7 +222,7 @@ class PrenotazioneController extends Controller
                 RispostaForm::create([
                     'prenotazione_id' => $prenotazione->id,
                     'campo_form_id'   => $risposta['campo_form_id'],
-                    'risposta'        => $risposta['risposta'],
+                    'valore'          => $risposta['risposta'],
                 ]);
             }
 

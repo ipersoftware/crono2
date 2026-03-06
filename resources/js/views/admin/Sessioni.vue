@@ -11,6 +11,7 @@
     <!-- Tab navigation -->
     <div class="tabs">
       <router-link :to="`/admin/${enteId}/eventi/${eventoId}`" class="tab-btn">📝 Dettagli</router-link>
+      <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=layout`" class="tab-btn">🖋 Layout</router-link>
       <span class="tab-btn active">🗓 Sessioni</span>
       <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=tipologie`" class="tab-btn">🪑 Tipologie posto</router-link>
       <router-link :to="`/admin/${enteId}/eventi/${eventoId}?tab=form`" class="tab-btn">📋 Campi form</router-link>
