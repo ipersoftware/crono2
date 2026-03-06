@@ -32,6 +32,10 @@
               <h3>🏷 Tag</h3>
               <p>Categorie e filtri degli eventi</p>
             </router-link>
+            <router-link :to="`/admin/${enteId}/richieste-contatto`" class="link-card teal">
+              <h3>✉️ Richieste contatto</h3>
+              <p>Messaggi ricevuti dalla vetrina</p>
+            </router-link>
           </template>
 
           <!-- Super admin -->

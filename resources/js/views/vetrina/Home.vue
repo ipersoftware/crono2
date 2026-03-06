@@ -125,6 +125,54 @@
         </section>
       </div>
 
+      <!-- Form Contatti -->
+      <section v-if="ente.form_contatti_attivo" class="contatti-sezione" id="contatti">
+        <div class="container">
+          <div class="contatti-card">
+            <div class="contatti-info">
+              <h2 class="contatti-title">✉️ Contattaci</h2>
+              <p class="contatti-sub">Hai domande o hai bisogno di informazioni? Scrivici, ti risponderemo appena possibile.</p>
+              <div v-if="ente.email" class="contatti-detail">
+                <span class="contatti-detail-icon">📧</span> {{ ente.email }}
+              </div>
+              <div v-if="ente.indirizzo" class="contatti-detail">
+                <span class="contatti-detail-icon">📍</span> {{ ente.indirizzo }}{{ ente.citta ? `, ${ente.citta}` : '' }}
+              </div>
+            </div>
+            <form v-if="!contattoInviato" @submit.prevent="inviaContatto" class="contatti-form">
+              <div class="cf-row">
+                <div class="cf-group">
+                  <label class="cf-label">Nome *</label>
+                  <input v-model="contattoForm.nome" required maxlength="150" class="cf-input" placeholder="Il tuo nome" />
+                </div>
+                <div class="cf-group">
+                  <label class="cf-label">Email *</label>
+                  <input v-model="contattoForm.email" type="email" required maxlength="255" class="cf-input" placeholder="la@tua.email" />
+                </div>
+              </div>
+              <div class="cf-group">
+                <label class="cf-label">Telefono</label>
+                <input v-model="contattoForm.telefono" maxlength="50" class="cf-input" placeholder="Opzionale" />
+              </div>
+              <div class="cf-group">
+                <label class="cf-label">Messaggio *</label>
+                <textarea v-model="contattoForm.messaggio" required maxlength="3000" rows="4" class="cf-input cf-textarea" placeholder="Scrivi qui il tuo messaggio…"></textarea>
+              </div>
+              <div v-if="contattoErrore" class="cf-errore">{{ contattoErrore }}</div>
+              <button type="submit" :disabled="contattoInvio" class="cf-submit">
+                {{ contattoInvio ? 'Invio in corso…' : 'Invia messaggio →' }}
+              </button>
+            </form>
+            <div v-else class="contatti-ok">
+              <div class="contatti-ok-icon">✅</div>
+              <h3>Messaggio inviato!</h3>
+              <p>Grazie per averci scritto. Ti risponderemo presto.</p>
+              <button @click="contattoInviato = false; contattoForm.messaggio = ''" class="cf-submit cf-submit--ghost">Invia un altro messaggio</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Footer -->
       <footer class="vetfooter">
         <div class="vetfooter-inner">
@@ -171,6 +219,31 @@ const loading     = ref(false)
 const loadingEventi = ref(false)
 const pagina      = ref(1)
 const filtri      = reactive({ q: '', tag_id: '' })
+
+// ── Form contatti ─────────────────────────────────────────────────────────────
+const contattoForm   = reactive({ nome: '', email: '', telefono: '', messaggio: '' })
+const contattoInvio  = ref(false)
+const contattoInviato = ref(false)
+const contattoErrore = ref('')
+
+const inviaContatto = async () => {
+  contattoErrore.value = ''
+  contattoInvio.value  = true
+  try {
+    await vetrinaApi.contatto(shopUrl, { ...contattoForm })
+    contattoInviato.value = true
+    Object.assign(contattoForm, { nome: '', email: '', telefono: '', messaggio: '' })
+  } catch (e) {
+    const errors = e.response?.data?.errors
+    if (errors) {
+      contattoErrore.value = Object.values(errors).flat().join(' ')
+    } else {
+      contattoErrore.value = 'Errore durante l\'invio. Riprova più tardi.'
+    }
+  } finally {
+    contattoInvio.value = false
+  }
+}
 
 // Subtitle hero: testo plain estratto dal contenuto_vetrina, max 140 car.
 const heroSubtitle = computed(() => {
@@ -318,6 +391,32 @@ onMounted(carica)
 .vetfooter-link:hover { color: white; }
 .vetfooter-bottom { max-width: 1100px; margin: 0 auto; border-top: 1px solid rgba(255,255,255,.09); padding: 1.3rem 0; text-align: center; font-size: .78rem; color: rgba(255,255,255,.35); }
 
+/* ── Form contatti ── */
+.contatti-sezione { background: linear-gradient(135deg,#f0edff 0%,#e8f4ff 100%); padding: 4rem 0; }
+.contatti-card { background: white; border-radius: 20px; box-shadow: 0 4px 24px rgba(108,99,255,.10); display: grid; grid-template-columns: 1fr 1fr; gap: 0; overflow: hidden; }
+.contatti-info { background: linear-gradient(135deg,#6c63ff 0%,#3a8ef6 100%); color: white; padding: 2.5rem 2rem; display: flex; flex-direction: column; gap: .75rem; }
+.contatti-title { font-size: 1.45rem; font-weight: 800; margin: 0 0 .3rem; }
+.contatti-sub { font-size: .92rem; opacity: .88; line-height: 1.6; margin: 0; }
+.contatti-detail { display: flex; align-items: center; gap: .5rem; font-size: .88rem; opacity: .85; margin-top: .4rem; }
+.contatti-detail-icon { font-size: 1rem; }
+.contatti-form { padding: 2rem 2rem 2rem; display: flex; flex-direction: column; gap: 1rem; }
+.cf-row { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; }
+.cf-group { display: flex; flex-direction: column; gap: .3rem; }
+.cf-label { font-size: .8rem; font-weight: 600; color: #555; }
+.cf-input { padding: .6rem .85rem; border: 1.5px solid #e2e2e8; border-radius: 9px; font-size: .92rem; outline: none; transition: border .15s, box-shadow .15s; font-family: inherit; resize: vertical; }
+.cf-input:focus { border-color: #6c63ff; box-shadow: 0 0 0 3px rgba(108,99,255,.12); }
+.cf-textarea { min-height: 100px; }
+.cf-errore { color: #e74c3c; font-size: .83rem; padding: .4rem .7rem; background: #fef0ef; border-radius: 7px; }
+.cf-submit { background: #6c63ff; color: white; font-weight: 700; font-size: .95rem; padding: .75rem 2rem; border: none; border-radius: 10px; cursor: pointer; transition: background .15s, transform .1s; }
+.cf-submit:hover:not(:disabled) { background: #574fd6; transform: translateY(-1px); }
+.cf-submit:disabled { opacity: .65; cursor: not-allowed; }
+.cf-submit--ghost { background: transparent; border: 2px solid #6c63ff; color: #6c63ff; margin-top: .5rem; }
+.cf-submit--ghost:hover { background: #6c63ff; color: white; }
+.contatti-ok { padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: .75rem; }
+.contatti-ok-icon { font-size: 3rem; }
+.contatti-ok h3 { font-size: 1.25rem; font-weight: 800; color: #1a1a2e; }
+.contatti-ok p { color: #666; font-size: .92rem; }
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .vetfooter-inner { grid-template-columns: 1fr 1fr; }
@@ -332,6 +431,9 @@ onMounted(carica)
   .vetnav-links { gap: 1rem; }
   .vetfooter-inner { grid-template-columns: 1fr; gap: 1.5rem; }
   .container { padding: 1.75rem 1rem 2.5rem; }
+  .contatti-card { grid-template-columns: 1fr; }
+  .cf-row { grid-template-columns: 1fr; }
+  .contatti-sezione { padding: 2.5rem 0; }
 }
 @media (max-width: 480px) {
   .hero { min-height: 250px; }

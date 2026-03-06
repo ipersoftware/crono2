@@ -88,11 +88,26 @@ class EnteController extends Controller
             'provincia' => ['nullable', 'string', 'size:2'],
             'cap' => ['nullable', 'string', 'size:5'],
             'descrizione' => ['nullable', 'string'],
-            'privacy_url' => ['nullable', 'url', 'max:500'],
-            'attivo' => ['boolean'],
+            'privacy_url'           => ['nullable', 'url', 'max:500'],
+            'form_contatti_attivo'  => ['nullable', 'boolean'],
+            'attivo'                => ['boolean'],
+        ]);
+
+        \Log::info('EnteController@update', [
+            'url'           => $request->fullUrl(),
+            'route_ente'    => $request->route('ente'),
+            'ente_id'       => $ente->id,
+            'ente_exists'   => $ente->exists,
+            'input_raw'     => $request->all(),
+            'validated'     => $validated,
         ]);
 
         $ente->update($validated);
+        $ente->refresh();
+
+        \Log::info('EnteController@update after', [
+            'form_contatti_attivo_db' => $ente->form_contatti_attivo,
+        ]);
 
         return response()->json([
             'message' => 'Ente aggiornato con successo',

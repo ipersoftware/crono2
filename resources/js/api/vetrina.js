@@ -15,4 +15,7 @@ export const vetrinaApi = {
 
   tags: (shopUrl) =>
     api.get(`/vetrina/${shopUrl}/tags`),
+
+  contatto: (shopUrl, data) =>
+    api.post(`/vetrina/${shopUrl}/contatto`, data),
 }

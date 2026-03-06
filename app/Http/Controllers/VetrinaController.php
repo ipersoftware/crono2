@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ente;
 use App\Models\Evento;
+use App\Models\RichiestaContatto;
 use App\Models\Serie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class VetrinaController extends Controller
                 'provincia'          => $ente->provincia,
                 'email'              => $ente->email,
                 'privacy_url'        => $ente->privacy_url,
+                'form_contatti_attivo' => (bool) $ente->form_contatti_attivo,
             ],
             'eventi_in_evidenza' => $inEvidenza,
         ]);
@@ -164,6 +166,34 @@ class VetrinaController extends Controller
             ->get();
 
         return response()->json($tags);
+    }
+
+    /**
+     * POST /api/vetrina/{shop_url}/contatto
+     * Invio form contatti pubblico.
+     */
+    public function contatto(Request $request, string $shopUrl): JsonResponse
+    {
+        $ente = $this->enteAttivo($shopUrl);
+
+        abort_if(!$ente->form_contatti_attivo, 403, 'Form contatti non attivo.');
+
+        $data = $request->validate([
+            'nome'     => 'required|string|max:150',
+            'email'    => 'required|email|max:255',
+            'telefono' => 'nullable|string|max:50',
+            'messaggio'=> 'required|string|max:3000',
+        ]);
+
+        RichiestaContatto::create([
+            'ente_id'   => $ente->id,
+            'nome'      => $data['nome'],
+            'email'     => $data['email'],
+            'telefono'  => $data['telefono'] ?? null,
+            'messaggio' => $data['messaggio'],
+        ]);
+
+        return response()->json(['message' => 'Richiesta inviata con successo.'], 201);
     }
 
     private function enteAttivo(string $shopUrl): Ente

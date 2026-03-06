@@ -53,3 +53,13 @@ export const mailTemplatesApi = {
   anteprima: (enteId, id, dati = {}) =>
     api.get(`/enti/${enteId}/mail-templates/${id}/anteprima`, { params: { dati } }),
 }
+
+// Richieste contatto
+export const richiesteContattoApi = {
+  index: (enteId, params = {}) =>
+    api.get(`/enti/${enteId}/richieste-contatto`, { params }),
+  segnaLetta: (enteId, id) =>
+    api.patch(`/enti/${enteId}/richieste-contatto/${id}/letta`),
+  destroy: (enteId, id) =>
+    api.delete(`/enti/${enteId}/richieste-contatto/${id}`),
+}

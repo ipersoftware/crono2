@@ -9,6 +9,7 @@ use App\Http\Controllers\LuogoController;
 use App\Http\Controllers\MailTemplateController;
 use App\Http\Controllers\MonitoraggioController;
 use App\Http\Controllers\PrenotazioneController;
+use App\Http\Controllers\RichiestaContattoController;
 use App\Http\Controllers\SerieController;
 use App\Http\Controllers\SessioneController;
 use App\Http\Controllers\TagController;
@@ -33,6 +34,7 @@ Route::prefix('vetrina/{shopUrl}')->group(function () {
     Route::get('/eventi/{slug}', [VetrinaController::class, 'evento']);
     Route::get('/serie',   [VetrinaController::class, 'serie']);
     Route::get('/tags',    [VetrinaController::class, 'tags']);
+    Route::post('/contatto', [VetrinaController::class, 'contatto']);
 });
 
 // -------------------------------------------------------
@@ -65,7 +67,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Users & Enti base
     Route::apiResource('users', UserController::class);
-    Route::apiResource('enti',  EnteController::class);
+    Route::apiResource('enti',  EnteController::class)->parameters(['enti' => 'ente']);
 
     // -------------------------------------------------------
     // Rotte admin per ente — protette da EnsureEnteAccess
@@ -119,6 +121,11 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('mail-templates/{mailTemplate}',                 [MailTemplateController::class, 'update']);
             Route::delete('mail-templates/{mailTemplate}',              [MailTemplateController::class, 'destroy']);
             Route::get('mail-templates/{mailTemplate}/anteprima',       [MailTemplateController::class, 'anteprima']);
+
+            // Richieste contatto
+            Route::get('richieste-contatto',                                          [RichiestaContattoController::class, 'index']);
+            Route::patch('richieste-contatto/{richiesta}/letta',                      [RichiestaContattoController::class, 'segnaLetta']);
+            Route::delete('richieste-contatto/{richiesta}',                           [RichiestaContattoController::class, 'destroy']);
         });
 });
 

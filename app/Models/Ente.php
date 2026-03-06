@@ -33,6 +33,7 @@ class Ente extends Model
         'copertina',
         'contenuto_vetrina',
         'privacy_url',
+        'form_contatti_attivo',
         'eventi_in_evidenza',
         'stato',
         'licenza',
@@ -44,6 +45,7 @@ class Ente extends Model
 
     protected $casts = [
         'attivo'              => 'boolean',
+        'form_contatti_attivo' => 'boolean',
         'eventi_in_evidenza'  => 'array',
         'config'              => 'array',
         'attivo_dal'          => 'datetime',
@@ -87,6 +89,11 @@ class Ente extends Model
     public function notificheLog(): HasMany
     {
         return $this->hasMany(NotificaLog::class);
+    }
+
+    public function richiesteContatto(): HasMany
+    {
+        return $this->hasMany(RichiestaContatto::class);
     }
 
     // ─── Scope ───────────────────────────────────────────────────────────────

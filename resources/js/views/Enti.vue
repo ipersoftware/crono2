@@ -61,6 +61,13 @@
                 >
                   🔒 Privacy URL
                 </button>
+                <button
+                  @click="toggleFormContatti(ente)"
+                  :class="['btn', 'btn-sm', ente.form_contatti_attivo ? 'btn-success' : 'btn-secondary']"
+                  :title="ente.form_contatti_attivo ? 'Disabilita form contatti vetrina' : 'Abilita form contatti vetrina'"
+                >
+                  {{ ente.form_contatti_attivo ? '✉️ Contatti ON' : '✉️ Contatti OFF' }}
+                </button>
                 <button @click="deleteEnte(ente.id)" class="btn btn-danger btn-sm">
                   Elimina
                 </button>
@@ -412,6 +419,18 @@ const salvaPrivacyUrl = async () => {
     privacyModal.value.errore = e.response?.data?.message ?? 'Errore durante il salvataggio.'
   } finally {
     privacyModal.value.saving = false
+  }
+}
+
+// ──────────────────────────── Form contatti ────────────────────────────
+const toggleFormContatti = async (ente) => {
+  const nuovoValore = !ente.form_contatti_attivo
+  try {
+    await api.put(`/enti/${ente.id}`, { form_contatti_attivo: nuovoValore })
+    const idx = enti.value.findIndex(e => e.id === ente.id)
+    if (idx !== -1) enti.value[idx].form_contatti_attivo = nuovoValore
+  } catch (e) {
+    alert('Errore durante l\'aggiornamento: ' + (e.response?.data?.message ?? e.message))
   }
 }
 
