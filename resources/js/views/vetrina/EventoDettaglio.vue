@@ -1,91 +1,123 @@
 <template>
-  <div class="evento-dettaglio">
-    <div v-if="loading" class="loading">Caricamento…</div>
-    <div v-else-if="!evento" class="empty">Evento non trovato.</div>
+  <div class="edettaglio">
+    <div v-if="loading" class="loading-full"><div class="loading-spinner"></div></div>
+    <div v-else-if="!evento" class="empty-full">Evento non trovato.</div>
     <template v-else>
-      <!-- Header evento -->
-      <div class="evento-hero">
-        <div class="container">
-          <div class="back-link-wrap">
-            <router-link :to="`/vetrina/${shopUrl}`" class="back-link">← Torna alla vetrina</router-link>
-          </div>
-          <div class="evento-tags">
-            <span
-              v-for="t in evento.tags"
-              :key="t.id"
-              class="tag"
-              :style="{ background: t.colore || '#3498db' }"
-            >{{ t.nome }}</span>
-          </div>
-          <h1>{{ evento.titolo }}</h1>
-          <p v-if="evento.descrizione_breve" class="subtitle">{{ evento.descrizione_breve }}</p>
-        </div>
-      </div>
 
+      <!-- Navbar -->
+      <header class="vetnav">
+        <div class="vetnav-inner">
+          <router-link :to="`/vetrina/${shopUrl}`" class="vetnav-brand">
+            {{ evento.ente_info?.nome ?? shopUrl }}
+          </router-link>
+          <nav class="vetnav-links">
+            <router-link :to="`/vetrina/${shopUrl}`" class="vetnav-link">← Tutti gli eventi</router-link>
+            <router-link to="/login" class="vetnav-link">Accedi</router-link>
+            <router-link to="/register" class="vetnav-btn">Registrati</router-link>
+          </nav>
+        </div>
+      </header>
+
+      <!-- Hero -->
+      <section
+        class="ev-hero"
+        :class="{ 'ev-hero--img': evento.immagine }"
+        :style="evento.immagine ? { backgroundImage: `url(${evento.immagine})` } : {}"
+      >
+        <div class="ev-hero-overlay">
+          <div class="container ev-hero-content">
+            <div class="ev-hero-tags">
+              <span
+                v-for="t in evento.tags"
+                :key="t.id"
+                class="tag"
+                :style="{ background: t.colore || '#6c63ff' }"
+              >{{ t.nome }}</span>
+            </div>
+            <h1>{{ evento.titolo }}</h1>
+            <p v-if="evento.descrizione_breve" class="ev-hero-sub">{{ evento.descrizione_breve }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Corpo -->
       <div class="container corpo">
-        <div class="left">
-          <!-- Descrizione -->
+        <div class="col-left">
           <div class="card" v-if="evento.descrizione">
-            <h2>📋 Descrizione</h2>
+            <h2 class="card-section-title">📋 Descrizione</h2>
             <div class="descrizione" v-html="evento.descrizione"></div>
           </div>
-
-          <!-- Luoghi -->
           <div class="card" v-if="evento.luoghi?.length">
-            <h2>📍 Luoghi</h2>
-            <ul class="luoghi-list">
-              <li v-for="l in evento.luoghi" :key="l.id">
-                <strong>{{ l.nome }}</strong>
-                <span v-if="l.indirizzo" class="muted"> — {{ l.indirizzo }}</span>
-                <a v-if="l.maps_url" :href="l.maps_url" target="_blank" class="maps-link">Mappa</a>
-              </li>
-            </ul>
+            <h2 class="card-section-title">📍 Dove</h2>
+            <div v-for="l in evento.luoghi" :key="l.id" class="luogo-item">
+              <div class="luogo-nome">{{ l.nome }}</div>
+              <div v-if="l.indirizzo" class="luogo-indirizzo">{{ l.indirizzo }}</div>
+              <a v-if="l.maps_url" :href="l.maps_url" target="_blank" class="maps-link">→ Vedi su mappa</a>
+            </div>
           </div>
         </div>
 
-        <div class="right">
-          <!-- Sessioni disponibili -->
+        <div class="col-right">
           <div class="card">
-            <h2>🗓 Sessioni disponibili</h2>
-            <div v-if="evento.sessioni?.length === 0" class="empty-small">
+            <h2 class="card-section-title">🗓 Scegli la data</h2>
+            <div v-if="!evento.sessioni?.length" class="empty-sessioni">
               Nessuna sessione aperta al momento.
             </div>
-            <div v-else>
-              <div
-                v-for="s in evento.sessioni"
-                :key="s.id"
-                class="sessione-row"
-              >
-                <div class="sessione-data">
-                  <strong>{{ formatDateTime(s.data_inizio) }}</strong>
-                  <span v-if="s.data_fine" class="muted"> → {{ formatDateTime(s.data_fine) }}</span>
+            <div v-else class="sessioni-list">
+              <div v-for="s in evento.sessioni" :key="s.id" class="sessione-card">
+                <div class="sessione-card-head">
+                  <div class="sessione-data-wrap">
+                    <span class="sessione-giorno">{{ formatGiorno(s.data_inizio) }}</span>
+                    <span class="sessione-ora">🕒 {{ formatOra(s.data_inizio) }}<span v-if="s.data_fine"> → {{ formatOra(s.data_fine) }}</span></span>
+                  </div>
+                  <div v-if="s.visualizza_disponibili && s.posti_totali > 0" class="sessione-posti">
+                    {{ s.posti_disponibili }} posti
+                  </div>
                 </div>
-                <div class="sessione-info">
-                  <span v-if="s.visualizza_disponibili && s.posti_totali > 0">
-                    {{ s.posti_disponibili }} posti disponibili
-                  </span>
-                </div>
-                <!-- Tipologie -->
-                <div v-if="s.tipologie_disponibili?.length" class="tipologie">
-                  <span
-                    v-for="t in s.tipologie_disponibili"
-                    :key="t.id"
-                    class="tipologia-chip"
-                  >
+                <div v-if="s.tipologie_posto?.length" class="tipologie-list">
+                  <span v-for="t in s.tipologie_posto" :key="t.id" class="tipologia-chip">
                     {{ t.tipologia_posto?.nome }}
-                    <em v-if="!t.tipologia_posto?.gratuita">€{{ Number(t.tipologia_posto?.costo).toFixed(2) }}</em>
-                    <em v-else>Gratuito</em>
+                    <strong v-if="!t.tipologia_posto?.gratuita" class="chip-prezzo">€{{ Number(t.tipologia_posto?.costo).toFixed(2) }}</strong>
+                    <strong v-else class="chip-prezzo chip-gratuito">Gratuito</strong>
                   </span>
                 </div>
                 <router-link
                   :to="`/vetrina/${shopUrl}/prenota/${evento.slug}/${s.id}`"
-                  class="btn btn-primary btn-prenota"
+                  class="sessione-prenota"
                 >Prenota →</router-link>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <!-- Footer -->
+      <footer class="vetfooter">
+        <div class="vetfooter-inner">
+          <div class="vetfooter-col">
+            <div class="vetfooter-brand">{{ evento.ente_info?.nome }}</div>
+            <div v-if="evento.ente_info?.indirizzo" class="vetfooter-info">{{ evento.ente_info.indirizzo }}</div>
+            <div v-if="evento.ente_info?.citta" class="vetfooter-info">
+              {{ evento.ente_info.citta }}{{ evento.ente_info.provincia ? ` (${evento.ente_info.provincia})` : '' }}
+            </div>
+            <div v-if="evento.ente_info?.email" class="vetfooter-info">Email: {{ evento.ente_info.email }}</div>
+          </div>
+          <div class="vetfooter-col">
+            <div class="vetfooter-col-title">Link utili</div>
+            <router-link :to="`/vetrina/${shopUrl}`" class="vetfooter-link">Home</router-link>
+            <router-link to="/login" class="vetfooter-link">Accedi</router-link>
+            <router-link to="/register" class="vetfooter-link">Registrati</router-link>
+          </div>
+          <div v-if="evento.ente_info?.privacy_url" class="vetfooter-col">
+            <div class="vetfooter-col-title">Informazioni</div>
+            <a :href="evento.ente_info.privacy_url" target="_blank" rel="noopener" class="vetfooter-link">Privacy Policy</a>
+          </div>
+        </div>
+        <div class="vetfooter-bottom">
+          © {{ new Date().getFullYear() }} {{ evento.ente_info?.nome }}. Powered by Crono.
+        </div>
+      </footer>
+
     </template>
   </div>
 </template>
@@ -109,51 +141,106 @@ const carica = async () => {
   } finally { loading.value = false }
 }
 
-const formatDateTime = (d) => {
+const formatGiorno = (d) => {
   if (!d) return '–'
-  return new Date(d).toLocaleString('it-IT', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(d).toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+const formatOra = (d) => {
+  if (!d) return ''
+  return new Date(d).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
 
 onMounted(carica)
 </script>
 
 <style scoped>
-.evento-hero { background: linear-gradient(135deg, #1a252f, #2c3e50); color: white; padding: 3rem 0 2.5rem; }
-.container { max-width: 1100px; margin: 0 auto; padding: 0 1rem; }
-.back-link-wrap { margin-bottom: 1rem; }
-.back-link { color: rgba(255,255,255,.75); text-decoration: none; font-size: .9rem; }
-.evento-tags { display: flex; gap: .4rem; margin-bottom: .8rem; flex-wrap: wrap; }
-.tag { padding: .2rem .7rem; border-radius: 10px; color: white; font-size: .75rem; }
-.evento-hero h1 { font-size: 2rem; margin: 0 0 .5rem 0; }
-.subtitle { opacity: .85; margin: 0; font-size: 1.05rem; }
-.corpo { display: grid; grid-template-columns: 1fr 380px; gap: 1.5rem; padding-top: 2rem; padding-bottom: 3rem; align-items: start; }
-.left, .right { display: flex; flex-direction: column; gap: 1rem; }
-.card h2 { margin-bottom: .9rem; font-size: 1.1rem; }
-.descrizione { line-height: 1.7; }
-.luoghi-list { list-style: none; padding: 0; }
-.luoghi-list li { margin: .4rem 0; }
-.muted { color: #999; }
-.maps-link { margin-left: .5rem; color: #3498db; font-size: .85rem; text-decoration: none; }
-.empty-small { color: #aaa; font-size: .9rem; }
-.sessione-row { border: 1px solid #eef; border-radius: 8px; padding: .9rem; margin-bottom: .75rem; }
-.sessione-data { font-size: .95rem; margin-bottom: .3rem; }
-.sessione-info { font-size: .85rem; color: #666; margin-bottom: .5rem; }
-.tipologie { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .7rem; }
-.tipologia-chip { background: #f0f4f8; border-radius: 8px; padding: .2rem .6rem; font-size: .8rem; }
-.tipologia-chip em { color: #27ae60; margin-left: .3rem; font-style: normal; }
-.btn-prenota { display: block; text-align: center; padding: .6rem; border-radius: 6px; text-decoration: none; font-weight: 600; }
-.loading, .empty { padding: 3rem; text-align: center; color: #aaa; }
-@media (max-width: 720px) {
+/* ── Base ── */
+.edettaglio { min-height: 100vh; background: #f4f5f7; }
+.loading-full { display: flex; justify-content: center; align-items: center; height: 60vh; }
+.empty-full { padding: 4rem; text-align: center; color: #aaa; }
+.loading-spinner { width: 36px; height: 36px; border: 3px solid #e0e0e0; border-top-color: #6c63ff; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Navbar ── */
+.vetnav { background: white; box-shadow: 0 2px 12px rgba(0,0,0,.08); position: sticky; top: 0; z-index: 100; }
+.vetnav-inner { max-width: 1100px; margin: 0 auto; padding: .9rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+.vetnav-brand { font-size: 1.1rem; font-weight: 800; color: #1a1a2e; text-decoration: none; }
+.vetnav-links { display: flex; align-items: center; gap: 1.75rem; }
+.vetnav-link { color: #555; text-decoration: none; font-size: .9rem; font-weight: 500; transition: color .15s; }
+.vetnav-link:hover { color: #6c63ff; }
+.vetnav-btn { background: #6c63ff; color: white !important; padding: .42rem 1.1rem; border-radius: 20px; text-decoration: none; font-size: .88rem; font-weight: 700; transition: background .15s; }
+.vetnav-btn:hover { background: #574fd6; }
+
+/* ── Hero ── */
+.ev-hero { min-height: 280px; background: linear-gradient(135deg,#4a1fa8 0%,#6c63ff 55%,#3a8ef6 100%); background-size: cover; background-position: center; position: relative; }
+.ev-hero--img .ev-hero-overlay { background: rgba(0,0,0,.50); }
+.ev-hero-overlay { position: absolute; inset: 0; display: flex; align-items: center; background: rgba(40,20,90,.40); }
+.ev-hero-content { color: white; padding: 2.5rem 1.5rem; max-width: 760px; }
+.ev-hero-tags { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .9rem; }
+.tag { padding: .2rem .6rem; border-radius: 9px; color: white; font-size: .72rem; font-weight: 600; }
+.ev-hero-content h1 { font-size: 2.2rem; font-weight: 900; margin: 0 0 .6rem; letter-spacing: -.025em; text-shadow: 0 2px 10px rgba(0,0,0,.3); }
+.ev-hero-sub { font-size: 1rem; opacity: .9; margin: 0; line-height: 1.5; }
+
+/* ── Container / corpo ── */
+.container { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem; }
+.corpo { display: grid; grid-template-columns: 1fr 400px; gap: 1.75rem; padding: 2.5rem 1.5rem 3.5rem; align-items: start; }
+.col-left, .col-right { display: flex; flex-direction: column; gap: 1.25rem; }
+
+/* ── Card generica ── */
+.card { background: white; border-radius: 16px; padding: 1.5rem; box-shadow: 0 2px 14px rgba(0,0,0,.06); }
+.card-section-title { font-size: 1.05rem; font-weight: 700; color: #1a1a2e; margin: 0 0 1.1rem; padding-bottom: .65rem; border-bottom: 2px solid #eceef2; }
+.descrizione { line-height: 1.75; color: #444; font-size: .95rem; }
+
+/* ── Luoghi ── */
+.luogo-item { padding: .6rem 0; border-bottom: 1px solid #f0f0f5; }
+.luogo-item:last-child { border-bottom: none; }
+.luogo-nome { font-weight: 700; color: #1a1a2e; margin-bottom: .15rem; }
+.luogo-indirizzo { font-size: .85rem; color: #888; }
+.maps-link { font-size: .82rem; color: #6c63ff; text-decoration: none; font-weight: 600; display: inline-block; margin-top: .25rem; }
+.maps-link:hover { text-decoration: underline; }
+
+/* ── Sessioni ── */
+.empty-sessioni { color: #aaa; font-size: .92rem; text-align: center; padding: 1.5rem 0; }
+.sessioni-list { display: flex; flex-direction: column; gap: .9rem; }
+.sessione-card { border: 1.5px solid #eceef2; border-radius: 12px; padding: 1rem 1.1rem; transition: border-color .15s, box-shadow .15s; }
+.sessione-card:hover { border-color: #6c63ff; box-shadow: 0 4px 16px rgba(108,99,255,.12); }
+.sessione-card-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: .7rem; gap: .5rem; }
+.sessione-data-wrap { display: flex; flex-direction: column; gap: .15rem; }
+.sessione-giorno { font-weight: 700; color: #1a1a2e; font-size: .9rem; text-transform: capitalize; }
+.sessione-ora { font-size: .82rem; color: #888; }
+.sessione-posti { background: #e8f9f0; color: #00a86b; font-size: .78rem; font-weight: 700; padding: .22rem .6rem; border-radius: 8px; white-space: nowrap; }
+.tipologie-list { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: .85rem; }
+.tipologia-chip { background: #f4f5f9; border-radius: 8px; padding: .22rem .7rem; font-size: .8rem; color: #444; }
+.chip-prezzo { color: #6c63ff; margin-left: .3rem; font-size: .78rem; }
+.chip-gratuito { color: #00a86b; }
+.sessione-prenota { display: block; text-align: center; background: #00c97a; color: white; font-weight: 700; padding: .65rem; border-radius: 10px; text-decoration: none; font-size: .92rem; transition: background .15s, transform .1s; }
+.sessione-prenota:hover { background: #00ae69; transform: translateY(-1px); }
+
+/* ── Footer ── */
+.vetfooter { background: #1a1a2e; color: rgba(255,255,255,.75); padding: 3rem 1.5rem 0; }
+.vetfooter-inner { max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 2.5rem; padding-bottom: 2.5rem; }
+.vetfooter-brand { font-size: 1.05rem; font-weight: 800; color: white; margin-bottom: .65rem; }
+.vetfooter-info { font-size: .84rem; line-height: 1.9; color: rgba(255,255,255,.55); }
+.vetfooter-col-title { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.45); margin-bottom: .85rem; }
+.vetfooter-link { display: block; color: rgba(255,255,255,.65); text-decoration: none; font-size: .88rem; line-height: 2.1; transition: color .15s; }
+.vetfooter-link:hover { color: white; }
+.vetfooter-bottom { max-width: 1100px; margin: 0 auto; border-top: 1px solid rgba(255,255,255,.09); padding: 1.3rem 0; text-align: center; font-size: .78rem; color: rgba(255,255,255,.35); }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
   .corpo { grid-template-columns: 1fr; }
-  .evento-hero { padding: 1.75rem 0 1.25rem; }
-  .evento-hero h1 { font-size: 1.45rem; }
-  .subtitle { font-size: .95rem; }
-  .card h2 { font-size: 1rem; }
+  .vetfooter-inner { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 768px) {
+  .ev-hero-content h1 { font-size: 1.65rem; }
+  .corpo { padding: 1.75rem 1rem 2.5rem; }
+  .vetnav-links { gap: 1rem; }
+  .vetfooter-inner { grid-template-columns: 1fr; gap: 1.5rem; }
 }
 @media (max-width: 480px) {
-  .evento-hero h1 { font-size: 1.2rem; }
-  .tipologie { gap: .25rem; }
-  .sessione-row { padding: .7rem; }
-  .btn-prenota { padding: .55rem; font-size: .9rem; }
+  .ev-hero { min-height: 220px; }
+  .ev-hero-content h1 { font-size: 1.35rem; }
+  .vetnav-btn { display: none; }
 }
 </style>

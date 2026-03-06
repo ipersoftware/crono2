@@ -36,6 +36,11 @@ class VetrinaController extends Controller
                 'shop_url'           => $ente->shop_url,
                 'copertina'          => $ente->copertina,
                 'contenuto_vetrina'  => $ente->contenuto_vetrina,
+                'indirizzo'          => $ente->indirizzo,
+                'citta'              => $ente->citta,
+                'provincia'          => $ente->provincia,
+                'email'              => $ente->email,
+                'privacy_url'        => $ente->privacy_url,
             ],
             'eventi_in_evidenza' => $inEvidenza,
         ]);
@@ -115,6 +120,15 @@ class VetrinaController extends Controller
         $risposta = $evento->toArray();
         $risposta['redirect_slug'] = ($evento->slug !== $slug) ? $evento->slug : null;
         $risposta['ente_privacy_url'] = $ente->privacy_url;
+        $risposta['ente_info'] = [
+            'nome'        => $ente->nome,
+            'shop_url'    => $ente->shop_url,
+            'privacy_url' => $ente->privacy_url,
+            'indirizzo'   => $ente->indirizzo,
+            'citta'       => $ente->citta,
+            'provincia'   => $ente->provincia,
+            'email'       => $ente->email,
+        ];
 
         return response()->json($risposta);
     }
