@@ -61,6 +61,15 @@
                 </div>
               </td>
             </tr>
+            <tr v-if="s.luoghi?.length" class="row-tipologie">
+              <td colspan="5">
+                <div class="tipologie-breakdown">
+                  <span v-for="l in s.luoghi" :key="l.id" class="tp-badge tp-badge--luogo">
+                    📍 {{ l.nome }}
+                  </span>
+                </div>
+              </td>
+            </tr>
           </template>
         </tbody>
       </table>
@@ -171,6 +180,42 @@
             </label>
           </div>
 
+          <!-- Luoghi -->
+          <div v-if="luoghi.length > 0" class="form-group">
+            <label>Luoghi</label>
+            <!-- Chip selezionati -->
+            <div v-if="form.luogo_ids.length" class="luogo-chips">
+              <span v-for="id in form.luogo_ids" :key="id" class="luogo-chip">
+                {{ luogoById(id)?.nome ?? id }}
+                <button type="button" @click="rimuoviLuogo(id)" class="luogo-chip-rm">&times;</button>
+              </span>
+            </div>
+            <!-- Input ricerca -->
+            <div class="luogo-search-wrap" v-click-outside="chiudiDropdown">
+              <input
+                v-model="luogoFiltro"
+                @focus="dropdownAperto = true"
+                type="text"
+                class="input"
+                placeholder="Cerca e aggiungi luogo…"
+                autocomplete="off"
+              />
+              <div v-if="dropdownAperto && luoghiFiltrati.length" class="luogo-dropdown">
+                <div
+                  v-for="l in luoghiFiltrati"
+                  :key="l.id"
+                  class="luogo-option"
+                  @mousedown.prevent="aggiungiLuogo(l.id)"
+                >
+                  {{ l.nome }}
+                </div>
+              </div>
+              <div v-if="dropdownAperto && luogoFiltro && luoghiFiltrati.length === 0" class="luogo-dropdown">
+                <div class="luogo-option luogo-option--empty">Nessun risultato</div>
+              </div>
+            </div>
+          </div>
+
           <div v-if="errore" class="alert-error">{{ errore }}</div>
 
           <div class="modal-actions">
@@ -186,6 +231,7 @@
 </template>
 
 <script setup>
+import { luoghiApi } from '@/api/admin'
 import { eventiApi, sessioniApi } from '@/api/eventi'
 import { useEnteStore } from '@/stores/ente'
 import { computed, onMounted, reactive, ref } from 'vue'
@@ -197,6 +243,7 @@ const eventoId = route.params.eventoId
 
 const sessioni = ref([])
 const evento   = ref(null)
+const luoghi   = ref([])
 const loading  = ref(false)
 
 const enteStore  = useEnteStore()
@@ -215,19 +262,21 @@ const formDefault = () => ({
   controlla_posti_globale: true, prenotabile: true,
   forza_non_disponibile: false, attiva_lista_attesa: false,
   durata_lock_minuti: null, note_pubbliche: '', visualizza_disponibili: false,
-  tipologie_posto: [],
+  tipologie_posto: [], luogo_ids: [],
 })
 const form = reactive(formDefault())
 
 const carica = async () => {
   loading.value = true
   try {
-    const [evRes, sRes] = await Promise.all([
+    const [evRes, sRes, lRes] = await Promise.all([
       eventiApi.show(enteId, eventoId),
       sessioniApi.index(enteId, eventoId),
+      luoghiApi.index(enteId),
     ])
-    evento.value  = evRes.data
+    evento.value   = evRes.data
     sessioni.value = sRes.data.data ?? sRes.data
+    luoghi.value   = lRes.data.data ?? lRes.data
   } finally {
     loading.value = false
   }
@@ -263,6 +312,8 @@ const apriModal = (s = null) => {
       const saved = (s.tipologie_posto ?? []).find(x => x.tipologia_posto_id === tp.tipologia_posto_id)
       return saved ? { ...tp, posti_totali: saved.posti_totali, attiva: saved.attiva ?? true } : tp
     })
+    // Popola i luoghi già associati
+    form.luogo_ids = (s.luoghi ?? []).map(l => l.id)
   }
 
   errore.value = ''
@@ -303,6 +354,42 @@ const salva = async () => {
     saving.value = false
   }
 }
+
+// --- Luoghi selector ---
+const luogoFiltro    = ref('')
+const dropdownAperto = ref(false)
+
+const luogoById = (id) => luoghi.value.find(l => l.id === id)
+
+const luoghiFiltrati = computed(() => {
+  const q = luogoFiltro.value.toLowerCase().trim()
+  return luoghi.value.filter(l =>
+    !form.luogo_ids.includes(l.id) &&
+    (q === '' || l.nome.toLowerCase().includes(q))
+  )
+})
+
+const aggiungiLuogo = (id) => {
+  if (!form.luogo_ids.includes(id)) form.luogo_ids.push(id)
+  luogoFiltro.value = ''
+  dropdownAperto.value = false
+}
+
+const rimuoviLuogo = (id) => {
+  form.luogo_ids = form.luogo_ids.filter(x => x !== id)
+}
+
+const chiudiDropdown = () => { dropdownAperto.value = false }
+
+// Direttiva v-click-outside
+const vClickOutside = {
+  mounted(el, binding) {
+    el._clickOutside = (e) => { if (!el.contains(e.target)) binding.value() }
+    document.addEventListener('click', el._clickOutside)
+  },
+  unmounted(el) { document.removeEventListener('click', el._clickOutside) },
+}
+// --- fine Luoghi selector ---
 
 const elimina = async (s) => {
   if (!confirm('Eliminare questa sessione?')) return
@@ -356,6 +443,7 @@ onMounted(carica)
 .tp-disp { color: #555; }
 .tp-badge--inattiva .tp-nome,
 .tp-badge--inattiva .tp-disp { color: #aaa; }
+.tp-badge--luogo { background: #fef9e7; border-color: #f9e79f; color: #7d6608; }
 
 /* Toggle switch */
 .toggle-label { display: flex; align-items: center; gap: .75rem; cursor: pointer; user-select: none; }
@@ -376,6 +464,16 @@ onMounted(carica)
 .table-tipologie th, .table-tipologie td { padding: .35rem .5rem; border-bottom: 1px solid #eee; }
 .table-tipologie th { font-weight: 600; text-align: left; background: #f8f9fa; }
 .input-sm { width: 90px; padding: .3rem .5rem; }
+.luogo-chips { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .4rem; }
+.luogo-chip { display: inline-flex; align-items: center; gap: .3rem; background: #e8f0fe; border: 1px solid #c5d5f7; border-radius: 20px; padding: .15rem .55rem .15rem .65rem; font-size: .82rem; font-weight: 500; }
+.luogo-chip-rm { border: none; background: none; cursor: pointer; color: #5a7abf; font-size: 1rem; line-height: 1; padding: 0; margin-left: .1rem; }
+.luogo-chip-rm:hover { color: #c0392b; }
+.luogo-search-wrap { position: relative; }
+.luogo-dropdown { position: absolute; top: calc(100% + 2px); left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.1); max-height: 200px; overflow-y: auto; z-index: 200; }
+.luogo-option { padding: .48rem .75rem; font-size: .9rem; cursor: pointer; }
+.luogo-option:hover { background: #f0f6ff; }
+.luogo-option--empty { color: #aaa; cursor: default; }
+.luogo-option--empty:hover { background: none; }
 
 @media (max-width: 640px) {
   .table thead { display: none; }
