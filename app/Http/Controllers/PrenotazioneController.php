@@ -329,6 +329,11 @@ class PrenotazioneController extends Controller
             ->with(['sessione.evento', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
             ->orderByDesc('created_at');
 
+        if ($request->filled('evento_id')) {
+            $eventoId = (int) $request->evento_id;
+            $sessioniIds = \App\Models\Sessione::where('evento_id', $eventoId)->pluck('id');
+            $q->whereIn('sessione_id', $sessioniIds);
+        }
         if ($request->filled('sessione_id')) {
             $q->where('sessione_id', $request->sessione_id);
         }
