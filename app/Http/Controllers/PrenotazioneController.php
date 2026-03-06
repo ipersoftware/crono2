@@ -69,7 +69,7 @@ class PrenotazioneController extends Controller
                 abort_if($disponibili < $totaleRichiesto, 422, 'Posti insufficienti. Disponibili: ' . $disponibili . '.');
             }
 
-            // Verifica disponibilità per tipologia
+            // Verifica disponibilità per tipologia e vincoli min/max prenotabili
             foreach ($data['posti'] as $richiesta) {
                 $st = SessioneTipologiaPosto::lockForUpdate()
                     ->where('sessione_id', $sessione->id)
@@ -80,6 +80,17 @@ class PrenotazioneController extends Controller
                     $dispTip = $st->posti_disponibili - $st->posti_riservati;
                     abort_if($dispTip < $richiesta['quantita'], 422,
                         "Posti insufficienti per la tipologia #{$richiesta['tipologia_id']}.");
+                }
+
+                // Verifica min/max configurati sulla tipologia
+                $tipologia = $st ? $st->tipologiaPosto : null;
+                if ($tipologia) {
+                    if ($tipologia->min_prenotabili && $richiesta['quantita'] < $tipologia->min_prenotabili) {
+                        abort(422, "Devi prenotare almeno {$tipologia->min_prenotabili} posti per \"{$tipologia->nome}\".");
+                    }
+                    if ($tipologia->max_prenotabili && $richiesta['quantita'] > $tipologia->max_prenotabili) {
+                        abort(422, "Puoi prenotare al massimo {$tipologia->max_prenotabili} posti per \"{$tipologia->nome}\".");
+                    }
                 }
             }
 

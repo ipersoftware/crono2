@@ -37,6 +37,12 @@
               <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali === 0" class="posti-left-tp">
                 Disponibilità libera
               </span>
+              <span v-if="t.tipologia_posto.min_prenotabili" class="qty-hint">
+                Quantità minima prenotabile: {{ t.tipologia_posto.min_prenotabili }}
+              </span>
+              <span v-if="t.tipologia_posto.max_prenotabili" class="qty-hint">
+                Quantità massima prenotabile: {{ t.tipologia_posto.max_prenotabili }}
+              </span>
             </div>
             <div class="qty-control">
               <button type="button"
@@ -298,9 +304,11 @@ const getQty = (id) => posti[id] ?? 0
 const maxQtyTipologia = (id) => {
   const t = tipologie.value.find(x => x.tipologia_posto.id === id)
   if (!t) return 0
-  // posti_totali = 0 → illimitata per la tipologia; usa il vincolo sessione
-  if (t.posti_totali === 0) return Infinity
-  return t.posti_disponibili ?? 0
+  // posti_disponibili cap (0 = illimitata per la sessione-tipologia)
+  const maxDisp = t.posti_totali === 0 ? Infinity : (t.posti_disponibili ?? 0)
+  // max_prenotabili configurato sulla tipologia (null = nessun limite)
+  const maxConf = t.tipologia_posto.max_prenotabili ?? Infinity
+  return Math.min(maxDisp, maxConf)
 }
 
 const maxQtySessione = () => {
@@ -323,6 +331,8 @@ const setQty = (id, val) => {
 
 const cambiaQty = (id, delta) => {
   const cur = posti[id] ?? 0
+  const t = tipologie.value.find(x => x.tipologia_posto.id === id)
+  const minQ = t?.tipologia_posto?.min_prenotabili ?? 0
   if (delta > 0) {
     const maxTp = maxQtyTipologia(id)
     const s = sessione.value
@@ -332,6 +342,18 @@ const cambiaQty = (id, delta) => {
       : Math.max(0, (s.posti_disponibili ?? 0) - altreQty - cur)
     const tpMax = maxTp === Infinity ? Infinity : Math.max(0, maxTp - cur)
     if (Math.min(sMax, tpMax) <= 0) return
+    // Se qty era 0 e c'è un minimo > 1, salta direttamente al minimo
+    if (cur === 0 && minQ > 1) {
+      const jumpTo = Math.min(minQ, maxTp === Infinity ? minQ : maxTp)
+      posti[id] = Math.min(jumpTo, sMax === Infinity ? jumpTo : (altreQty + jumpTo <= (s?.posti_disponibili ?? Infinity) ? jumpTo : Math.max(0, (s?.posti_disponibili ?? 0) - altreQty)))
+      return
+    }
+  } else {
+    // Decremento: se scendere sotto il minimo, azzera la tipologia (deseleziona)
+    if (cur > 0 && minQ > 0 && cur - 1 < minQ) {
+      posti[id] = 0
+      return
+    }
   }
   posti[id] = Math.max(0, cur + delta)
 }
@@ -391,6 +413,21 @@ const acquisisciLock = async () => {
   if (totPosti.value === 0) {
     errore.value = 'Seleziona almeno un posto per continuare.'
     return
+  }
+  // Valida min/max prenotabili per tipologia
+  for (const [tipId, qty] of Object.entries(posti)) {
+    if (qty <= 0) continue
+    const t = tipologie.value.find(x => x.tipologia_posto.id === Number(tipId))
+    const minQ = t?.tipologia_posto?.min_prenotabili
+    const maxQ = t?.tipologia_posto?.max_prenotabili
+    if (minQ && qty < minQ) {
+      errore.value = `Seleziona almeno ${minQ} posti per "${t.tipologia_posto.nome}".`
+      return
+    }
+    if (maxQ && qty > maxQ) {
+      errore.value = `Puoi selezionare al massimo ${maxQ} posti per "${t.tipologia_posto.nome}".`
+      return
+    }
   }
   locking.value = true
   try {
@@ -496,6 +533,7 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .posti-left { color: #27ae60; font-size: .9rem; }
 .posti-left-tp { color: #7f8c8d; font-size: .8rem; margin-top: .1rem; }
 .posti-esauriti { color: #e74c3c; font-size: .8rem; font-weight: 600; margin-top: .1rem; }
+.qty-hint { color: #e67e22; font-size: .78rem; margin-top: .1rem; }
 .tipologia-row--esaurita { opacity: .6; }
 .tipologia-row--esaurita .qty-btn:disabled,
 .tipologia-row--esaurita .qty-input:disabled { cursor: not-allowed; background: #f0f0f0; color: #aaa; }
