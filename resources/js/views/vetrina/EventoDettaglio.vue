@@ -81,6 +81,14 @@
                     <strong v-else class="chip-prezzo chip-gratuito">Gratuito</strong>
                   </span>
                 </div>
+                <div v-if="s.luoghi?.length" class="sessione-luoghi">
+                  <span v-for="l in s.luoghi" :key="l.id" class="sessione-luogo-chip">
+                    📍
+                    <a v-if="l.maps_url" :href="l.maps_url" target="_blank" rel="noopener" class="luogo-maps-link">{{ l.nome }}</a>
+                    <span v-else>{{ l.nome }}</span>
+                    <span v-if="l.indirizzo" class="luogo-indirizzo-inline">, {{ l.indirizzo }}</span>
+                  </span>
+                </div>
                 <router-link
                   :to="`/vetrina/${shopUrl}/prenota/${evento.slug}/${s.id}`"
                   class="sessione-prenota"
@@ -214,6 +222,11 @@ onMounted(carica)
 .tipologia-chip { background: #f4f5f9; border-radius: 8px; padding: .22rem .7rem; font-size: .8rem; color: #444; }
 .chip-prezzo { color: #6c63ff; margin-left: .3rem; font-size: .78rem; }
 .chip-gratuito { color: #00a86b; }
+.sessione-luoghi { display: flex; flex-wrap: wrap; gap: .35rem; margin-bottom: .75rem; }
+.sessione-luogo-chip { font-size: .8rem; color: #6b5c20; background: #fef9e7; border: 1px solid #f9e79f; border-radius: 8px; padding: .2rem .6rem; }
+.luogo-maps-link { color: #2980b9; text-decoration: underline; font-weight: 600; }
+.luogo-maps-link:hover { color: #1a5276; }
+.luogo-indirizzo-inline { color: #999; font-size: .75rem; }
 .sessione-prenota { display: block; text-align: center; background: #00c97a; color: white; font-weight: 700; padding: .65rem; border-radius: 10px; text-decoration: none; font-size: .92rem; transition: background .15s, transform .1s; }
 .sessione-prenota:hover { background: #00ae69; transform: translateY(-1px); }
 

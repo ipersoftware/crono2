@@ -114,7 +114,7 @@ class VetrinaController extends Controller
                     ->where('forza_non_disponibile', false)
                     ->where('data_fine', '>', now())
                     ->orderBy('data_inizio')
-                    ->with('tipologiePosto.tipologiaPosto'),
+                    ->with(['tipologiePosto.tipologiaPosto', 'luoghi']),
             ])
             ->firstOrFail();
 

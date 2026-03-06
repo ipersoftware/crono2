@@ -10,10 +10,20 @@
 
         <h1>🎟 Prenota — {{ evento?.titolo }}</h1>
         <div class="sessione-info card">
-          <strong>📅 {{ formatDateTime(sessione?.data_inizio) }}</strong>
-          <span v-if="sessione?.visualizza_disponibili && sessione?.posti_totali > 0" class="posti-left">
-            — {{ postiRimasti }} posti disponibili
-          </span>
+          <div class="sessione-info-row">
+            <strong>📅 {{ formatDateTime(sessione?.data_inizio) }}</strong>
+            <span v-if="sessione?.visualizza_disponibili && sessione?.posti_totali > 0" class="posti-left">
+              — {{ postiRimasti }} posti disponibili
+            </span>
+          </div>
+          <div v-if="sessione?.luoghi?.length" class="sessione-info-luoghi">
+            <span v-for="l in sessione.luoghi" :key="l.id" class="sessione-luogo-pill">
+              📍
+              <a v-if="l.maps_url" :href="l.maps_url" target="_blank" rel="noopener" class="maps-link">{{ l.nome }}</a>
+              <span v-else>{{ l.nome }}</span>
+              <span v-if="l.indirizzo" class="luogo-addr">— {{ l.indirizzo }}</span>
+            </span>
+          </div>
         </div>
 
         <!-- STEP 1: Selezione posti -->
@@ -221,9 +231,14 @@
             <h3 class="riepilogo-section-title">🗓 Evento</h3>
             <p class="riepilogo-evento-titolo">{{ evento?.titolo }}</p>
             <p class="riepilogo-muted">{{ formatDateTime(sessione?.data_inizio) }}</p>
-            <p v-if="sessione?.luoghi?.length" class="riepilogo-muted">
-              📍 {{ sessione.luoghi.map(l => l.nome).join(', ') }}
-            </p>
+            <template v-if="sessione?.luoghi?.length">
+              <p v-for="l in sessione.luoghi" :key="l.id" class="riepilogo-muted">
+                📍
+                <a v-if="l.maps_url" :href="l.maps_url" target="_blank" rel="noopener" class="maps-link">{{ l.nome }}</a>
+                <span v-else>{{ l.nome }}</span>
+                <span v-if="l.indirizzo" class="riepilogo-addr">— {{ l.indirizzo }}</span>
+              </p>
+            </template>
           </div>
 
           <!-- Posti prenotati -->
@@ -552,6 +567,13 @@ onUnmounted(() => fermaTimer())
 .back-link { color: #3498db; text-decoration: none; font-size: .9rem; }
 h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .sessione-info { background: #ebf5fb; margin-bottom: 1.25rem; }
+.sessione-info-row { display: flex; align-items: center; flex-wrap: wrap; gap: .4rem; }
+.sessione-info-luoghi { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .55rem; }
+.sessione-luogo-pill { font-size: .88rem; color: #5a4a1a; }
+.luogo-addr { color: #888; font-size: .82rem; }
+.maps-link { color: #2980b9; text-decoration: underline; }
+.maps-link:hover { color: #1a5276; }
+.riepilogo-addr { color: #888; font-size: .82rem; }
 .posti-left { color: #27ae60; font-size: .9rem; }
 .posti-left-tp { color: #7f8c8d; font-size: .8rem; margin-top: .1rem; }
 .posti-esauriti { color: #e74c3c; font-size: .8rem; font-weight: 600; margin-top: .1rem; }
