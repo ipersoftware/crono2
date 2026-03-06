@@ -188,10 +188,10 @@
       </form>
     </div>
 
-    <!-- TAB: Layout (descrizione completa) -->
+    <!-- TAB: Layout (descrizione completa + copertina + colori) -->
     <div v-if="tabAttivo === 'layout'" class="card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
-        <h2 style="margin:0">🖋 Descrizione completa</h2>
+        <h2 style="margin:0">🖋 Layout evento</h2>
         <div style="display:flex;gap:.6rem">
           <a v-if="urlVetrina" :href="urlVetrina" target="_blank" class="btn btn-outline btn-sm">👁 Anteprima vetrina</a>
           <button @click.prevent="salva" :disabled="saving" class="btn btn-primary btn-sm">
@@ -199,14 +199,65 @@
           </button>
         </div>
       </div>
-      <p style="color:#888;font-size:.85rem;margin:-0.5rem 0 1rem">
-        Questo testo viene mostrato sulla pagina pubblica dell'evento. Puoi usare titoli, elenchi, immagini e link.
-      </p>
-      <Editor
-        tinymce-script-src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"
-        v-model="form.descrizione"
-        :init="tinyInitLayout"
-      />
+
+      <!-- Copertina -->
+      <div class="layout-section">
+        <h3 class="layout-section-title">🖼 Immagine di copertina</h3>
+        <div class="copertina-wrap">
+          <div class="copertina-preview" :style="copertinaBg">
+            <span v-if="!form.immagine" class="copertina-placeholder">Nessuna immagine</span>
+            <button v-if="form.immagine" type="button" @click="eliminaImmagine" :disabled="uploadingImg" class="copertina-rm" title="Rimuovi immagine">✕</button>
+          </div>
+          <div class="copertina-actions">
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+              {{ uploadingImg ? 'Caricamento…' : '📁 Scegli immagine' }}
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" :disabled="uploadingImg" @change="onImmagineFile" />
+            </label>
+            <span style="color:#aaa;font-size:.8rem">JPG, PNG, WEBP, GIF — max 3 MB</span>
+            <div v-if="uploadErrImg" class="alert-error" style="margin-top:.4rem">{{ uploadErrImg }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Gradienti -->
+      <div class="layout-section">
+        <h3 class="layout-section-title">🎨 Colori (gradiente hero)</h3>
+        <p style="color:#888;font-size:.82rem;margin:-.25rem 0 .85rem">Usati come sfondo hero quando non c'è immagine di copertina.</p>
+        <div class="gradient-row">
+          <div class="color-picker-group">
+            <label>Colore primario</label>
+            <div class="color-picker-wrap">
+              <input type="color" v-model="form.colore_primario" class="color-input" />
+              <input type="text" v-model="form.colore_primario" class="input color-text" placeholder="#4a1fa8" maxlength="7" />
+              <button type="button" class="btn-reset-color" @click="form.colore_primario = ''" title="Ripristina default">✕</button>
+            </div>
+          </div>
+          <div class="color-picker-group">
+            <label>Colore secondario</label>
+            <div class="color-picker-wrap">
+              <input type="color" v-model="form.colore_secondario" class="color-input" />
+              <input type="text" v-model="form.colore_secondario" class="input color-text" placeholder="#3a8ef6" maxlength="7" />
+              <button type="button" class="btn-reset-color" @click="form.colore_secondario = ''" title="Ripristina default">✕</button>
+            </div>
+          </div>
+          <div class="color-picker-group">
+            <label>Anteprima</label>
+            <div class="gradient-preview" :style="{ background: gradientPreview }"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Descrizione completa -->
+      <div class="layout-section">
+        <h3 class="layout-section-title">📝 Descrizione completa</h3>
+        <p style="color:#888;font-size:.82rem;margin:-.25rem 0 .85rem">Testo mostrato sulla pagina pubblica dell'evento. Puoi usare titoli, elenchi, immagini e link.</p>
+        <Editor
+          tinymce-script-src="https://cdn.jsdelivr.net/npm/tinymce@7/tinymce.min.js"
+          v-model="form.descrizione"
+          :init="tinyInitLayout"
+        />
+      </div>
+
       <div v-if="errore" class="alert-error" style="margin-top:1rem">{{ errore }}</div>
       <div v-if="successo" class="alert-success" style="margin-top:1rem">{{ successo }}</div>
     </div>
@@ -438,6 +489,9 @@ const form = reactive({
   consenti_multi_sessione: false, mostra_disponibilita: true,
   visibile_dal: '', visibile_al: '', prenotabile_dal: '', prenotabile_al: '',
   tag_ids: [],
+  immagine: '',
+  colore_primario: '',
+  colore_secondario: '',
 })
 const serie = ref([])
 const tags  = ref([])
@@ -449,6 +503,8 @@ const errore  = ref('')
 const successo = ref('')
 const eventoSlug = ref('')
 const enteShopUrl = ref('')
+const uploadingImg = ref(false)
+const uploadErrImg = ref('')
 
 const enteStore  = useEnteStore()
 const urlVetrina = computed(() => {
@@ -466,6 +522,54 @@ const linkPubblico = computed(() => {
 const copiaLink = () => {
   if (linkPubblico.value) navigator.clipboard.writeText(linkPubblico.value)
 }
+
+// --- Layout: copertina + colori ---
+const DEFAULT_GRADIENT = 'linear-gradient(135deg,#4a1fa8 0%,#6c63ff 55%,#3a8ef6 100%)'
+
+const gradientPreview = computed(() => {
+  const p = form.colore_primario
+  const s = form.colore_secondario
+  if (p && s) return `linear-gradient(135deg, ${p} 0%, ${s} 100%)`
+  if (p)      return `linear-gradient(135deg, ${p} 0%, #3a8ef6 100%)`
+  if (s)      return `linear-gradient(135deg, #4a1fa8 0%, ${s} 100%)`
+  return DEFAULT_GRADIENT
+})
+
+const copertinaBg = computed(() => {
+  if (form.immagine) return { backgroundImage: `url(${form.immagine})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  return { background: gradientPreview.value }
+})
+
+const onImmagineFile = async (e) => {
+  const file = e.target.files?.[0]
+  if (!file) return
+  uploadingImg.value = true
+  uploadErrImg.value = ''
+  try {
+    const res = await eventiApi.uploadImmagine(enteId.value, eventoId.value, file)
+    form.immagine = res.data.immagine
+  } catch (err) {
+    uploadErrImg.value = err.response?.data?.message ?? 'Errore durante il caricamento.'
+  } finally {
+    uploadingImg.value = false
+    e.target.value = ''
+  }
+}
+
+const eliminaImmagine = async () => {
+  if (!confirm('Rimuovere l\'immagine di copertina?')) return
+  uploadingImg.value = true
+  uploadErrImg.value = ''
+  try {
+    await eventiApi.eliminaImmagine(enteId.value, eventoId.value)
+    form.immagine = ''
+  } catch (err) {
+    uploadErrImg.value = err.response?.data?.message ?? 'Errore durante la rimozione.'
+  } finally {
+    uploadingImg.value = false
+  }
+}
+// --- fine Layout ---
 
 const tinyInit = {
   height: 280,
@@ -612,6 +716,9 @@ const caricaDati = async () => {
       form.tag_ids                   = ev.tags?.map(t => t.id) ?? []
       eventoSlug.value               = ev.slug ?? ''
       enteShopUrl.value              = ev.ente?.shop_url ?? ev.ente?.slug ?? ''
+      form.immagine                  = ev.immagine ?? ''
+      form.colore_primario           = ev.colore_primario ?? ''
+      form.colore_secondario         = ev.colore_secondario ?? ''
 
       try {
         const [tipRes, campiRes] = await Promise.all([
@@ -845,6 +952,25 @@ watch(() => route.params.eventoId, (newId) => {
 .form-actions { margin-top: 1.5rem; }
 .alert-error   { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 .alert-success { background: #eafaf1; color: #1e8449;  border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; border: 1px solid #a9dfbf; font-weight: 500; }
+/* ── Tab Layout: copertina + colori ─────────────────────────────────────── */
+.layout-section { margin-bottom: 1.75rem; padding-bottom: 1.5rem; border-bottom: 1px solid #f0f0f0; }
+.layout-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.layout-section-title { font-size: 1rem; font-weight: 700; margin: 0 0 .85rem; color: #2c3e50; }
+.copertina-wrap { display: flex; gap: 1.25rem; align-items: flex-start; flex-wrap: wrap; }
+.copertina-preview { width: 200px; height: 120px; border-radius: 10px; overflow: hidden; position: relative; border: 2px solid #e8eaed; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+.copertina-placeholder { color: #bbb; font-size: .82rem; }
+.copertina-rm { position: absolute; top: 6px; right: 6px; border: none; background: rgba(0,0,0,.55); color: white; border-radius: 50%; width: 22px; height: 22px; font-size: .8rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.copertina-rm:hover { background: #c0392b; }
+.copertina-actions { display: flex; flex-direction: column; gap: .55rem; justify-content: center; }
+.gradient-row { display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-end; }
+.color-picker-group { display: flex; flex-direction: column; gap: .35rem; }
+.color-picker-group label { font-size: .85rem; font-weight: 500; }
+.color-picker-wrap { display: flex; align-items: center; gap: .45rem; }
+.color-input { width: 38px; height: 38px; padding: 2px; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; background: white; }
+.color-text { width: 100px; font-family: monospace; font-size: .88rem; }
+.btn-reset-color { border: none; background: #eee; border-radius: 4px; padding: .2rem .45rem; cursor: pointer; color: #888; font-size: .82rem; }
+.btn-reset-color:hover { background: #fadbd8; color: #c0392b; }
+.gradient-preview { width: 140px; height: 38px; border-radius: 8px; border: 1px solid #e8eaed; }
 /* ── Tag combobox ─────────────────────────────────────────────────────────── */
 .tag-combobox { position: relative; border: 1px solid #ddd; border-radius: 6px; background: white; outline: none; }
 .tag-combobox:focus-within { border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,.18); }

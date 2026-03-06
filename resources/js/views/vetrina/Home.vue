@@ -264,6 +264,12 @@ const gradients = [
 
 const evImgStyle = (ev) => {
   if (ev.immagine) return { backgroundImage: `url(${ev.immagine})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+  if (ev.colore_primario && ev.colore_secondario)
+    return { background: `linear-gradient(135deg, ${ev.colore_primario} 0%, ${ev.colore_secondario} 100%)` }
+  if (ev.colore_primario)
+    return { background: `linear-gradient(135deg, ${ev.colore_primario} 0%, #3a8ef6 100%)` }
+  if (ev.colore_secondario)
+    return { background: `linear-gradient(135deg, #4a1fa8 0%, ${ev.colore_secondario} 100%)` }
   return { background: gradients[ev.id % gradients.length] }
 }
 

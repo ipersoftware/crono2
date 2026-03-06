@@ -29,6 +29,17 @@ export const eventiApi = {
   annulla: (enteId, eventoId, data = {}) =>
     api.post(`/enti/${enteId}/eventi/${eventoId}/annulla`, data),
 
+  // Immagine di copertina
+  uploadImmagine: (enteId, eventoId, file) => {
+    const fd = new FormData()
+    fd.append('file', file)
+    return api.post(`/enti/${enteId}/eventi/${eventoId}/immagine`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  eliminaImmagine: (enteId, eventoId) =>
+    api.delete(`/enti/${enteId}/eventi/${eventoId}/immagine`),
+
   // Log attività
   log: (enteId, eventoId, params = {}) =>
     api.get(`/enti/${enteId}/eventi/${eventoId}/log`, { params }),

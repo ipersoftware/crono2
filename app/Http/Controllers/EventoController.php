@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Ente;
 use App\Models\Evento;
+use App\Services\DocumentStorageService;
 use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,7 +12,10 @@ use Illuminate\Support\Str;
 
 class EventoController extends Controller
 {
-    public function __construct(protected EventoLogService $log) {}
+    public function __construct(
+        protected EventoLogService $log,
+        protected DocumentStorageService $documentStorage,
+    ) {}
     /** GET /api/enti/{ente}/eventi */
     public function index(Request $request, Ente $ente): JsonResponse
     {
@@ -207,6 +211,8 @@ class EventoController extends Controller
             'nota_etichetta'              => 'nullable|string|max:255',
             'costo'                       => 'nullable|numeric|min:0',
             'attributi'                   => 'nullable|array',
+            'colore_primario'             => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'colore_secondario'           => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
         ]);
     }
 
@@ -231,10 +237,39 @@ class EventoController extends Controller
 
     private function autorizza(Ente $ente, Evento $evento): void
     {
-        // Admin di sistema può accedere a qualsiasi evento (stesso bypass di EnsureEnteAccess)
         if (request()->user()?->isAdmin()) {
             return;
         }
         abort_if((int) $evento->ente_id !== (int) $ente->id, 403, 'Evento non appartiene a questo Ente.');
+    }
+
+    /** POST /api/enti/{ente}/eventi/{evento}/immagine */
+    public function uploadImmagine(Request $request, Ente $ente, Evento $evento): JsonResponse
+    {
+        $this->autorizza($ente, $evento);
+
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:3072',
+        ]);
+
+        $document = $this->documentStorage->store(
+            $request->file('file'),
+            $ente->id,
+            "Copertina evento: {$evento->titolo}"
+        );
+
+        $url = $this->documentStorage->url($document);
+        $evento->update(['immagine' => $url]);
+
+        return response()->json(['immagine' => $url, 'document_id' => $document->id]);
+    }
+
+    /** DELETE /api/enti/{ente}/eventi/{evento}/immagine */
+    public function eliminaImmagine(Ente $ente, Evento $evento): JsonResponse
+    {
+        $this->autorizza($ente, $evento);
+        $evento->update(['immagine' => null]);
+
+        return response()->json(['immagine' => null]);
     }
 }

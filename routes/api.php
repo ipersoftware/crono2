@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampoFormController;
+use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnteController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\EventoLogController;
@@ -36,6 +37,9 @@ Route::prefix('vetrina/{shopUrl}')->group(function () {
     Route::get('/tags',    [VetrinaController::class, 'tags']);
     Route::post('/contatto', [VetrinaController::class, 'contatto']);
 });
+
+// Serve documenti — pubblico, no auth (URL opaco con ID)
+Route::get('/documents/{document}/serve', [DocumentController::class, 'serve']);
 
 // -------------------------------------------------------
 // Prenotazioni pubbliche (auth opzionale)
@@ -88,11 +92,16 @@ Route::middleware('auth:sanctum')->group(function () {
             // Eventi
             Route::apiResource('eventi', EventoController::class)
                 ->parameters(['eventi' => 'evento']);
-            Route::post('eventi/{evento}/pubblica',  [EventoController::class, 'pubblica']);
-            Route::post('eventi/{evento}/sospendi',  [EventoController::class, 'sospendi']);
-            Route::post('eventi/{evento}/annulla',   [EventoController::class, 'annulla']);
-            Route::get('eventi/{evento}/log',        [EventoLogController::class, 'index']);
+            Route::post('eventi/{evento}/pubblica',   [EventoController::class, 'pubblica']);
+            Route::post('eventi/{evento}/sospendi',   [EventoController::class, 'sospendi']);
+            Route::post('eventi/{evento}/annulla',    [EventoController::class, 'annulla']);
+            Route::get('eventi/{evento}/log',         [EventoLogController::class, 'index']);
             Route::get('eventi/{evento}/monitoraggio', [MonitoraggioController::class, 'evento']);
+            Route::post('eventi/{evento}/immagine',   [EventoController::class, 'uploadImmagine']);
+            Route::delete('eventi/{evento}/immagine', [EventoController::class, 'eliminaImmagine']);
+
+            // Documenti (elimina)
+            Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
 
             // Sessioni (nested sotto evento)
             Route::apiResource('eventi/{evento}/sessioni', SessioneController::class)

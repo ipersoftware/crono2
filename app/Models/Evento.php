@@ -42,6 +42,8 @@ class Evento extends Model
         'nota_etichetta',
         'costo',
         'attributi',
+        'colore_primario',
+        'colore_secondario',
     ];
 
     protected $casts = [

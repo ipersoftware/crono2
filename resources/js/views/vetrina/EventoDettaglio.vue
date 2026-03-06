@@ -22,7 +22,7 @@
       <section
         class="ev-hero"
         :class="{ 'ev-hero--img': evento.immagine }"
-        :style="evento.immagine ? { backgroundImage: `url(${evento.immagine})` } : {}"
+        :style="heroStyle"
       >
         <div class="ev-hero-overlay">
           <div class="container ev-hero-content">
@@ -132,7 +132,7 @@
 
 <script setup>
 import { vetrinaApi } from '@/api/vetrina'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route   = useRoute()
@@ -148,6 +148,19 @@ const carica = async () => {
     evento.value = res.data
   } finally { loading.value = false }
 }
+
+const heroStyle = computed(() => {
+  const ev = evento.value
+  if (!ev) return {}
+  if (ev.immagine) return { backgroundImage: `url(${ev.immagine})` }
+  if (ev.colore_primario && ev.colore_secondario)
+    return { background: `linear-gradient(135deg, ${ev.colore_primario} 0%, ${ev.colore_secondario} 100%)` }
+  if (ev.colore_primario)
+    return { background: `linear-gradient(135deg, ${ev.colore_primario} 0%, #3a8ef6 100%)` }
+  if (ev.colore_secondario)
+    return { background: `linear-gradient(135deg, #4a1fa8 0%, ${ev.colore_secondario} 100%)` }
+  return {}
+})
 
 const formatGiorno = (d) => {
   if (!d) return '–'
