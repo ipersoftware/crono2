@@ -20,18 +20,29 @@
         <div v-if="step === 1" class="card">
           <h2>1. Seleziona i posti</h2>
           <div v-if="!tipologie.length" class="empty">Nessuna tipologia di posto disponibile.</div>
-          <div v-for="t in tipologie" :key="t.tipologia_posto.id" class="tipologia-row">
+          <div v-for="t in tipologie" :key="t.tipologia_posto.id"
+            class="tipologia-row"
+            :class="{ 'tipologia-row--esaurita': t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0 }">
             <div class="tipologia-info">
               <strong>{{ t.tipologia_posto.nome }}</strong>
               <span class="prezzo">
                 {{ t.tipologia_posto.gratuita ? 'Gratuito' : `€ ${Number(t.tipologia_posto.costo).toFixed(2)}` }}
               </span>
-              <span v-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali > 0" class="posti-left-tp">
-                {{ t.posti_disponibili ?? 0 }} disponibili
+              <span v-if="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0" class="posti-esauriti">
+                Disponibilità terminata
+              </span>
+              <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali > 0" class="posti-left-tp">
+                {{ t.posti_disponibili }} disponibili
+              </span>
+              <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali === 0" class="posti-left-tp">
+                Disponibilità libera
               </span>
             </div>
             <div class="qty-control">
-              <button type="button" @click="cambiaQty(t.tipologia_posto.id, -1)" class="qty-btn">−</button>
+              <button type="button"
+                @click="cambiaQty(t.tipologia_posto.id, -1)"
+                class="qty-btn"
+                :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">−</button>
               <input
                 type="number"
                 min="0"
@@ -39,8 +50,12 @@
                 :value="getQty(t.tipologia_posto.id)"
                 @change="setQty(t.tipologia_posto.id, $event.target.value)"
                 @focus="$event.target.select()"
+                :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0"
               />
-              <button type="button" @click="cambiaQty(t.tipologia_posto.id, +1)" class="qty-btn">+</button>
+              <button type="button"
+                @click="cambiaQty(t.tipologia_posto.id, +1)"
+                class="qty-btn"
+                :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">+</button>
             </div>
           </div>
 
@@ -278,10 +293,47 @@ const scadenzaSecondi   = ref(0)
 const prenotazioneConfermata = ref(null)
 let timer = null
 
-const getQty      = (id) => posti[id] ?? 0
-const setQty      = (id, val) => { posti[id] = Math.max(0, parseInt(val, 10) || 0) }
-const cambiaQty   = (id, delta) => {
-  posti[id] = Math.max(0, (posti[id] ?? 0) + delta)
+const getQty = (id) => posti[id] ?? 0
+
+const maxQtyTipologia = (id) => {
+  const t = tipologie.value.find(x => x.tipologia_posto.id === id)
+  if (!t) return 0
+  // posti_totali = 0 → illimitata per la tipologia; usa il vincolo sessione
+  if (t.posti_totali === 0) return Infinity
+  return t.posti_disponibili ?? 0
+}
+
+const maxQtySessione = () => {
+  const s = sessione.value
+  if (!s || s.posti_totali === 0) return Infinity
+  const giaScelti = Object.values(posti).reduce((a, v) => a + v, 0)
+  return Math.max(0, (s.posti_disponibili ?? 0) - giaScelti)
+}
+
+const setQty = (id, val) => {
+  const v = Math.max(0, parseInt(val, 10) || 0)
+  const maxTp = maxQtyTipologia(id)
+  // per il vincolo sessione devo escludere la qty attuale di questa tipologia
+  const s = sessione.value
+  const sMax = (!s || s.posti_totali === 0)
+    ? Infinity
+    : Math.max(0, (s.posti_disponibili ?? 0) - (Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, vv]) => a + vv, 0)))
+  posti[id] = Math.min(v, maxTp === Infinity ? sMax : Math.min(maxTp, sMax))
+}
+
+const cambiaQty = (id, delta) => {
+  const cur = posti[id] ?? 0
+  if (delta > 0) {
+    const maxTp = maxQtyTipologia(id)
+    const s = sessione.value
+    const altreQty = Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, v]) => a + v, 0)
+    const sMax = (!s || s.posti_totali === 0)
+      ? Infinity
+      : Math.max(0, (s.posti_disponibili ?? 0) - altreQty - cur)
+    const tpMax = maxTp === Infinity ? Infinity : Math.max(0, maxTp - cur)
+    if (Math.min(sMax, tpMax) <= 0) return
+  }
+  posti[id] = Math.max(0, cur + delta)
 }
 
 const totPosti = computed(() => Object.values(posti).reduce((s, v) => s + v, 0))
@@ -443,6 +495,10 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .sessione-info { background: #ebf5fb; margin-bottom: 1.25rem; }
 .posti-left { color: #27ae60; font-size: .9rem; }
 .posti-left-tp { color: #7f8c8d; font-size: .8rem; margin-top: .1rem; }
+.posti-esauriti { color: #e74c3c; font-size: .8rem; font-weight: 600; margin-top: .1rem; }
+.tipologia-row--esaurita { opacity: .6; }
+.tipologia-row--esaurita .qty-btn:disabled,
+.tipologia-row--esaurita .qty-input:disabled { cursor: not-allowed; background: #f0f0f0; color: #aaa; }
 .tipologia-row { display: flex; justify-content: space-between; align-items: center; padding: .75rem; border: 1px solid #eee; border-radius: 8px; margin-bottom: .6rem; }
 .tipologia-info { display: flex; flex-direction: column; }
 .prezzo { color: #27ae60; font-size: .9rem; margin-top: .15rem; }

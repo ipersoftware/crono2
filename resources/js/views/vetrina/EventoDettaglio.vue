@@ -61,10 +61,9 @@
                   <span v-if="s.data_fine" class="muted"> → {{ formatDateTime(s.data_fine) }}</span>
                 </div>
                 <div class="sessione-info">
-                  <span v-if="s.posti_totali">
+                  <span v-if="s.visualizza_disponibili && s.posti_totali > 0">
                     {{ s.posti_disponibili }} posti disponibili
                   </span>
-                  <span v-else>Posti illimitati</span>
                 </div>
                 <!-- Tipologie -->
                 <div v-if="s.tipologie_disponibili?.length" class="tipologie">
