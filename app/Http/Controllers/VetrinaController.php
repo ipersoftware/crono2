@@ -4,7 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Ente;
 use App\Models\Evento;
+use App\Models\PrenotazioneTemporanea;
 use App\Models\RichiestaContatto;
+use App\Models\Sessione;
+use App\Models\SessioneTipologiaPosto;
 use App\Models\Serie;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -131,6 +134,42 @@ class VetrinaController extends Controller
             'provincia'   => $ente->provincia,
             'email'       => $ente->email,
         ];
+
+        // Purga lazy: rilascia lock scaduti per le sessioni di questo evento
+        // (fallback per ambienti senza scheduler attivo)
+        $sessioneIds = $evento->sessioni->pluck('id');
+        if ($sessioneIds->isNotEmpty()) {
+            $lockScaduti = PrenotazioneTemporanea::whereIn('sessione_id', $sessioneIds)
+                ->where('scadenza_at', '<=', now())
+                ->get();
+            foreach ($lockScaduti as $lock) {
+                /** @var \App\Models\PrenotazioneTemporanea $lock */
+                \Illuminate\Support\Facades\DB::transaction(function () use ($lock) {
+                    $s = Sessione::lockForUpdate()->find($lock->sessione_id);
+                    if ($s) {
+                        $posti  = collect($lock->dettaglio_tipologie);
+                        $totale = $posti->sum('quantita');
+                        $s->decrement('posti_riservati', max(0, min($totale, $s->posti_riservati)));
+                        foreach ($posti as $posto) {
+                            SessioneTipologiaPosto::where('sessione_id', $s->id)
+                                ->where('tipologia_posto_id', $posto['tipologia_id'])
+                                ->each(fn($st) => $st->decrement('posti_riservati', max(0, min($posto['quantita'], $st->posti_riservati))));
+                        }
+                    }
+                    $lock->delete();
+                });
+            }
+            // Ricarica le sessioni aggiornate
+            $evento->load([
+                'sessioni' => fn($q) => $q
+                    ->where('prenotabile', true)
+                    ->where('forza_non_disponibile', false)
+                    ->where('data_fine', '>', now())
+                    ->orderBy('data_inizio')
+                    ->with(['tipologiePosto.tipologiaPosto', 'luoghi']),
+            ]);
+            $risposta['sessioni'] = $evento->sessioni->toArray();
+        }
 
         return response()->json($risposta);
     }

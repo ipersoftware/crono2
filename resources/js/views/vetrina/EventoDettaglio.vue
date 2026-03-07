@@ -71,7 +71,7 @@
                     <span class="sessione-ora">🕒 {{ formatOra(s.data_inizio) }}<span v-if="s.data_fine"> → {{ formatOra(s.data_fine) }}</span></span>
                   </div>
                   <div v-if="s.visualizza_disponibili && s.posti_totali > 0" class="sessione-posti">
-                    {{ s.posti_disponibili }} posti
+                    {{ Math.max(0, s.posti_disponibili - (s.posti_riservati ?? 0)) }} posti
                   </div>
                 </div>
                 <div v-if="s.tipologie_posto?.length" class="tipologie-list">

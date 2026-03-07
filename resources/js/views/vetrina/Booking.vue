@@ -584,7 +584,18 @@ const fermaTimer = () => {
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–'
 
 onMounted(carica)
-onUnmounted(() => fermaTimer())
+onUnmounted(() => {
+  fermaTimer()
+  rilasciaLock()
+  window.removeEventListener('pagehide', rilasciaLockBeacon)
+})
+
+// Rilascio lock alla chiusura del browser/tab (keepalive sopravvive alla pagina)
+const rilasciaLockBeacon = () => {
+  if (!lockToken.value) return
+  fetch(`/api/prenotazioni/lock/${lockToken.value}`, { method: 'DELETE', keepalive: true }).catch(() => {})
+}
+window.addEventListener('pagehide', rilasciaLockBeacon)
 </script>
 
 <style scoped>
