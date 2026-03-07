@@ -64,7 +64,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Import da Governance (solo admin)
     Route::get('/enti/governance/disponibili', [EnteController::class, 'governanceDisponibili']);
     Route::post('/enti/governance/importa',    [EnteController::class, 'importaDaGovernance']);
-    Route::post('/enti/{ente}/sincronizza-template', [EnteController::class, 'sincronizzaTemplate']);
+    Route::post('/enti/{ente}/sincronizza-template',       [EnteController::class, 'sincronizzaTemplate']);
+    Route::post('/enti/{ente}/aggiorna-da-governance',      [EnteController::class, 'aggiornaAnagraficaGovernance']);
 
     // Prenotazioni utente autenticato
     Route::get('/prenotazioni/mie', [PrenotazioneController::class, 'mie']);

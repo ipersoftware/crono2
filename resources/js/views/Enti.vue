@@ -27,16 +27,16 @@
           </thead>
           <tbody>
             <tr v-for="ente in enti" :key="ente.id">
-              <td>{{ ente.nome }}</td>
-              <td>{{ ente.codice_fiscale }}</td>
-              <td>{{ ente.email }}</td>
-              <td>{{ ente.citta || '-' }}</td>
-              <td>
+              <td data-label="Nome">{{ ente.nome }}</td>
+              <td data-label="Codice Fiscale">{{ ente.codice_fiscale }}</td>
+              <td data-label="Email">{{ ente.email }}</td>
+              <td data-label="Città">{{ ente.citta || '-' }}</td>
+              <td data-label="Stato">
                 <span :class="['badge', ente.attivo ? 'badge-success' : 'badge-danger']">
                   {{ ente.attivo ? 'Attivo' : 'Disattivato' }}
                 </span>
               </td>
-              <td class="actions-cell">
+              <td data-label="Azioni" class="actions-cell">
                 <button
                   v-if="!authStore.isImpersonating"
                   @click="impersonaEnte(ente)"
@@ -67,6 +67,15 @@
                   :title="ente.form_contatti_attivo ? 'Disabilita form contatti vetrina' : 'Abilita form contatti vetrina'"
                 >
                   {{ ente.form_contatti_attivo ? '✉️ Contatti ON' : '✉️ Contatti OFF' }}
+                </button>
+                <button
+                  v-if="ente.governance_id"
+                  @click="aggiornaAnagraficaGovernance(ente)"
+                  :disabled="aggiornandoId === ente.id"
+                  class="btn btn-gov btn-sm"
+                  title="Aggiorna nome, email, indirizzo, ecc. dal database Governance"
+                >
+                  {{ aggiornandoId === ente.id ? '⏳…' : '🔄 Governance' }}
                 </button>
                 <button @click="deleteEnte(ente.id)" class="btn btn-danger btn-sm">
                   Elimina
@@ -422,6 +431,23 @@ const salvaPrivacyUrl = async () => {
   }
 }
 
+// ──────────────────────────── Aggiorna anagrafica da Governance ────────────────────────────
+const aggiornandoId = ref(null)
+
+const aggiornaAnagraficaGovernance = async (ente) => {
+  if (!confirm(`Aggiornare i dati anagrafici di "${ente.nome}" con i valori presenti in Governance?\n(nome, email, telefono, indirizzo, città, provincia, CAP)`)) return
+  aggiornandoId.value = ente.id
+  try {
+    const res = await api.post(`/enti/${ente.id}/aggiorna-da-governance`)
+    alert(res.data.message)
+    await fetchEnti()
+  } catch (e) {
+    alert('Errore: ' + (e.response?.data?.message || e.message))
+  } finally {
+    aggiornandoId.value = null
+  }
+}
+
 // ──────────────────────────── Form contatti ────────────────────────────
 const toggleFormContatti = async (ente) => {
   const nuovoValore = !ente.form_contatti_attivo
@@ -455,6 +481,91 @@ onMounted(() => {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+/* ── Responsive mobile ── */
+@media (max-width: 768px) {
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .header > div {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .header .btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .table-container {
+    overflow-x: unset;
+  }
+
+  .table thead {
+    display: none;
+  }
+
+  .table,
+  .table tbody,
+  .table tr,
+  .table td {
+    display: block;
+    width: 100%;
+  }
+
+  .table tr {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    padding: 0.5rem 0.25rem;
+    background: #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+
+  .table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid #f0f0f0;
+    font-size: 0.9rem;
+    gap: 0.5rem;
+  }
+
+  .table td:last-child {
+    border-bottom: none;
+  }
+
+  .table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: #555;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    min-width: 110px;
+    flex-shrink: 0;
+  }
+
+  .actions-cell {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .actions-cell::before {
+    align-self: flex-start;
+    margin-top: 0.2rem;
+  }
+
+  .btn-sm {
+    font-size: 0.8rem;
+    padding: 0.3rem 0.5rem;
+  }
 }
 
 .btn-sm {
@@ -496,6 +607,20 @@ onMounted(() => {
 
 .btn-info:disabled {
   background-color: #85c1e9;
+  cursor: not-allowed;
+}
+
+.btn-gov {
+  background-color: #6f42c1;
+  color: white;
+}
+
+.btn-gov:hover {
+  background-color: #5a32a3;
+}
+
+.btn-gov:disabled {
+  background-color: #b39ddb;
   cursor: not-allowed;
 }
 

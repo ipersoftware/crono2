@@ -268,6 +268,50 @@ class EnteController extends Controller
     }
 
     /**
+     * Aggiorna i dati anagrafici dell'ente dal DB Governance (nome, email,
+     * telefono, indirizzo, città, provincia, CAP).
+     * Richiede che l'ente abbia un governance_id.
+     * Solo per admin.
+     */
+    public function aggiornaAnagraficaGovernance(Ente $ente)
+    {
+        if (!$ente->governance_id) {
+            return response()->json([
+                'message' => 'Questo ente non è collegato a Governance (governance_id assente).',
+            ], 422);
+        }
+
+        $govEnte = DB::connection('governance')
+            ->table('enti')
+            ->where('id', $ente->governance_id)
+            ->first();
+
+        if (!$govEnte) {
+            return response()->json([
+                'message' => 'Ente non trovato nel database Governance.',
+            ], 404);
+        }
+
+        $campi = [
+            'nome'       => $govEnte->nome,
+            'email'      => $govEnte->email      ?? null,
+            'telefono'   => $govEnte->telefono   ?? null,
+            'indirizzo'  => $govEnte->indirizzo  ?? null,
+            'citta'      => $govEnte->citta      ?? null,
+            'provincia'  => $govEnte->provincia  ?? null,
+            'cap'        => $govEnte->cap        ?? null,
+        ];
+
+        $ente->update($campi);
+        $ente->refresh();
+
+        return response()->json([
+            'message' => 'Anagrafica aggiornata da Governance.',
+            'ente'    => $ente,
+        ]);
+    }
+
+    /**
      * Duplica i template di sistema (ente_id = NULL) per il nuovo ente.
      * Salta i tipi per cui l'ente ha già un template.
      */
