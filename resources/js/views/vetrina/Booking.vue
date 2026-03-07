@@ -62,9 +62,10 @@
               <input
                 type="number"
                 min="0"
+                :max="maxQtyPerInput(t)"
                 class="qty-input"
                 :value="getQty(t.tipologia_posto.id)"
-                @change="setQty(t.tipologia_posto.id, $event.target.value)"
+                @change="setQty(t.tipologia_posto.id, $event.target.value, $event)"
                 @focus="$event.target.select()"
                 :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0"
               />
@@ -371,7 +372,7 @@ const maxQtySessione = () => {
   return Math.max(0, (s.posti_disponibili ?? 0) - giaScelti)
 }
 
-const setQty = (id, val) => {
+const setQty = (id, val, event = null) => {
   const v = Math.max(0, parseInt(val, 10) || 0)
   const maxTp = maxQtyTipologia(id)
   // per il vincolo sessione devo escludere la qty attuale di questa tipologia
@@ -379,7 +380,23 @@ const setQty = (id, val) => {
   const sMax = (!s || s.posti_totali === 0)
     ? Infinity
     : Math.max(0, (s.posti_disponibili ?? 0) - (Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, vv]) => a + vv, 0)))
-  posti[id] = Math.min(v, maxTp === Infinity ? sMax : Math.min(maxTp, sMax))
+  const clamped = Math.min(v, maxTp === Infinity ? sMax : Math.min(maxTp, sMax))
+  posti[id] = clamped
+  // Forza sync DOM: Vue 3 non re-aggiorna il valore di un input numerico
+  // appena digitato dall'utente anche se il binding reattivo cambia
+  if (event) event.target.value = clamped
+}
+
+// Max inseribile nell'input considerando tipologia + disponibilità sessione
+const maxQtyPerInput = (t) => {
+  const id = t.tipologia_posto.id
+  const maxTp = maxQtyTipologia(id)
+  const s = sessione.value
+  if (!s || s.posti_totali === 0) return maxTp === Infinity ? undefined : maxTp
+  const altreQty = Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, v]) => a + v, 0)
+  const sMax = Math.max(0, (s.posti_disponibili ?? 0) - altreQty)
+  const result = Math.min(maxTp === Infinity ? sMax : maxTp, sMax)
+  return isFinite(result) ? result : undefined
 }
 
 const cambiaQty = (id, delta) => {
@@ -482,6 +499,12 @@ const acquisisciLock = async () => {
       errore.value = `Puoi selezionare al massimo ${maxQ} posti per "${t.tipologia_posto.nome}".`
       return
     }
+  }
+  // Valida totale vs posti disponibili della sessione
+  const s = sessione.value
+  if (s && s.posti_totali > 0 && totPosti.value > (s.posti_disponibili ?? 0)) {
+    errore.value = `Hai selezionato ${totPosti.value} posti ma ne sono disponibili solo ${s.posti_disponibili}.`
+    return
   }
   locking.value = true
   try {

@@ -1,11 +1,7 @@
-import Echo from 'laravel-echo'
-import { createPinia } from 'pinia'
-import Pusher from 'pusher-js'
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
+import Echo from 'laravel-echo';
 
-window.Pusher = Pusher
+import Pusher from 'pusher-js';
+window.Pusher = Pusher;
 
 window.Echo = new Echo({
     broadcaster: 'reverb',
@@ -15,11 +11,4 @@ window.Echo = new Echo({
     wssPort: import.meta.env.VITE_REVERB_PORT ?? 443,
     forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
     enabledTransports: ['ws', 'wss'],
-})
-
-const app = createApp(App)
-
-app.use(createPinia())
-app.use(router)
-
-app.mount('#app')
+});
