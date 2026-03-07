@@ -102,7 +102,7 @@ class PrenotazioneController extends Controller
                 'token'              => $token,
                 'posti_totali'       => $totaleRichiesto,
                 'dettaglio_tipologie'=> $data['posti'],
-                'scadenza_at'        => now()->addMinutes(config('booking.lock_minutes', 15)),
+                'scadenza_at'        => now()->addMinutes($sessione->durata_lock_minuti ?? config('booking.lock_minutes', 15)),
             ]);
 
             // Incrementa posti_riservati sulla sessione
