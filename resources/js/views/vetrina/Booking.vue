@@ -466,6 +466,16 @@ const carica = async () => {
   try {
     const res = await vetrinaApi.evento(shopUrl, slug)
     evento.value    = res.data
+    // Controlla finestra di prenotabilità
+    const now = new Date()
+    if (res.data.prenotabile_dal && new Date(res.data.prenotabile_dal) > now) {
+      erroreCaricamento.value = `Le prenotazioni apriranno il ${formatDateTime(res.data.prenotabile_dal)}.`
+      return
+    }
+    if (res.data.prenotabile_al && new Date(res.data.prenotabile_al) < now) {
+      erroreCaricamento.value = 'Le prenotazioni per questo evento sono chiuse.'
+      return
+    }
     sessione.value  = res.data.sessioni?.find(s => s.id === sessioneId) ?? null
     tipologie.value = sessione.value?.tipologie_posto?.filter(t => t.attiva) ?? []
     campiForm.value = res.data.campi_form ?? []

@@ -90,9 +90,11 @@
                   </span>
                 </div>
                 <router-link
+                  v-if="prenotazioneAperta"
                   :to="`/vetrina/${shopUrl}/prenota/${evento.slug}/${s.id}`"
                   class="sessione-prenota"
                 >Prenota →</router-link>
+                <div v-else class="sessione-prenota-closed">{{ prenotabileMessage }}</div>
               </div>
             </div>
           </div>
@@ -172,6 +174,26 @@ const formatOra = (d) => {
   return new Date(d).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
 }
 
+const prenotazioneAperta = computed(() => {
+  const ev = evento.value
+  if (!ev) return false
+  const now = new Date()
+  if (ev.prenotabile_dal && new Date(ev.prenotabile_dal) > now) return false
+  if (ev.prenotabile_al && new Date(ev.prenotabile_al) < now) return false
+  return true
+})
+
+const prenotabileMessage = computed(() => {
+  const ev = evento.value
+  if (!ev) return ''
+  const now = new Date()
+  if (ev.prenotabile_dal && new Date(ev.prenotabile_dal) > now)
+    return `Prenotazioni aperte dal ${new Date(ev.prenotabile_dal).toLocaleString('it-IT', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+  if (ev.prenotabile_al && new Date(ev.prenotabile_al) < now)
+    return 'Prenotazioni chiuse'
+  return ''
+})
+
 onMounted(carica)
 </script>
 
@@ -242,6 +264,7 @@ onMounted(carica)
 .luogo-indirizzo-inline { color: #999; font-size: .75rem; }
 .sessione-prenota { display: block; text-align: center; background: #00c97a; color: white; font-weight: 700; padding: .65rem; border-radius: 10px; text-decoration: none; font-size: .92rem; transition: background .15s, transform .1s; }
 .sessione-prenota:hover { background: #00ae69; transform: translateY(-1px); }
+.sessione-prenota-closed { display: block; text-align: center; background: #f0f0f5; color: #999; font-weight: 600; padding: .65rem; border-radius: 10px; font-size: .88rem; }
 
 /* ── Footer ── */
 .vetfooter { background: #1a1a2e; color: rgba(255,255,255,.75); padding: 3rem 1.5rem 0; }

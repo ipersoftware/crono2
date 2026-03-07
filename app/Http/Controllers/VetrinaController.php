@@ -29,6 +29,8 @@ class VetrinaController extends Controller
         if (!empty($ente->eventi_in_evidenza)) {
             $inEvidenza = Evento::whereIn('id', $ente->eventi_in_evidenza)
                 ->where('stato', 'PUBBLICATO')
+                ->where(fn($q) => $q->whereNull('visibile_dal')->orWhere('visibile_dal', '<=', now()))
+                ->where(fn($q) => $q->whereNull('visibile_al')->orWhere('visibile_al', '>=', now()))
                 ->with(['tags', 'sessioni' => fn($q) => $q->where('prenotabile', true)->where('forza_non_disponibile', false)->where('data_fine', '>', now())->orderBy('data_inizio')])
                 ->get();
         }
@@ -62,6 +64,8 @@ class VetrinaController extends Controller
 
         $q = Evento::where('ente_id', $ente->id)
             ->where('stato', 'PUBBLICATO')
+            ->where(fn($q) => $q->whereNull('visibile_dal')->orWhere('visibile_dal', '<=', now()))
+            ->where(fn($q) => $q->whereNull('visibile_al')->orWhere('visibile_al', '>=', now()))
             ->with(['tags', 'luoghi'])
             ->withCount('sessioni');
 
@@ -106,6 +110,8 @@ class VetrinaController extends Controller
         $evento = Evento::where('ente_id', $ente->id)
             ->where(fn($q) => $q->where('slug', $slug)->orWhereJsonContains('slug_history', $slug))
             ->where('stato', 'PUBBLICATO')
+            ->where(fn($q) => $q->whereNull('visibile_dal')->orWhere('visibile_dal', '<=', now()))
+            ->where(fn($q) => $q->whereNull('visibile_al')->orWhere('visibile_al', '>=', now()))
             ->with([
                 'tags',
                 'luoghi',
