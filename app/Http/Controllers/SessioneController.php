@@ -151,13 +151,17 @@ class SessioneController extends Controller
                     "Impossibile impostare {$postiTotali} posti per la tipologia #{$tipologiaId}: ci sono già {$confermati} posti prenotati."
                 );
 
-                SessioneTipologiaPosto::where('sessione_id', $sessione->id)
-                    ->where('tipologia_posto_id', $tipologiaId)
-                    ->update([
+                SessioneTipologiaPosto::updateOrCreate(
+                    [
+                        'sessione_id'       => $sessione->id,
+                        'tipologia_posto_id' => $tipologiaId,
+                    ],
+                    [
                         'posti_totali'      => $postiTotali,
                         'posti_disponibili' => max(0, $postiTotali - $confermati - $riservati),
                         'attiva'            => $config['attiva'] ?? true,
-                    ]);
+                    ]
+                );
             }
         }
 
