@@ -57,6 +57,7 @@ class MonitoraggioController extends Controller
                     'nome'             => $tp->tipologiaPosto->nome ?? '–',
                     'posti_totali'     => $tp->posti_totali,
                     'posti_disponibili'=> $tp->posti_disponibili,
+                    'posti_riservati'  => $tp->posti_riservati,
                 ]),
             ];
         });

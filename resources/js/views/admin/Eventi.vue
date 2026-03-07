@@ -150,7 +150,11 @@
                   <td colspan="9">
                     <span v-for="tp in s.tipologie" :key="tp.nome" class="tp-chip">
                       <strong>{{ tp.nome }}</strong>:
-                      {{ tp.posti_totali > 0 ? tp.posti_disponibili + ' / ' + tp.posti_totali : '∞' }}
+                      <span v-if="tp.posti_totali === 0" class="tp-illim">Illim.</span>
+                      <span v-else :class="tp.posti_disponibili === 0 ? 'tp-esaurito' : ''">
+                        {{ tp.posti_disponibili }} / {{ tp.posti_totali }}
+                      </span>
+                      <span v-if="tp.posti_riservati > 0" class="tp-lock" :title="tp.posti_riservati + ' posti in lock temporaneo'">🔒{{ tp.posti_riservati }}</span>
                     </span>
                   </td>
                 </tr>
@@ -384,7 +388,10 @@ onMounted(carica)
 .bs-annullata_utente      { background: #fadbd8; color: #a93226; }
 .bs-annullata_operatore   { background: #fadbd8; color: #a93226; }
 .row-tipologie td { background: #fafafa; padding: .3rem .65rem; }
-.tp-chip { display: inline-block; background: #eaf2ff; color: #1a5276; border-radius: 10px; padding: .1rem .6rem; font-size: .78rem; margin: .1rem .2rem; }
+.tp-chip { display: inline-flex; align-items: center; gap: .25rem; background: #eaf2ff; color: #1a5276; border-radius: 10px; padding: .1rem .6rem; font-size: .78rem; margin: .1rem .2rem; }
+.tp-esaurito { color: #c0392b; font-weight: 600; }
+.tp-illim { color: #1a5276; opacity: .65; font-style: italic; }
+.tp-lock { font-size: .72rem; color: #7d6608; background: #fef9c3; border-radius: 6px; padding: 0 .3rem; cursor: help; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 4px; cursor: pointer; text-decoration: none; }
 .btn-success  { background: #27ae60; color: white; border: none; border-radius: 4px; cursor: pointer; }
 .btn-warning  { background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; }
