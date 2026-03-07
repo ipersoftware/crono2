@@ -63,8 +63,8 @@ class PrenotazioneController extends Controller
 
             $totaleRichiesto = collect($data['posti'])->sum('quantita');
 
-            // Verifica disponibilità globale
-            if ($sessione->controlla_posti_globale) {
+            // Verifica disponibilità globale (se la sessione ha un limite totale)
+            if ($sessione->posti_totali > 0) {
                 $disponibili = $sessione->posti_disponibili - $sessione->posti_riservati;
                 abort_if($disponibili < $totaleRichiesto, 422, 'Posti insufficienti. Disponibili: ' . $disponibili . '.');
             }
@@ -76,7 +76,8 @@ class PrenotazioneController extends Controller
                     ->where('tipologia_posto_id', $richiesta['tipologia_id'])
                     ->first();
 
-                if ($st && !$sessione->controlla_posti_globale) {
+                // Verifica per tipologia (se la tipologia ha un limite proprio)
+                if ($st && $st->posti_totali > 0) {
                     $dispTip = $st->posti_disponibili - $st->posti_riservati;
                     abort_if($dispTip < $richiesta['quantita'], 422,
                         "Posti insufficienti per la tipologia #{$richiesta['tipologia_id']}.");

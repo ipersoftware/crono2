@@ -214,7 +214,6 @@ class SessioneController extends Controller
             'data_inizio'                      => "{$req}|date",
             'data_fine'                        => "{$req}|date|after:data_inizio",
             'posti_totali'                     => 'nullable|integer|min:0',
-            'controlla_posti_globale'          => 'nullable|boolean',
             'prenotabile'                      => 'nullable|boolean',
             'forza_non_disponibile'            => 'nullable|boolean',
             'soglia_chiusura_automatica'       => 'nullable|integer|min:0',

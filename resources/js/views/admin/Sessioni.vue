@@ -105,16 +105,6 @@
           <div class="grid-2">
             <div class="form-group">
               <label class="toggle-label">
-                <span class="toggle-text">Controlla posti a livello globale</span>
-                <span class="toggle-state">{{ form.controlla_posti_globale ? 'Sì' : 'No' }}</span>
-                <span class="toggle-wrap">
-                  <input type="checkbox" v-model="form.controlla_posti_globale" class="toggle-input" />
-                  <span class="toggle-slider"></span>
-                </span>
-              </label>
-            </div>
-            <div class="form-group">
-              <label class="toggle-label">
                 <span class="toggle-text">Prenotabile</span>
                 <span class="toggle-state">{{ form.prenotabile ? 'Sì' : 'No' }}</span>
                 <span class="toggle-wrap">
@@ -259,7 +249,7 @@ const errore   = ref('')
 
 const formDefault = () => ({
   id: null, data_inizio: '', data_fine: '', posti_totali: null,
-  controlla_posti_globale: true, prenotabile: true,
+  prenotabile: true,
   forza_non_disponibile: false, attiva_lista_attesa: false,
   durata_lock_minuti: null, note_pubbliche: '', visualizza_disponibili: false,
   tipologie_posto: [], luogo_ids: [],
