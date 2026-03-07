@@ -168,7 +168,7 @@ class NotificaService
             '{{nome_ente}}'             => $ente?->nome ?? '',
             '{{email_ente}}'            => $ente?->email ?? '',
             '{{telefono_ente}}'         => $ente?->telefono ?? '',
-            '{{link_vetrina}}'          => $ente ? $frontendUrl . '/' . ($ente->shop_url ?? $ente->slug ?? '') : '',
+            '{{link_vetrina}}'          => $ente ? $frontendUrl . '/vetrina/' . ($ente->shop_url ?? $ente->slug ?? '') : '',
         ];
     }
 
