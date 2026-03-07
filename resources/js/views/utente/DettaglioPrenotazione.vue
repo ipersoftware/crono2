@@ -5,7 +5,21 @@
     <template v-else-if="prenotazione">
       <div class="page-header">
         <div>
-          <router-link to="/prenotazioni/mie" class="back-link">← Le mie prenotazioni</router-link>
+          <div class="breadcrumb">
+            <router-link to="/prenotazioni/mie" class="back-link">← Le mie prenotazioni</router-link>
+            <template v-if="prenotazione.sessione?.evento?.ente && enteIdentifier(prenotazione.sessione.evento.ente)">
+              <span class="breadcrumb-sep">/</span>
+              <router-link
+                :to="`/vetrina/${enteIdentifier(prenotazione.sessione.evento.ente)}`"
+                class="back-link"
+              >{{ prenotazione.sessione.evento.ente.nome }}</router-link>
+              <span class="breadcrumb-sep">/</span>
+              <router-link
+                :to="`/vetrina/${enteIdentifier(prenotazione.sessione.evento.ente)}/eventi/${prenotazione.sessione.evento.slug}`"
+                class="back-link"
+              >{{ prenotazione.sessione.evento.titolo }}</router-link>
+            </template>
+          </div>
           <h1>Prenotazione <span class="codice">{{ prenotazione.codice }}</span></h1>
         </div>
         <span :class="['badge', `badge-${statoClass(prenotazione.stato)}`]">{{ prenotazione.stato }}</span>
@@ -16,6 +30,14 @@
           <h2>🗓 Evento</h2>
           <p><strong>{{ prenotazione.sessione?.evento?.titolo }}</strong></p>
           <p class="muted">{{ formatDateTime(prenotazione.sessione?.data_inizio) }}</p>
+          <template v-if="prenotazione.sessione?.luoghi?.length">
+            <p v-for="l in prenotazione.sessione.luoghi" :key="l.id" class="muted">
+              📍
+              <a v-if="l.maps_url" :href="l.maps_url" target="_blank" rel="noopener" class="luogo-link">{{ l.nome }}</a>
+              <span v-else>{{ l.nome }}</span>
+              <span v-if="l.indirizzo"> — {{ l.indirizzo }}</span>
+            </p>
+          </template>
         </div>
 
         <div class="card">
@@ -36,7 +58,7 @@
               <td>{{ p.tipologia_posto?.nome ?? '–' }}</td>
               <td>{{ p.quantita }}</td>
               <td>€ {{ Number(p.costo_unitario).toFixed(2) }}</td>
-              <td>€ {{ Number(p.costo_totale).toFixed(2) }}</td>
+              <td>€ {{ Number(p.costo_riga).toFixed(2) }}</td>
             </tr>
           </tbody>
           <tfoot>
@@ -171,6 +193,7 @@ const confermAnnullamento = async () => {
 }
 
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–'
+const enteIdentifier = (ente) => ente?.shop_url || ente?.slug || null
 const statoClass = (s) => s?.toLowerCase().replace(/_/g, '-') ?? ''
 
 onMounted(carica)
@@ -179,13 +202,18 @@ onMounted(carica)
 <style scoped>
 .dettaglio-page { max-width: 820px; margin: 0 auto; }
 .page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1.5rem; }
-.back-link { display: block; color: #3498db; text-decoration: none; font-size: .85rem; margin-bottom: .25rem; }
+.back-link { color: #3498db; text-decoration: none; font-size: .85rem; }
+.back-link:hover { text-decoration: underline; }
+.breadcrumb { display: flex; align-items: center; flex-wrap: wrap; gap: .2rem; margin-bottom: .35rem; }
+.breadcrumb-sep { color: #bbb; font-size: .85rem; }
 h1 { margin: 0; }
 .codice { font-family: monospace; font-size: 1rem; color: #1a5276; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
 .card { margin-bottom: 1rem; }
 .card h2 { margin-bottom: .75rem; font-size: 1rem; }
 .muted { color: #888; font-size: .88rem; margin: .2rem 0; }
+.luogo-link { color: #2980b9; text-decoration: underline; }
+.luogo-link:hover { color: #1a5276; }
 .badge { padding: .3rem .75rem; border-radius: 12px; font-size: .82rem; font-weight: 600; text-transform: uppercase; }
 .badge-confermata       { background: #d5f5e3; color: #1a7a45; }
 .badge-da-confermare    { background: #fef9e7; color: #7d6608; }

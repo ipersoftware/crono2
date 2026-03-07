@@ -302,7 +302,7 @@ class PrenotazioneController extends Controller
         abort_if(!$autorizzato, 403, 'Accesso non autorizzato.');
 
         return response()->json(
-            $prenotazione->load(['sessione.evento', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
+            $prenotazione->load(['sessione.evento.ente', 'sessione.luoghi', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
         );
     }
 

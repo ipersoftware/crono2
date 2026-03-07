@@ -100,7 +100,7 @@
           </div>
           <div v-else class="alert-error">Il tempo è scaduto. Ricomincia la prenotazione.</div>
 
-          <form @submit.prevent="confermaPrenot" v-if="scadenzaSecondi > 0">
+          <form @submit.prevent="apriDialogConferma" v-if="scadenzaSecondi > 0">
 
             <!-- Riepilogo posti selezionati -->
             <div class="riepilogo-posti-step2">
@@ -204,9 +204,7 @@
 
             <div class="step-actions">
               <button type="button" @click="step = 1; rilasciaLock()" class="btn btn-secondary">← Modifica posti</button>
-              <button type="submit" :disabled="confermando" class="btn btn-primary">
-                {{ confermando ? 'Conferma in corso…' : '✅ Conferma prenotazione' }}
-              </button>
+              <button type="submit" class="btn btn-primary">✅ Conferma prenotazione</button>
             </div>
           </form>
         </div>
@@ -293,6 +291,29 @@
         </div>
       </template>
     </div>
+
+    <!-- Dialog di conferma prenotazione -->
+    <div v-if="dialogConferma" class="dialog-overlay" @click.self="dialogConferma = false">
+      <div class="dialog-box">
+        <div class="dialog-header">
+          <h3>Conferma prenotazione</h3>
+          <button class="dialog-close" type="button" @click="dialogConferma = false">×</button>
+        </div>
+        <p class="dialog-msg">Sei sicuro di voler procedere con la prenotazione?</p>
+        <div class="dialog-actions">
+          <button type="button" class="btn btn-secondary" @click="dialogConferma = false">No, annulla</button>
+          <button type="button" class="btn btn-primary" @click="confermaPrenot">Sì, procedi</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Splash screen di attesa -->
+    <div v-if="confermando" class="splash-overlay">
+      <div class="splash-content">
+        <div class="splash-spinner"></div>
+        <p class="splash-text">Prenotazione in corso…</p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -312,6 +333,7 @@ const erroreCaricamento = ref('')
 const errore            = ref('')
 const locking           = ref(false)
 const confermando       = ref(false)
+const dialogConferma    = ref(false)
 const step              = ref(1)
 const evento            = ref(null)
 const sessione          = ref(null)
@@ -481,7 +503,7 @@ const acquisisciLock = async () => {
   } finally { locking.value = false }
 }
 
-const confermaPrenot = async () => {
+const apriDialogConferma = () => {
   errore.value = ''
   if (!emailValida(datiPersonali.email)) {
     errore.value = 'Inserisci un indirizzo email valido.'
@@ -499,6 +521,11 @@ const confermaPrenot = async () => {
     errore.value = 'Devi acconsentire al trattamento dei dati personali per procedere.'
     return
   }
+  dialogConferma.value = true
+}
+
+const confermaPrenot = async () => {
+  dialogConferma.value = false
   confermando.value = true
   try {
     const postiPayload = Object.entries(posti)
@@ -647,6 +674,21 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .codice { font-family: monospace; font-size: 1.1rem; color: #1a5276; letter-spacing: .05em; }
 .loading { padding: 3rem; text-align: center; color: #aaa; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
+/* Dialog conferma */
+.dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.dialog-box { background: #fff; border-radius: 12px; padding: 1.5rem 1.75rem; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,.18); position: relative; }
+.dialog-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: .75rem; }
+.dialog-header h3 { margin: 0; font-size: 1.1rem; }
+.dialog-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #888; line-height: 1; padding: 0 .2rem; }
+.dialog-close:hover { color: #333; }
+.dialog-msg { font-size: .95rem; color: #444; margin: 0 0 1.25rem; padding-bottom: .9rem; border-bottom: 1px solid #eee; }
+.dialog-actions { display: flex; gap: .75rem; justify-content: flex-end; }
+/* Splash screen */
+.splash-overlay { position: fixed; inset: 0; background: rgba(255,255,255,.88); display: flex; align-items: center; justify-content: center; z-index: 1100; }
+.splash-content { display: flex; flex-direction: column; align-items: center; gap: 1.25rem; }
+.splash-spinner { width: 52px; height: 52px; border: 5px solid #d0e6f5; border-top-color: #2980b9; border-radius: 50%; animation: spin .75s linear infinite; }
+.splash-text { font-size: 1.1rem; font-weight: 600; color: #2c3e50; }
+@keyframes spin { to { transform: rotate(360deg); } }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .5rem 1.1rem; cursor: pointer; text-decoration: none; }
 @media (max-width: 600px) {
   .grid-2 { grid-template-columns: 1fr; }
