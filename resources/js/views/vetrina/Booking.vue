@@ -458,7 +458,7 @@ const postiSelezionati = computed(() => {
 const postiRimasti = computed(() => {
   const s = sessione.value
   if (!s || s.posti_totali === 0) return null
-  return Math.max(0, (s.posti_disponibili ?? 0) - totPosti.value)
+  return s.posti_disponibili ?? 0
 })
 
 const carica = async () => {
