@@ -192,12 +192,12 @@
             </thead>
             <tbody>
               <tr v-for="p in prenotazioniFiltrate" :key="p.id">
-                <td><code>{{ p.codice }}</code></td>
-                <td>{{ p.cognome }} {{ p.nome }}</td>
-                <td>{{ p.email }}</td>
-                <td class="text-center">{{ p.posti?.reduce((a,pp)=>a+pp.quantita,0) ?? '–' }}</td>
-                <td><span :class="['badge-stato', `bs-${p.stato.toLowerCase()}`]">{{ statoLabel(p.stato) }}</span></td>
-                <td>{{ formatDataOra(p.created_at) }}</td>
+                <td data-label="Codice"><code>{{ p.codice }}</code></td>
+                <td data-label="Nominativo">{{ p.cognome }} {{ p.nome }}</td>
+                <td data-label="Email">{{ p.email }}</td>
+                <td data-label="Posti" class="text-center">{{ p.posti?.reduce((a,pp)=>a+pp.quantita,0) ?? '\u2013' }}</td>
+                <td data-label="Stato"><span :class="['badge-stato', `bs-${p.stato.toLowerCase()}`]">{{ statoLabel(p.stato) }}</span></td>
+                <td data-label="Data">{{ formatDataOra(p.created_at) }}</td>
               </tr>
             </tbody>
           </table>
@@ -345,7 +345,7 @@ onMounted(carica)
 /* Modal monitoraggio */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 1rem; }
 .modal-box { background: #fff; border-radius: 10px; width: 100%; max-width: 1000px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; }
-.modal-head { display: flex; justify-content: space-between; align-items: center; padding: 1.25rem 1.5rem; border-bottom: 1px solid #eee; }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; padding: 1.25rem 1.5rem; border-bottom: 1px solid #eee; gap: .75rem; }
 .modal-head h2 { margin: 0; font-size: 1.15rem; }
 .btn-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #555; line-height: 1; }
 .monit-loading { padding: 3rem; text-align: center; color: #888; }
@@ -390,33 +390,38 @@ onMounted(carica)
 .btn-warning  { background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer; }
 
 @media (max-width: 640px) {
+  /* ── tabella eventi principale ── */
+  .filtri-row { flex-direction: column; }
+  .filtri-row .input { width: 100%; box-sizing: border-box; }
   .table thead { display: none; }
-  .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
-  .table tr {
-    border: 1px solid #e8eaed;
-    border-radius: 8px;
-    margin-bottom: .75rem;
-    padding: .5rem .75rem;
-    background: white;
-  }
-  .table td {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: .5rem;
-    padding: .45rem 0;
-    border-bottom: 1px solid #f0f0f0;
-    font-size: .9rem;
-  }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
+  .table tr { border: 1px solid #e8eaed; border-radius: 8px; margin-bottom: .75rem; padding: .5rem 0; background: white; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .table td { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; padding: .45rem .75rem; border-bottom: 1px solid #f0f0f0; font-size: .9rem; }
   .table td:last-child { border-bottom: none; }
-  .table td::before {
-    content: attr(data-label);
-    font-weight: 600;
-    color: #777;
-    font-size: .78rem;
-    white-space: nowrap;
-    padding-top: .1rem;
-  }
+  .table td::before { content: attr(data-label); font-weight: 600; color: #777; font-size: .78rem; text-transform: uppercase; white-space: nowrap; padding-top: .1rem; min-width: 80px; flex-shrink: 0; }
   .actions { justify-content: flex-end; flex-wrap: wrap; }
+
+  /* ── tabella sessioni monitoraggio ── */
+  .monit-table-wrap { padding: 0 .75rem 1rem; }
+  .monit-section { margin: 1rem .75rem .5rem; }
+  .monit-table thead { display: none; }
+  .monit-table, .monit-table tbody, .monit-table tr, .monit-table td { display: block; width: 100%; box-sizing: border-box; }
+  .monit-table tr { border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: .75rem; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .monit-table td { display: flex; justify-content: space-between; align-items: center; padding: .45rem .75rem; border-bottom: 1px solid #f5f5f5; font-size: .85rem; gap: .5rem; white-space: normal; }
+  .monit-table td:last-child { border-bottom: none; }
+  .monit-table td::before { content: attr(data-label); font-weight: 600; color: #666; font-size: .75rem; text-transform: uppercase; letter-spacing: .03em; min-width: 90px; flex-shrink: 0; }
+  .monit-table .text-center { text-align: right; }
+  .row-tipologie td { display: block; }
+  .row-tipologie td::before { display: none; }
+
+  /* ── prenotazioni drill-down ── */
+  .prenotp { margin: 0 .75rem 1rem; }
+  .prenotp-search { flex-wrap: wrap; }
+  .prenotp-input { min-width: 0; }
+
+  /* ── riepilogo card ── */
+  .monit-riepilogo { padding: .75rem; }
+  .monit-card { min-width: 80px; padding: .6rem .75rem; }
+  .monit-val { font-size: 1.25rem; }
 }
 </style>

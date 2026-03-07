@@ -409,11 +409,13 @@ onMounted(carica)
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
 .page-subheader { display: flex; justify-content: space-between; align-items: center; margin: 1.25rem 0 1rem; font-size: 1.1rem; font-weight: 600; flex-wrap: wrap; gap: .5rem; }
 .page-subheader em { font-weight: 400; }
-.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+.tabs::-webkit-scrollbar { display: none; }
 .tab-btn {
   padding: .5rem 1.2rem; border: 2px solid #ddd; border-radius: 6px;
   background: white; color: #555; cursor: pointer; font-size: .9rem;
   text-decoration: none; display: inline-block; transition: border-color .15s, color .15s;
+  white-space: nowrap; flex-shrink: 0;
 }
 .tab-btn:hover { border-color: #bbb; color: #2c3e50; }
 .tab-btn.active { border-color: #3498db; color: #3498db; font-weight: 600; background: white; }
@@ -503,7 +505,6 @@ onMounted(carica)
     white-space: nowrap;
   }
   .actions { justify-content: flex-end; }
-  .tabs { flex-wrap: wrap; }
   .grid-2 { grid-template-columns: 1fr; }
   .modal-actions { flex-direction: column-reverse; }
   .modal-actions button { width: 100%; }

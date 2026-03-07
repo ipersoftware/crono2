@@ -284,12 +284,12 @@
         </thead>
         <tbody>
           <tr v-for="(t, i) in tipologie" :key="t.id ?? i">
-            <td>{{ t.nome }}</td>
-            <td>{{ t.gratuita ? '—' : `€ ${Number(t.costo).toFixed(2)}` }}</td>
-            <td>{{ t.gratuita ? '✓' : '' }}</td>
-            <td>{{ t.min_prenotabili ?? '—' }}</td>
-            <td>{{ t.max_prenotabili ?? '—' }}</td>
-            <td class="actions-cell">
+            <td data-label="Nome">{{ t.nome }}</td>
+            <td data-label="Costo (€)">{{ t.gratuita ? '—' : `€ ${Number(t.costo).toFixed(2)}` }}</td>
+            <td data-label="Gratuita">{{ t.gratuita ? '✓' : '' }}</td>
+            <td data-label="Min posti">{{ t.min_prenotabili ?? '—' }}</td>
+            <td data-label="Max posti">{{ t.max_prenotabili ?? '—' }}</td>
+            <td data-label="Azioni" class="actions-cell">
               <button @click="apriDialogTipologia(t, i)" class="btn btn-sm btn-secondary">Modifica</button>
               <button @click="eliminaTipologia(t, i)" class="btn btn-sm btn-danger">Elimina</button>
             </td>
@@ -319,14 +319,14 @@
         </thead>
         <tbody>
           <tr v-for="(c, i) in campi" :key="c.id ?? i">
-            <td class="ordine-cell">
+            <td data-label="Ordine" class="ordine-cell">
               <button @click="spostaCampo(i, -1)" :disabled="i === 0" class="btn-ordine" title="Sposta su">↑</button>
               <button @click="spostaCampo(i, 1)" :disabled="i === campi.length - 1" class="btn-ordine" title="Sposta giù">↓</button>
             </td>
-            <td><span class="tipo-badge">{{ c.tipo }}</span></td>
-            <td>{{ c.etichetta }}</td>
-            <td>{{ c.obbligatorio ? '✓' : '' }}</td>
-            <td class="actions-cell">
+            <td data-label="Tipo"><span class="tipo-badge">{{ c.tipo }}</span></td>
+            <td data-label="Etichetta">{{ c.etichetta }}</td>
+            <td data-label="Obbligatorio">{{ c.obbligatorio ? '✓' : '' }}</td>
+            <td data-label="Azioni" class="actions-cell">
               <button @click="apriDialogCampo(c, i)" class="btn btn-sm btn-secondary">Modifica</button>
               <button @click="eliminaCampo(c, i)" class="btn btn-sm btn-danger">Elimina</button>
             </td>
@@ -350,9 +350,9 @@
         </thead>
         <tbody>
           <tr v-for="entry in logEntries" :key="entry.id">
-            <td class="log-ts">{{ formatLogDate(entry.created_at) }}</td>
-            <td class="log-user">{{ entry.user ? entry.user.nome + ' ' + entry.user.cognome : 'Sistema' }}</td>
-            <td>
+            <td data-label="Data/ora" class="log-ts">{{ formatLogDate(entry.created_at) }}</td>
+            <td data-label="Operatore" class="log-user">{{ entry.user ? entry.user.nome + ' ' + entry.user.cognome : 'Sistema' }}</td>
+            <td data-label="Descrizione">
               <span :class="['log-badge', logBadgeClass(entry.azione)]">{{ logAzioneLabel(entry.azione) }}</span>
               {{ entry.descrizione }}
             </td>
@@ -924,9 +924,10 @@ watch(() => route.params.eventoId, (newId) => {
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; }
-.tab-btn { padding: .5rem 1.2rem; border: 2px solid #ddd; border-radius: 6px; background: white; cursor: pointer; font-size: .9rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .75rem; }
+.tabs { display: flex; gap: .5rem; margin-bottom: 1rem; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: 2px; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab-btn { padding: .5rem 1.2rem; border: 2px solid #ddd; border-radius: 6px; background: white; cursor: pointer; font-size: .9rem; white-space: nowrap; flex-shrink: 0; }
 .tab-btn.active { border-color: #3498db; color: #3498db; font-weight: 600; }
 .tab-btn:disabled { opacity: .4; cursor: not-allowed; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -994,7 +995,18 @@ watch(() => route.params.eventoId, (newId) => {
 .table { width: 100%; border-collapse: collapse; }
 .table th, .table td { padding: .6rem .75rem; text-align: left; border-bottom: 1px solid #eee; font-size: .9rem; }
 .table th { background: #f8f9fa; font-weight: 600; }
-.actions-cell { display: flex; gap: .4rem; }
+.actions-cell { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+@media (max-width: 768px) {
+  .table thead { display: none; }
+  .table, .table tbody, .table tr, .table td { display: block; width: 100%; box-sizing: border-box; }
+  .table tr { border: 1px solid #ddd; border-radius: 8px; margin-bottom: .9rem; padding: .3rem 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.07); }
+  .table td { display: flex; justify-content: space-between; align-items: center; padding: .45rem .75rem; border-bottom: 1px solid #f0f0f0; font-size: .88rem; gap: .5rem; }
+  .table td:last-child { border-bottom: none; }
+  .table td::before { content: attr(data-label); font-weight: 600; color: #555; font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; min-width: 100px; flex-shrink: 0; }
+  .actions-cell { justify-content: flex-end; }
+  .ordine-cell { justify-content: space-between; }
+}
 .tipo-badge { background: #e8f4fd; color: #2980b9; padding: .15rem .5rem; border-radius: 4px; font-size: .8rem; font-weight: 600; }
 .ordine-cell { white-space: nowrap; }
 .btn-ordine { background: none; border: 1px solid #ddd; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: .85rem; line-height: 1; padding: 0; color: #555; }
@@ -1019,4 +1031,14 @@ watch(() => route.params.eventoId, (newId) => {
 .log-badge-info    { background: #d6eaf8; color: #1a5276; }
 .log-badge-default { background: #f0f0f0; color: #555; }
 .log-pagination { display: flex; align-items: center; gap: 1rem; justify-content: center; margin-top: 1rem; font-size: .9rem; }
+
+@media (max-width: 768px) {
+  .log-table thead { display: none; }
+  .log-table, .log-table tbody, .log-table tr, .log-table td { display: block; width: 100%; box-sizing: border-box; }
+  .log-table tr { border: 1px solid #e8eaed; border-radius: 8px; margin-bottom: .75rem; padding: .25rem 0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
+  .log-table td { display: flex; justify-content: space-between; align-items: flex-start; gap: .5rem; padding: .5rem .75rem; border-bottom: 1px solid #f0f0f0; font-size: .88rem; }
+  .log-table td:last-child { border-bottom: none; }
+  .log-table td::before { content: attr(data-label); font-weight: 600; color: #777; font-size: .75rem; text-transform: uppercase; white-space: nowrap; min-width: 80px; flex-shrink: 0; padding-top: .1rem; }
+  .log-table .log-ts { white-space: normal; }
+}
 </style>

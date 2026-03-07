@@ -150,17 +150,17 @@ onMounted(carica)
 </script>
 
 <style scoped>
-.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+.page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .75rem; }
 .layout { display: grid; grid-template-columns: 240px 1fr; gap: 1rem; align-items: start; }
 .sidebar { padding: .5rem; }
-.tipo-item { padding: .6rem .85rem; border-radius: 6px; cursor: pointer; margin-bottom: .2rem; display: flex; justify-content: space-between; align-items: center; }
+.tipo-item { padding: .6rem .85rem; border-radius: 6px; cursor: pointer; margin-bottom: .2rem; display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .tipo-item:hover { background: #f0f4f8; }
 .tipo-item.active { background: #ebf5fb; color: #1a5276; font-weight: 600; }
 .tipo-nome { font-size: .88rem; }
-.badge-custom { background: #d6eaf8; color: #1a5276; border-radius: 8px; padding: .1rem .45rem; font-size: .7rem; }
+.badge-custom { background: #d6eaf8; color: #1a5276; border-radius: 8px; padding: .1rem .45rem; font-size: .7rem; white-space: nowrap; flex-shrink: 0; }
 .empty { padding: 3rem; text-align: center; color: #aaa; }
-.editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; }
-.editor-actions { display: flex; gap: .5rem; }
+.editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; flex-wrap: wrap; gap: .6rem; }
+.editor-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
 .form-group { margin-bottom: .9rem; }
 .form-group label { display: block; margin-bottom: .3rem; font-weight: 500; font-size: .9rem; }
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
@@ -173,4 +173,14 @@ onMounted(carica)
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; }
+
+@media (max-width: 768px) {
+  .layout { grid-template-columns: 1fr; }
+  .sidebar { padding: .25rem; }
+  .tipo-item { padding: .55rem .75rem; }
+  .editor-header { flex-direction: column; align-items: flex-start; }
+  .editor-actions { width: 100%; }
+  .editor-actions .btn { flex: 1; text-align: center; }
+  .anteprima-corpo { min-height: 180px; }
+}
 </style>
