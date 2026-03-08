@@ -174,7 +174,6 @@
               <input type="number" v-model.number="form.lista_attesa_finestra_conferma_ore"
                      class="form-control" min="1" placeholder="es. 24" />
             </div>
-          </div>
 
           <!-- Posti per tipologia (mostrati solo se l'evento ha tipologie) -->
           <div v-if="form.tipologie_posto.length > 0" class="form-group">
