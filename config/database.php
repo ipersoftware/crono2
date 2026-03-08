@@ -122,6 +122,20 @@ return [
             'strict'    => true,
         ],
 
+        // Connessione al database Crono1 (sorgente migrazione dati legacy).
+        'crono1' => [
+            'driver'    => 'mysql',
+            'host'      => env('CRONO1_DB_HOST',     env('DB_HOST', '127.0.0.1')),
+            'port'      => env('CRONO1_DB_PORT',     env('DB_PORT', '3306')),
+            'database'  => env('CRONO1_DB_DATABASE', 'crono_migration'),
+            'username'  => env('CRONO1_DB_USERNAME', env('DB_USERNAME', 'root')),
+            'password'  => env('CRONO1_DB_PASSWORD', env('DB_PASSWORD', '')),
+            'charset'   => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix'    => '',
+            'strict'    => false,
+        ],
+
     ],
 
     /*
