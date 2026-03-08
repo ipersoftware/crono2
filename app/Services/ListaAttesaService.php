@@ -133,12 +133,32 @@ class ListaAttesaService
             return;
         }
 
+        // Posti effettivamente disponibili (esclusi i riservati da lock attivi)
+        $postiLiberi = $sessione->posti_totali > 0
+            ? max(0, $sessione->posti_disponibili - ($sessione->posti_riservati ?? 0))
+            : PHP_INT_MAX;
+
+        if ($postiLiberi <= 0) {
+            return;
+        }
+
+        // Cerca il primo candidato la cui richiesta rientra nei posti disponibili
         $prenotazione = Prenotazione::where('sessione_id', $sessione->id)
             ->where('stato', 'IN_LISTA_ATTESA')
+            ->where(function ($q) use ($postiLiberi, $sessione) {
+                // Se la sessione ha posti illimitati (posti_totali = 0) accetta tutti
+                if ($sessione->posti_totali === 0) {
+                    $q->whereRaw('1=1');
+                } else {
+                    $q->where('posti_prenotati', '<=', $postiLiberi);
+                }
+            })
             ->orderBy('posizione_lista_attesa')
             ->first();
 
         if (!$prenotazione) {
+            // Nessun candidato compatibile: i posti liberati sono insufficienti
+            // per chiunque in lista; si attende un ulteriore annullamento.
             return;
         }
 
