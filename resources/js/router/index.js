@@ -101,6 +101,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/admin/:enteId/vetrina',
+    name: 'AdminVetrina',
+    component: () => import('@/views/admin/VetrinaSettings.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/admin/:enteId/richieste-contatto',
     name: 'AdminRichiesteContatto',
     component: () => import('@/views/admin/RichiesteContatto.vue'),

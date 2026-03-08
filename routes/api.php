@@ -69,6 +69,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/enti/governance/importa',    [EnteController::class, 'importaDaGovernance']);
     Route::post('/enti/{ente}/sincronizza-template',       [EnteController::class, 'sincronizzaTemplate']);
     Route::post('/enti/{ente}/aggiorna-da-governance',      [EnteController::class, 'aggiornaAnagraficaGovernance']);
+    Route::patch('/enti/{ente}/vetrina',                    [EnteController::class, 'aggiornaVetrina']);
+    Route::post('/enti/{ente}/vetrina/copertina',           [EnteController::class, 'uploadCopertina']);
+    Route::delete('/enti/{ente}/vetrina/copertina',         [EnteController::class, 'eliminaCopertina']);
 
     // Prenotazioni utente autenticato
     Route::get('/prenotazioni/mie', [PrenotazioneController::class, 'mie']);

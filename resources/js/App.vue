@@ -22,8 +22,7 @@
             <router-link :to="`/admin/${enteId}/tags`">🏷 Tag</router-link>
             <router-link :to="`/admin/${enteId}/luoghi`">📍 Luoghi</router-link>
             <router-link :to="`/admin/${enteId}/serie`">📚 Serie</router-link>
-            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>
-          </template>
+            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>            <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>          </template>
 
           <!-- Utente autenticato -->
           <router-link to="/prenotazioni/mie">Le mie prenotazioni</router-link>

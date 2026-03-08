@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Ente;
 use App\Models\MailTemplate;
+use App\Services\DocumentStorageService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class EnteController extends Controller
 {
+    public function __construct(
+        protected DocumentStorageService $documentStorage,
+    ) {}
     /**
      * Lista enti
      */
@@ -265,6 +270,66 @@ class EnteController extends Controller
             'creati'     => $creati,
             'aggiornati' => $aggiornati,
         ]);
+    }
+
+    // ─── Vetrina ───────────────────────────────────────────────────────────────
+
+    /**
+     * PATCH /api/enti/{ente}/vetrina
+     * Aggiorna colori e copertina della vetrina pubblica dell'ente.
+     */
+    public function aggiornaVetrina(Request $request, Ente $ente): JsonResponse
+    {
+        $validated = $request->validate([
+            'colore_primario'   => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+            'colore_secondario' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
+        ]);
+
+        $config = $ente->config ?? [];
+        if (array_key_exists('colore_primario', $validated)) {
+            $config['colore_primario'] = $validated['colore_primario'];
+        }
+        if (array_key_exists('colore_secondario', $validated)) {
+            $config['colore_secondario'] = $validated['colore_secondario'];
+        }
+
+        $ente->update(['config' => $config]);
+        $ente->refresh();
+
+        return response()->json($ente);
+    }
+
+    /**
+     * POST /api/enti/{ente}/vetrina/copertina
+     * Carica l'immagine di copertina della vetrina.
+     */
+    public function uploadCopertina(Request $request, Ente $ente): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:3072',
+        ]);
+
+        $document = $this->documentStorage->store(
+            $request->file('file'),
+            $ente->id,
+            'Copertina vetrina: ' . $ente->nome
+        );
+
+        $url = $this->documentStorage->url($document);
+        $ente->update(['copertina' => $url]);
+
+        return response()->json(['copertina' => $url, 'document_id' => $document->id]);
+    }
+
+    /**
+     * DELETE /api/enti/{ente}/vetrina/copertina
+     * Rimuove l'immagine di copertina della vetrina.
+     */
+    public function eliminaCopertina(Ente $ente): JsonResponse
+    {
+        $ente->update(['copertina' => null]);
+
+        return response()->json(['copertina' => null]);
     }
 
     /**
