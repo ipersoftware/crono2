@@ -41,6 +41,7 @@ class VetrinaController extends Controller
                 'slug'               => $ente->slug,
                 'shop_url'           => $ente->shop_url,
                 'copertina'          => $ente->copertina,
+                'config'             => $ente->config ?? [],
                 'contenuto_vetrina'  => $ente->contenuto_vetrina,
                 'indirizzo'          => $ente->indirizzo,
                 'citta'              => $ente->citta,

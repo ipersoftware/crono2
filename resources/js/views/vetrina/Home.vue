@@ -20,7 +20,7 @@
       <section
         class="hero"
         :class="{ 'hero--img': ente.copertina }"
-        :style="ente.copertina ? { backgroundImage: `url(${ente.copertina})` } : {}"
+        :style="heroStyle"
       >
         <div class="hero-overlay">
           <div class="hero-content">
@@ -250,6 +250,18 @@ const heroSubtitle = computed(() => {
   if (!ente.value?.contenuto_vetrina) return ''
   const plain = ente.value.contenuto_vetrina.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   return plain.length > 140 ? plain.slice(0, 140) + '…' : plain
+})
+
+const heroStyle = computed(() => {
+  if (!ente.value) return {}
+  const cfg = ente.value.config ?? {}
+  if (ente.value.copertina) return { backgroundImage: `url(${ente.value.copertina})` }
+  const p = cfg.colore_primario
+  const s = cfg.colore_secondario
+  if (p && s) return { background: `linear-gradient(135deg, ${p} 0%, ${s} 100%)` }
+  if (p)      return { background: `linear-gradient(135deg, ${p} 0%, #3a8ef6 100%)` }
+  if (s)      return { background: `linear-gradient(135deg, #4a1fa8 0%, ${s} 100%)` }
+  return {}
 })
 
 // Gradiente deterministico per eventi senza immagine
