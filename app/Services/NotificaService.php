@@ -119,6 +119,79 @@ class NotificaService
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 
+    /**
+     * Invia notifica email per una prenotazione in stato lista d'attesa.
+     *
+     * @param  Prenotazione $prenotazione  Stato IN_LISTA_ATTESA, NOTIFICATO o simile
+     * @param  string       $tipo          Es. 'LISTA_ATTESA_ISCRIZIONE'
+     * @param  array        $extraPlaceholders
+     */
+    public function inviaAListaAttesa(Prenotazione $prenotazione, string $tipo, array $extraPlaceholders = []): void
+    {
+        if (!$prenotazione->relationLoaded('sessione')) {
+            $prenotazione->load(['sessione.evento.ente', 'sessione.luoghi']);
+        }
+
+        $sessione = $prenotazione->sessione;
+        $evento   = $sessione?->evento;
+        $ente     = $evento?->ente;
+
+        if (!$ente) {
+            Log::warning("NotificaService: ente non trovato per prenotazione #{$prenotazione->id} (lista attesa), tipo {$tipo}");
+            return;
+        }
+
+        $template = MailTemplate::risolvi($ente->id, $tipo);
+        if (!$template) {
+            Log::info("NotificaService: nessun template attivo per tipo {$tipo}, ente #{$ente->id}");
+            return;
+        }
+
+        $luogo        = $sessione?->luoghi?->first();
+        $frontendUrl  = rtrim(config('app.frontend_url', ''), '/');
+        $placeholders = array_merge([
+            '{{nome_utente}}'            => $prenotazione->nome ?? '',
+            '{{cognome_utente}}'         => $prenotazione->cognome ?? '',
+            '{{email_utente}}'           => $prenotazione->email ?? '',
+            '{{titolo_evento}}'          => $evento?->titolo ?? '',
+            '{{data_sessione}}'          => $sessione?->data_inizio?->translatedFormat('d F Y') ?? '',
+            '{{ora_inizio}}'             => $sessione?->data_inizio?->format('H:i') ?? '',
+            '{{ora_fine}}'               => $sessione?->data_fine?->format('H:i') ?? '',
+            '{{luogo_evento}}'           => $luogo?->nome ?? '',
+            '{{indirizzo_luogo}}'        => $luogo ? trim(($luogo->indirizzo ?? '') . ', ' . ($luogo->citta ?? ''), ', ') : '',
+            '{{posti_richiesti}}'        => (string) ($prenotazione->posti_prenotati ?? 0),
+            '{{posizione_lista_attesa}}' => (string) ($prenotazione->posizione_lista_attesa ?? '–'),
+            '{{link_conferma_attesa}}'   => $frontendUrl . '/lista-attesa/' . ($prenotazione->token_accesso ?? '') . '/conferma',
+            '{{scadenza_conferma}}'      => $prenotazione->scadenza_riserva
+                ? $prenotazione->scadenza_riserva->translatedFormat('d F Y \a\l\l\e H:i')
+                : '',
+            '{{codice_prenotazione}}'    => $prenotazione->codice ?? '',
+            '{{nome_ente}}'              => $ente?->nome ?? '',
+            '{{email_ente}}'             => $ente?->email ?? '',
+            '{{telefono_ente}}'          => $ente?->telefono ?? '',
+            '{{link_vetrina}}'           => $ente ? $frontendUrl . '/vetrina/' . ($ente->shop_url ?? $ente->slug ?? '') : '',
+        ], $extraPlaceholders);
+
+        ['oggetto' => $oggetto, 'corpo' => $corpo] = $template->renderizza($placeholders);
+
+        $log = NotificaLog::create([
+            'ente_id'            => $ente->id,
+            'prenotazione_id'    => $prenotazione->id,
+            'tipo'               => $tipo,
+            'destinatario_email' => $prenotazione->email,
+            'oggetto'            => $oggetto,
+            'stato'              => 'IN_CODA',
+        ]);
+
+        try {
+            Mail::to($prenotazione->email)->send(new TemplatePrenotazioneMail($oggetto, $corpo));
+            $log->update(['stato' => 'INVIATA', 'inviata_at' => now()]);
+        } catch (\Throwable $e) {
+            $log->update(['stato' => 'ERRORE', 'errore' => $e->getMessage()]);
+            Log::error("NotificaService: errore invio {$tipo} a {$prenotazione->email}: {$e->getMessage()}");
+        }
+    }
+
     private function buildPlaceholders(Prenotazione $prenotazione): array
     {
         $sessione = $prenotazione->sessione;

@@ -29,4 +29,11 @@ export const prenotazioniApi = {
 
   annullaAdmin: (enteId, prenotazioneId, motivo = '') =>
     api.delete(`/enti/${enteId}/prenotazioni/${prenotazioneId}`, { data: { motivo_annullamento: motivo } }),
+
+  // Lista d'attesa
+  iscriviListaAttesa: (data) =>
+    api.post('/prenotazioni/lista-attesa', data),
+
+  confermaListaAttesa: (token) =>
+    api.post(`/lista-attesa/${token}/conferma`),
 }

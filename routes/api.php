@@ -5,6 +5,7 @@ use App\Http\Controllers\CampoFormController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnteController;
 use App\Http\Controllers\EventoController;
+use App\Http\Controllers\ListaAttesaController;
 use App\Http\Controllers\EventoLogController;
 use App\Http\Controllers\LuogoController;
 use App\Http\Controllers\MailTemplateController;
@@ -49,6 +50,8 @@ Route::delete('/prenotazioni/lock/{token}',    [PrenotazioneController::class, '
 Route::post('/prenotazioni',                   [PrenotazioneController::class, 'store']);
 Route::get('/prenotazioni/{codice}',           [PrenotazioneController::class, 'show']);
 Route::delete('/prenotazioni/{codice}',        [PrenotazioneController::class, 'annullaUtente']);
+Route::post('/prenotazioni/lista-attesa',       [ListaAttesaController::class, 'store']);
+Route::post('/lista-attesa/{token}/conferma',   [ListaAttesaController::class, 'conferma']);
 
 // -------------------------------------------------------
 // Rotte protette

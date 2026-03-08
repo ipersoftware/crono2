@@ -35,15 +35,18 @@ class Prenotazione extends Model
         'data_annullamento',
         'motivo_annullamento',
         'annullata_da_user_id',
+        'posizione_lista_attesa',
+        'notificato_at',
     ];
 
     protected $casts = [
-        'data_prenotazione'  => 'datetime',
-        'scadenza_riserva'   => 'datetime',
-        'data_annullamento'  => 'datetime',
-        'costo_totale'       => 'decimal:2',
-        'privacy_ok'         => 'boolean',
-        'evento_snapshot'    => 'array',
+        'data_prenotazione'      => 'datetime',
+        'scadenza_riserva'       => 'datetime',
+        'data_annullamento'      => 'datetime',
+        'notificato_at'          => 'datetime',
+        'costo_totale'           => 'decimal:2',
+        'privacy_ok'             => 'boolean',
+        'evento_snapshot'        => 'array',
     ];
 
     // ─── Relazioni ────────────────────────────────────────────────────────────
@@ -99,6 +102,11 @@ class Prenotazione extends Model
 
     public function isAnnullabile(): bool
     {
+        // Iscrizioni alla lista d'attesa: sempre cancellabili (non hanno sottratto posti)
+        if (in_array($this->stato, ['IN_LISTA_ATTESA', 'NOTIFICATO'])) {
+            return true;
+        }
+
         if (!in_array($this->stato, ['CONFERMATA', 'DA_CONFERMARE'])) {
             return false;
         }

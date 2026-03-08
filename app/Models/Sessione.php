@@ -32,6 +32,7 @@ class Sessione extends Model
         'soglia_overbooking_percentuale',
         'soglia_overbooking_assoluta',
         'attiva_lista_attesa',
+        'tipo_conferma',
         'lista_attesa_finestra_conferma_ore',
         'durata_lock_minuti',
         'note_pubbliche',
@@ -46,6 +47,7 @@ class Sessione extends Model
         'prenotabile'               => 'boolean',
         'forza_non_disponibile'     => 'boolean',
         'attiva_lista_attesa'       => 'boolean',
+        'tipo_conferma'             => 'string',
         'visualizza_disponibili'    => 'boolean',
         'attributi'                 => 'array',
     ];
@@ -77,10 +79,8 @@ class Sessione extends Model
         return $this->hasMany(PrenotazioneTemporanea::class);
     }
 
-    public function listaAttesa(): HasMany
-    {
-        return $this->hasMany(ListaAttesa::class);
-    }
+    // Nota: la lista d'attesa è gestita tramite Prenotazione con stato IN_LISTA_ATTESA / NOTIFICATO.
+    // Usa: $sessione->prenotazioni()->whereIn('stato', ['IN_LISTA_ATTESA', 'NOTIFICATO'])
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
 

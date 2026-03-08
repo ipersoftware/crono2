@@ -43,13 +43,12 @@
 
           <div class="form-group">
             <label>Corpo HTML</label>
-            <div class="helper">Usa <code v-pre>{{nome}}</code>, <code v-pre>{{codice}}</code>, <code v-pre>{{evento}}</code>, <code v-pre>{{link}}</code>, ecc.</div>
-            <div class="corpo-tabs">
-              <button type="button" :class="['tab-btn', { active: corpoTab === 'modifica' }]" @click="corpoTab = 'modifica'">✏️ Modifica</button>
-              <button type="button" :class="['tab-btn', { active: corpoTab === 'anteprima' }]" @click="corpoTab = 'anteprima'">👁 Anteprima</button>
-            </div>
-            <textarea v-if="corpoTab === 'modifica'" v-model="form.corpo" rows="16" class="input mono-area"></textarea>
-            <div v-else class="anteprima-corpo" v-html="form.corpo"></div>
+            <div class="helper">Usa <code v-pre>{{nome_utente}}</code>, <code v-pre>{{codice_prenotazione}}</code>, <code v-pre>{{titolo_evento}}</code>, <code v-pre>{{link_conferma}}</code>, ecc.</div>
+            <Editor
+              v-model="form.corpo"
+              api-key="jzd2a0zvkf6gmknn3yaxfk66pb6c1zzjnap5x6uzxo717ufn"
+              :init="tinyInit"
+            />
           </div>
 
           <div v-if="errore" class="alert-error">{{ errore }}</div>
@@ -61,11 +60,32 @@
 
 <script setup>
 import { mailTemplatesApi } from '@/api/admin'
+import Editor from '@tinymce/tinymce-vue'
 import { onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route  = useRoute()
 const enteId = route.params.enteId
+
+const tinyInit = {
+  height: 480,
+  menubar: false,
+  plugins: [
+    'advlist', 'autolink', 'lists', 'link', 'charmap',
+    'searchreplace', 'visualblocks', 'code', 'fullscreen',
+    'table', 'wordcount',
+  ],
+  toolbar:
+    'undo redo | blocks | bold italic underline | forecolor backcolor | ' +
+    'alignleft aligncenter alignright alignjustify | ' +
+    'bullist numlist outdent indent | link | code | removeformat',
+  content_style: 'body { font-family: Arial, sans-serif; font-size: 14px; line-height: 1.6; }',
+  entity_encoding: 'raw',
+  verify_html: false,
+  valid_elements: '*[*]',
+  extended_valid_elements: '*[*]',
+  valid_children: '+body[style]',
+}
 
 const tipiDisponibili = [
   'PRENOTAZIONE_CONFERMATA',
@@ -89,7 +109,6 @@ const tipoAttivo           = ref(null)
 const saving               = ref(false)
 const errore               = ref('')
 const form = reactive({ oggetto: '', corpo: '' })
-const corpoTab = ref('modifica')
 
 const carica = async () => {
   const res = await mailTemplatesApi.index(enteId)
@@ -103,7 +122,6 @@ const seleziona = async (tipo) => {
   try {
     const res = await mailTemplatesApi.show(enteId, tipo)
     Object.assign(form, { oggetto: res.data.oggetto, corpo: res.data.corpo })
-    corpoTab.value = 'modifica'
   } catch {
     Object.assign(form, { oggetto: '', corpo: '' })
   }
@@ -164,11 +182,7 @@ onMounted(carica)
 .form-group { margin-bottom: .9rem; }
 .form-group label { display: block; margin-bottom: .3rem; font-weight: 500; font-size: .9rem; }
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
-.mono-area { font-family: 'Courier New', monospace; font-size: .85rem; }
-.corpo-tabs { display: flex; gap: .35rem; margin-bottom: .4rem; }
-.tab-btn { padding: .25rem .75rem; border: 1px solid #ddd; border-radius: 6px 6px 0 0; background: #f8f9fa; cursor: pointer; font-size: .82rem; }
-.tab-btn.active { background: #fff; border-bottom-color: #fff; font-weight: 600; color: #1a5276; }
-.anteprima-corpo { border: 1px solid #ddd; border-radius: 0 6px 6px 6px; padding: 1rem 1.25rem; min-height: 260px; background: #fff; font-size: .9rem; line-height: 1.6; overflow-y: auto; }
+
 .helper { font-size: .8rem; color: #888; margin-bottom: .35rem; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; }
@@ -181,6 +195,5 @@ onMounted(carica)
   .editor-header { flex-direction: column; align-items: flex-start; }
   .editor-actions { width: 100%; }
   .editor-actions .btn { flex: 1; text-align: center; }
-  .anteprima-corpo { min-height: 180px; }
 }
 </style>

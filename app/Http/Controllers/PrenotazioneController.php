@@ -10,6 +10,7 @@ use App\Models\RispostaForm;
 use App\Models\Sessione;
 use App\Models\SessioneTipologiaPosto;
 use App\Services\NotificaService;
+use App\Services\ListaAttesaService;
 use App\Services\EventoLogService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,8 +20,9 @@ use Illuminate\Support\Str;
 class PrenotazioneController extends Controller
 {
     public function __construct(
-        private readonly NotificaService $notifiche,
-        private readonly EventoLogService $log,
+        private readonly NotificaService     $notifiche,
+        private readonly EventoLogService    $log,
+        private readonly ListaAttesaService  $listaAttesa,
     ) {}
 
     // ----------------------------------------
@@ -412,22 +414,32 @@ class PrenotazioneController extends Controller
     private function eseguiAnnullamento(Prenotazione $prenotazione, string $nuovoStato, ?string $motivo = null): JsonResponse
     {
         return DB::transaction(function () use ($prenotazione, $nuovoStato, $motivo) {
+            $eraListaAttesa = in_array($prenotazione->stato, ['IN_LISTA_ATTESA', 'NOTIFICATO']);
+
             $prenotazione->update([
-                'stato'               => $nuovoStato,
-                'data_annullamento'   => now(),
-                'motivo_annullamento' => $motivo,
+                'stato'                  => $nuovoStato,
+                'data_annullamento'      => now(),
+                'motivo_annullamento'    => $motivo,
+                'posizione_lista_attesa' => null,
             ]);
 
-            // Libera i posti
             $sessione = Sessione::find($prenotazione->sessione_id);
             if ($sessione) {
                 $totale = $prenotazione->posti()->sum('quantita');
-                $sessione->increment('posti_disponibili', $totale);
 
-                foreach ($prenotazione->posti as $posto) {
-                    SessioneTipologiaPosto::where('sessione_id', $sessione->id)
-                        ->where('tipologia_posto_id', $posto->tipologia_posto_id)
-                        ->increment('posti_disponibili', $posto->quantita);
+                if ($eraListaAttesa) {
+                    // Le prenotazioni in lista attesa non occupano posti_disponibili:
+                    // basta decrementare posti_in_attesa
+                    $sessione->decrement('posti_in_attesa', min($totale, $sessione->posti_in_attesa ?? 0));
+                } else {
+                    // Prenotazione reale: restituisce i posti
+                    $sessione->increment('posti_disponibili', $totale);
+
+                    foreach ($prenotazione->posti as $posto) {
+                        SessioneTipologiaPosto::where('sessione_id', $sessione->id)
+                            ->where('tipologia_posto_id', $posto->tipologia_posto_id)
+                            ->increment('posti_disponibili', $posto->quantita);
+                    }
                 }
             }
 
@@ -435,12 +447,18 @@ class PrenotazioneController extends Controller
         $tipoNotifica = $nuovoStato === 'ANNULLATA_UTENTE' ? 'PRENOTAZIONE_ANNULLATA_UTENTE' : 'PRENOTAZIONE_ANNULLATA_OPERATORE';
         $this->notifiche->invia($prenotazione, $tipoNotifica);
 
-        $attore = $nuovoStato === 'ANNULLATA_UTENTE' ? 'dall\'utente' : 'dall\'operatore';
+        // Triggera promozione lista d'attesa solo se si è liberato un posto reale
+        if ($sessione && !$eraListaAttesa) {
+            $this->listaAttesa->processaPromozione($sessione);
+        }
+
+        $attore    = $nuovoStato === 'ANNULLATA_UTENTE' ? 'dall\'utente' : 'dall\'operatore';
         $motivoLog = $motivo ? " Motivo: {$motivo}." : '';
+        $prefisso  = $eraListaAttesa ? 'Lista attesa rimossa' : 'Prenotazione annullata';
         $this->log->log(
             $prenotazione->sessione->evento_id,
             'prenotazione.annullata',
-            "Prenotazione {$prenotazione->codice} annullata {$attore} ({$prenotazione->cognome} {$prenotazione->nome}).{$motivoLog}",
+            "{$prefisso} {$prenotazione->codice} {$attore} ({$prenotazione->cognome} {$prenotazione->nome}).{$motivoLog}",
             $motivo ? ['motivo' => $motivo] : null
         );
 

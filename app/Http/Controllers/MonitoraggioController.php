@@ -25,6 +25,7 @@ class MonitoraggioController extends Controller
                 'prenotazioni as prenotazioni_confermate' => fn ($q) => $q->where('stato', 'CONFERMATA'),
                 'prenotazioni as prenotazioni_da_confermare' => fn ($q) => $q->where('stato', 'DA_CONFERMARE'),
                 'prenotazioni as prenotazioni_annullate' => fn ($q) => $q->whereIn('stato', ['ANNULLATA_UTENTE', 'ANNULLATA_OPERATORE']),
+                'prenotazioni as in_lista_attesa' => fn ($q) => $q->whereIn('stato', ['IN_LISTA_ATTESA', 'NOTIFICATO']),
             ])
             ->orderBy('data_inizio')
             ->get();
@@ -36,6 +37,7 @@ class MonitoraggioController extends Controller
         $totaleConfermate      = Prenotazione::whereIn('sessione_id', $sessioniIds)->where('stato', 'CONFERMATA')->count();
         $totaleDaConfermare    = Prenotazione::whereIn('sessione_id', $sessioniIds)->where('stato', 'DA_CONFERMARE')->count();
         $totaleAnnullate       = Prenotazione::whereIn('sessione_id', $sessioniIds)->whereIn('stato', ['ANNULLATA_UTENTE', 'ANNULLATA_OPERATORE'])->count();
+        $totaleInListaAttesa   = Prenotazione::whereIn('sessione_id', $sessioniIds)->whereIn('stato', ['IN_LISTA_ATTESA', 'NOTIFICATO'])->count();
 
         $totalePostiTotali     = $sessioni->sum('posti_totali');
         $totalePostiDisponibili = $sessioni->sum('posti_disponibili');
@@ -53,6 +55,8 @@ class MonitoraggioController extends Controller
                 'prenotazioni_confermate' => $s->prenotazioni_confermate,
                 'prenotazioni_da_confermare' => $s->prenotazioni_da_confermare,
                 'prenotazioni_annullate'  => $s->prenotazioni_annullate,
+                'in_lista_attesa'         => $s->in_lista_attesa ?? 0,
+                'attiva_lista_attesa'     => (bool) $s->attiva_lista_attesa,
                 'tipologie'               => $s->tipologiePosto->map(fn ($tp) => [
                     'nome'             => $tp->tipologiaPosto->nome ?? '–',
                     'posti_totali'     => $tp->posti_totali,
@@ -73,6 +77,7 @@ class MonitoraggioController extends Controller
                 'prenotazioni_confermate'    => $totaleConfermate,
                 'prenotazioni_da_confermare' => $totaleDaConfermare,
                 'prenotazioni_annullate'     => $totaleAnnullate,
+                'in_lista_attesa'            => $totaleInListaAttesa,
                 'posti_totali'               => $totalePostiTotali,
                 'posti_disponibili'          => $totalePostiDisponibili,
             ],

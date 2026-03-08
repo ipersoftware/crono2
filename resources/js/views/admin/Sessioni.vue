@@ -33,6 +33,7 @@
             <th>Fine</th>
             <th>Posti totali</th>
             <th>Disponibili</th>
+            <th>In attesa</th>
             <th>Azioni</th>
           </tr>
         </thead>
@@ -43,13 +44,17 @@
               <td data-label="Fine">{{ formatDateTime(s.data_fine) }}</td>
               <td data-label="Posti totali">{{ s.posti_totali ?? '∞' }}</td>
               <td data-label="Disponibili">{{ s.posti_disponibili ?? '—' }}</td>
+              <td data-label="In attesa">
+                <span v-if="s.in_lista_attesa > 0" class="badge badge-warning">⏳ {{ s.in_lista_attesa }}</span>
+                <span v-else class="muted">—</span>
+              </td>
               <td data-label="Azioni" class="actions">
                 <button @click="apriModal(s)" class="btn btn-sm btn-primary">Modifica</button>
                 <button @click="elimina(s)" class="btn btn-sm btn-danger">Elimina</button>
               </td>
             </tr>
             <tr v-if="s.tipologie_posto?.length" class="row-tipologie">
-              <td colspan="5">
+              <td colspan="6">
                 <div class="tipologie-breakdown">
                   <span
                     v-for="tp in s.tipologie_posto" :key="tp.id"
@@ -62,7 +67,7 @@
               </td>
             </tr>
             <tr v-if="s.luoghi?.length" class="row-tipologie">
-              <td colspan="5">
+              <td colspan="6">
                 <div class="tipologie-breakdown">
                   <span v-for="l in s.luoghi" :key="l.id" class="tp-badge tp-badge--luogo">
                     📍 {{ l.nome }}
@@ -134,6 +139,19 @@
                   <span class="toggle-slider"></span>
                 </span>
               </label>
+            </div>
+            <div v-if="form.attiva_lista_attesa" class="form-group">
+              <label>Tipo conferma lista d'attesa</label>
+              <select v-model="form.tipo_conferma" class="form-control">
+                <option value="NESSUNA">Nessuna (solo notifica, niente prenotazione)</option>
+                <option value="PRENOTAZIONE_AUTOMATICA">Prenotazione automatica</option>
+                <option value="PRENOTAZIONE_DA_CONFERMARE">Prenotazione da confermare dall'utente</option>
+              </select>
+            </div>
+            <div v-if="form.attiva_lista_attesa && form.tipo_conferma === 'PRENOTAZIONE_DA_CONFERMARE'" class="form-group">
+              <label>Finestra di conferma (ore)</label>
+              <input type="number" v-model.number="form.lista_attesa_finestra_conferma_ore"
+                     class="form-control" min="1" placeholder="es. 24" />
             </div>
           </div>
 
@@ -251,6 +269,7 @@ const formDefault = () => ({
   id: null, data_inizio: '', data_fine: '', posti_totali: null,
   prenotabile: true,
   forza_non_disponibile: false, attiva_lista_attesa: false,
+  tipo_conferma: 'NESSUNA', lista_attesa_finestra_conferma_ore: null,
   durata_lock_minuti: null, note_pubbliche: '', visualizza_disponibili: false,
   tipologie_posto: [], luogo_ids: [],
 })
@@ -293,6 +312,8 @@ const apriModal = (s = null) => {
       prenotabile: s.prenotabile ?? true,
       forza_non_disponibile: s.forza_non_disponibile ?? false,
       attiva_lista_attesa: s.attiva_lista_attesa ?? false,
+      tipo_conferma: s.tipo_conferma ?? 'NESSUNA',
+      lista_attesa_finestra_conferma_ore: s.lista_attesa_finestra_conferma_ore ?? null,
       durata_lock_minuti: s.durata_lock_minuti ?? null,
       note_pubbliche: s.note_pubbliche ?? '',
       visualizza_disponibili: s.visualizza_disponibili ?? false,

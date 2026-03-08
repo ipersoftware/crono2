@@ -9,3 +9,4 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote')->hourly();
 
 Schedule::command('prenotazioni:purga-lock')->everyMinute();
+Schedule::command('lista-attesa:processa-scadute')->everyFiveMinutes();

@@ -32,13 +32,13 @@
           <div v-if="!tipologie.length" class="empty">Nessuna tipologia di posto disponibile.</div>
           <div v-for="t in tipologie" :key="t.tipologia_posto.id"
             class="tipologia-row"
-            :class="{ 'tipologia-row--esaurita': t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0 }">
+            :class="{ 'tipologia-row--esaurita': !mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0 }">
             <div class="tipologia-info">
               <strong>{{ t.tipologia_posto.nome }}</strong>
               <span class="prezzo">
                 {{ t.tipologia_posto.gratuita ? 'Gratuito' : `€ ${Number(t.tipologia_posto.costo).toFixed(2)}` }}
               </span>
-              <span v-if="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0" class="posti-esauriti">
+              <span v-if="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0" class="posti-esauriti">
                 Disponibilità terminata
               </span>
               <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali > 0" class="posti-left-tp">
@@ -58,7 +58,7 @@
               <button type="button"
                 @click="cambiaQty(t.tipologia_posto.id, -1)"
                 class="qty-btn"
-                :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">−</button>
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">−</button>
               <input
                 type="number"
                 min="0"
@@ -67,12 +67,12 @@
                 :value="getQty(t.tipologia_posto.id)"
                 @change="setQty(t.tipologia_posto.id, $event.target.value, $event)"
                 @focus="$event.target.select()"
-                :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0"
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0"
               />
               <button type="button"
                 @click="cambiaQty(t.tipologia_posto.id, +1)"
                 class="qty-btn"
-                :disabled="t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">+</button>
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">+</button>
             </div>
           </div>
 
@@ -81,13 +81,20 @@
           </div>
 
           <div v-if="errore" class="alert-error">{{ errore }}</div>
+
+          <!-- Banner lista d'attesa quando i posti sono esauriti -->
+          <div v-if="mostraListaAttesa" class="alert-lista-attesa">
+            ⏳ La sessione è <strong>esaurita</strong>. Puoi iscriverti alla lista d'attesa:
+            verrai contattato via email se si libera un posto.
+          </div>
+
           <div class="step-actions">
             <button
-              @click="acquisisciLock"
+              @click="mostraListaAttesa ? avanzaListaAttesa() : acquisisciLock()"
               :disabled="locking"
               class="btn btn-primary"
             >
-              {{ locking ? 'Prenotazione in corso…' : 'Continua →' }}
+              {{ locking ? 'Elaborazione in corso…' : (mostraListaAttesa ? 'Iscriviti alla lista d\'attesa →' : 'Continua →') }}
             </button>
           </div>
         </div>
@@ -96,12 +103,17 @@
         <div v-if="step === 2" class="card">
           <h2>2. I tuoi dati</h2>
 
-          <div class="countdown" v-if="scadenzaSecondi > 0">
+          <!-- Banner modalità lista d'attesa -->
+          <div v-if="mostraListaAttesa" class="alert-lista-attesa">
+            ⏳ <strong>Lista d'attesa</strong> — inserisci i tuoi dati per essere contattato se si libera un posto.
+          </div>
+
+          <div class="countdown" v-if="!mostraListaAttesa && scadenzaSecondi > 0">
             ⏱ Il tuo posto è riservato per {{ Math.floor(scadenzaSecondi / 60) }}:{{ String(scadenzaSecondi % 60).padStart(2, '0') }}
           </div>
-          <div v-else class="alert-error">Il tempo è scaduto. Ricomincia la prenotazione.</div>
+          <div v-else-if="!mostraListaAttesa" class="alert-error">Il tempo è scaduto. Ricomincia la prenotazione.</div>
 
-          <form @submit.prevent="apriDialogConferma" v-if="scadenzaSecondi > 0">
+          <form @submit.prevent="mostraListaAttesa ? iscriviListaAttesa() : apriDialogConferma()" v-if="mostraListaAttesa || scadenzaSecondi > 0">
 
             <!-- Riepilogo posti selezionati -->
             <div class="riepilogo-posti-step2">
@@ -204,8 +216,10 @@
             </div>
 
             <div class="step-actions">
-              <button type="button" @click="step = 1; rilasciaLock()" class="btn btn-secondary">← Modifica posti</button>
-              <button type="submit" class="btn btn-primary">✅ Conferma prenotazione</button>
+              <button type="button" @click="step = 1; if (!mostraListaAttesa) rilasciaLock()" class="btn btn-secondary">← Modifica</button>
+              <button type="submit" class="btn btn-primary">
+                {{ mostraListaAttesa ? '⏳ Iscriviti alla lista d\'attesa' : '✅ Conferma prenotazione' }}
+              </button>
             </div>
           </form>
         </div>
@@ -214,15 +228,20 @@
         <div v-if="step === 3" class="riepilogo">
 
           <!-- Banner stato -->
-          <div :class="['riepilogo-banner', prenotazioneConfermata?.stato === 'DA_CONFERMARE' ? 'banner-attesa' : 'banner-ok']">
-            <span class="riepilogo-icon">{{ prenotazioneConfermata?.stato === 'DA_CONFERMARE' ? '⏳' : '🎉' }}</span>
+          <div :class="['riepilogo-banner', (listaAttesaInviata || prenotazioneConfermata?.stato === 'DA_CONFERMARE') ? 'banner-attesa' : 'banner-ok']">
+            <span class="riepilogo-icon">{{ (listaAttesaInviata || prenotazioneConfermata?.stato === 'DA_CONFERMARE') ? '⏳' : '🎉' }}</span>
             <div>
               <div class="riepilogo-titolo">
-                {{ prenotazioneConfermata?.stato === 'DA_CONFERMARE' ? 'Prenotazione in attesa di approvazione' : 'Prenotazione confermata!' }}
+                <template v-if="listaAttesaInviata">Iscrizione alla lista d'attesa registrata!</template>
+                <template v-else-if="prenotazioneConfermata?.stato === 'DA_CONFERMARE'">Prenotazione in attesa di approvazione</template>
+                <template v-else>Prenotazione confermata!</template>
               </div>
               <div class="riepilogo-sub">Riceverai una email a <strong>{{ datiPersonali.email }}</strong></div>
             </div>
-            <span class="riepilogo-codice">{{ prenotazioneConfermata?.codice }}</span>
+            <span v-if="listaAttesaInviata && rispostaListaAttesa?.posizione" class="riepilogo-codice">
+              Posizione {{ rispostaListaAttesa.posizione }}
+            </span>
+            <span v-else-if="prenotazioneConfermata?.codice" class="riepilogo-codice">{{ prenotazioneConfermata.codice }}</span>
           </div>
 
           <!-- Dettaglio evento -->
@@ -281,12 +300,19 @@
           </div>
 
           <div class="step-actions" style="justify-content: center;">
-            <router-link :to="`/prenotazioni/${prenotazioneConfermata?.codice}?token=${prenotazioneConfermata?.token_accesso}`" class="btn btn-primary">
-              Gestisci prenotazione
-            </router-link>
-            <router-link :to="`/vetrina/${shopUrl}/eventi/${slug}`" class="btn btn-secondary">
-              Torna all'evento
-            </router-link>
+            <template v-if="listaAttesaInviata">
+              <router-link :to="`/vetrina/${shopUrl}/eventi/${slug}`" class="btn btn-primary">
+                Torna all'evento
+              </router-link>
+            </template>
+            <template v-else>
+              <router-link :to="`/prenotazioni/${prenotazioneConfermata?.codice}?token=${prenotazioneConfermata?.token_accesso}`" class="btn btn-primary">
+                Gestisci prenotazione
+              </router-link>
+              <router-link :to="`/vetrina/${shopUrl}/eventi/${slug}`" class="btn btn-secondary">
+                Torna all'evento
+              </router-link>
+            </template>
           </div>
 
         </div>
@@ -355,11 +381,14 @@ let timer = null
 
 const getQty = (id) => posti[id] ?? 0
 
+// In modalità lista d'attesa usa il totale come cap, non la disponibilità residua
+const capTipologia = (t) => t.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? t.posti_totali : (t.posti_disponibili ?? 0))
+const capSessione  = (s) => s.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? s.posti_totali : (s.posti_disponibili ?? 0))
+
 const maxQtyTipologia = (id) => {
   const t = tipologie.value.find(x => x.tipologia_posto.id === id)
   if (!t) return 0
-  // posti_disponibili cap (0 = illimitata per la sessione-tipologia)
-  const maxDisp = t.posti_totali === 0 ? Infinity : (t.posti_disponibili ?? 0)
+  const maxDisp = capTipologia(t)
   // max_prenotabili configurato sulla tipologia (null = nessun limite)
   const maxConf = t.tipologia_posto.max_prenotabili ?? Infinity
   return Math.min(maxDisp, maxConf)
@@ -367,9 +396,9 @@ const maxQtyTipologia = (id) => {
 
 const maxQtySessione = () => {
   const s = sessione.value
-  if (!s || s.posti_totali === 0) return Infinity
+  if (!s) return Infinity
   const giaScelti = Object.values(posti).reduce((a, v) => a + v, 0)
-  return Math.max(0, (s.posti_disponibili ?? 0) - giaScelti)
+  return Math.max(0, capSessione(s) - giaScelti)
 }
 
 const setQty = (id, val, event = null) => {
@@ -377,9 +406,9 @@ const setQty = (id, val, event = null) => {
   const maxTp = maxQtyTipologia(id)
   // per il vincolo sessione devo escludere la qty attuale di questa tipologia
   const s = sessione.value
-  const sMax = (!s || s.posti_totali === 0)
+  const sMax = !s
     ? Infinity
-    : Math.max(0, (s.posti_disponibili ?? 0) - (Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, vv]) => a + vv, 0)))
+    : Math.max(0, capSessione(s) - (Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, vv]) => a + vv, 0)))
   const clamped = Math.min(v, maxTp === Infinity ? sMax : Math.min(maxTp, sMax))
   posti[id] = clamped
   // Forza sync DOM: Vue 3 non re-aggiorna il valore di un input numerico
@@ -392,9 +421,9 @@ const maxQtyPerInput = (t) => {
   const id = t.tipologia_posto.id
   const maxTp = maxQtyTipologia(id)
   const s = sessione.value
-  if (!s || s.posti_totali === 0) return maxTp === Infinity ? undefined : maxTp
+  if (!s) return maxTp === Infinity ? undefined : maxTp
   const altreQty = Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, v]) => a + v, 0)
-  const sMax = Math.max(0, (s.posti_disponibili ?? 0) - altreQty)
+  const sMax = Math.max(0, capSessione(s) - altreQty)
   const result = Math.min(maxTp === Infinity ? sMax : maxTp, sMax)
   return isFinite(result) ? result : undefined
 }
@@ -407,15 +436,16 @@ const cambiaQty = (id, delta) => {
     const maxTp = maxQtyTipologia(id)
     const s = sessione.value
     const altreQty = Object.entries(posti).filter(([k]) => Number(k) !== id).reduce((a, [, v]) => a + v, 0)
-    const sMax = (!s || s.posti_totali === 0)
+    const sMax = !s
       ? Infinity
-      : Math.max(0, (s.posti_disponibili ?? 0) - altreQty - cur)
+      : Math.max(0, capSessione(s) - altreQty - cur)
     const tpMax = maxTp === Infinity ? Infinity : Math.max(0, maxTp - cur)
     if (Math.min(sMax, tpMax) <= 0) return
     // Se qty era 0 e c'è un minimo > 1, salta direttamente al minimo
     if (cur === 0 && minQ > 1) {
+      const cap = s ? capSessione(s) : Infinity
       const jumpTo = Math.min(minQ, maxTp === Infinity ? minQ : maxTp)
-      posti[id] = Math.min(jumpTo, sMax === Infinity ? jumpTo : (altreQty + jumpTo <= (s?.posti_disponibili ?? Infinity) ? jumpTo : Math.max(0, (s?.posti_disponibili ?? 0) - altreQty)))
+      posti[id] = Math.min(jumpTo, sMax === Infinity ? jumpTo : (altreQty + jumpTo <= cap ? jumpTo : Math.max(0, cap - altreQty)))
       return
     }
   } else {
@@ -460,6 +490,14 @@ const postiRimasti = computed(() => {
   if (!s || s.posti_totali === 0) return null
   return Math.max(0, (s.posti_disponibili ?? 0) - (s.posti_riservati ?? 0))
 })
+
+const mostraListaAttesa = computed(() => {
+  const s = sessione.value
+  return !!(s && s.attiva_lista_attesa && s.posti_totali > 0 && (s.posti_disponibili ?? 0) <= 0)
+})
+
+const listaAttesaInviata = ref(false)
+const rispostaListaAttesa = ref(null)
 
 const carica = async () => {
   loading.value = true
@@ -592,6 +630,55 @@ const confermaPrenot = async () => {
   } finally { confermando.value = false }
 }
 
+// ─── Lista d'attesa ────────────────────────────────────────────────────────
+
+const avanzaListaAttesa = () => {
+  errore.value = ''
+  if (totPosti.value === 0) {
+    errore.value = 'Seleziona almeno un posto per continuare.'
+    return
+  }
+  step.value = 2
+}
+
+const iscriviListaAttesa = async () => {
+  errore.value = ''
+  if (!emailValida(datiPersonali.email)) {
+    errore.value = 'Inserisci un indirizzo email valido.'
+    return
+  }
+  if (datiPersonali.email !== emailConferma.value) {
+    errore.value = 'I campi email non coincidono.'
+    return
+  }
+  if (datiPersonali.telefono && !telefonoValido(datiPersonali.telefono)) {
+    errore.value = 'Il numero di telefono non è valido.'
+    return
+  }
+  if (privacyOk.value !== true) {
+    errore.value = 'Devi acconsentire al trattamento dei dati personali per procedere.'
+    return
+  }
+  confermando.value = true
+  try {
+    const postiPayload = Object.entries(posti)
+      .filter(([, qty]) => qty > 0)
+      .map(([tipologia_id, quantita]) => ({ tipologia_id: Number(tipologia_id), quantita }))
+
+    const res = await prenotazioniApi.iscriviListaAttesa({
+      sessione_id: sessioneId,
+      ...datiPersonali,
+      privacy_ok: true,
+      posti: postiPayload,
+    })
+    rispostaListaAttesa.value = res.data
+    listaAttesaInviata.value  = true
+    step.value = 3
+  } catch (e) {
+    errore.value = e.response?.data?.message ?? 'Errore durante l\'iscrizione alla lista d\'attesa.'
+  } finally { confermando.value = false }
+}
+
 const rilasciaLock = async () => {
   if (lockToken.value) {
     await prenotazioniApi.rilasciaLock(lockToken.value).catch(() => {})
@@ -718,6 +805,7 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .codice { font-family: monospace; font-size: 1.1rem; color: #1a5276; letter-spacing: .05em; }
 .loading { padding: 3rem; text-align: center; color: #aaa; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
+.alert-lista-attesa { background: #fef9e7; color: #7d6608; border: 1px solid #f9e79f; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }
 /* Dialog conferma */
 .dialog-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
 .dialog-box { background: #fff; border-radius: 12px; padding: 1.5rem 1.75rem; width: 100%; max-width: 420px; box-shadow: 0 8px 32px rgba(0,0,0,.18); position: relative; }
