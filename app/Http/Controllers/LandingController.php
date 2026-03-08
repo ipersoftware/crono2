@@ -21,7 +21,7 @@ class LandingController extends Controller
             'messaggio' => 'required|string|max:3000',
         ]);
 
-        $destinatario = config('mail.contact_address', config('mail.from.address'));
+        $destinatario = env('MAIL_CONTACT_ADDRESS', config('mail.from.address'));
 
         if ($destinatario) {
             $body = "Nuovo messaggio dalla landing page di Crono\n\n"
