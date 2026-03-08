@@ -200,7 +200,7 @@
 
           <div class="form-group">
             <label class="toggle-label">
-              <span class="toggle-text">Mostra posti disponibili in fase di prenotazione</span>
+              <span class="toggle-text">Mostra posti totali disponibili nell'intestazione della prenotazione</span>
               <span class="toggle-wrap">
                 <input type="checkbox" v-model="form.visualizza_disponibili" class="toggle-input" />
                 <span class="toggle-slider"></span>

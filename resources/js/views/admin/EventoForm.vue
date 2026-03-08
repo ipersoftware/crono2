@@ -432,7 +432,7 @@
         </div>
         <div class="form-group">
           <label class="toggle-label">
-            <span class="toggle-text">Mostra posti disponibili in prenotazione</span>
+            <span class="toggle-text">Mostra posti disponibili per questa tipologia nella selezione posti</span>
             <span class="toggle-state">{{ dialogTipologia.form.visualizza_disponibili ? 'Sì' : 'No' }}</span>
             <span class="toggle-wrap">
               <input type="checkbox" v-model="dialogTipologia.form.visualizza_disponibili" class="toggle-input" />
