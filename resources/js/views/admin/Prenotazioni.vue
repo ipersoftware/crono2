@@ -3,8 +3,41 @@
     <div class="page-header">
       <h1>🎟 Prenotazioni</h1>
       <div class="filtri-row">
-        <input v-model="filtri.cerca" @input="carica" placeholder="Cerca codice, nome, email…" class="input" />
-        <select v-model="filtri.stato" @change="carica" class="input">
+        <!-- Filtro anno -->
+        <select v-model="annoFiltro" @change="onAnnoChange" class="input" style="min-width:90px">
+          <option value="">Tutti gli anni</option>
+          <option v-for="a in anniDisponibili" :key="a" :value="a">{{ a }}</option>
+        </select>
+        <!-- Combobox eventi con ricerca -->
+        <div class="combobox" ref="comboboxRef">
+          <div class="combobox-input-wrap" @click="toggleCombobox">
+            <input
+              ref="comboboxInputRef"
+              v-model="comboboxSearch"
+              @focus="comboboxOpen = true"
+              @input="comboboxOpen = true"
+              :placeholder="comboboxPlaceholder"
+              class="input combobox-input"
+              autocomplete="off"
+            />
+            <span class="combobox-arrow" :class="{ open: comboboxOpen }">▾</span>
+          </div>
+          <ul v-if="comboboxOpen" class="combobox-dropdown">
+            <li @mousedown.prevent="selectEvento(null)" :class="{ active: !filtri.evento_id }">Tutti gli eventi</li>
+            <li
+              v-for="e in eventiFiltrati"
+              :key="e.id"
+              @mousedown.prevent="selectEvento(e)"
+              :class="{ active: filtri.evento_id === e.id }"
+            >{{ e.titolo }}</li>
+            <li v-if="!eventiFiltrati.length" class="no-results">Nessun evento trovato</li>
+          </ul>
+        </div>
+        <select v-model="filtri.sessione_id" @change="onSessioneChange" class="input" :disabled="!filtri.evento_id">
+          <option value="">Tutte le sessioni</option>
+          <option v-for="s in sessioni" :key="s.id" :value="s.id">{{ formatDateTime(s.data_inizio) }}</option>
+        </select>
+        <select v-model="filtri.stato" @change="resetAndCarica" class="input">
           <option value="">Tutti gli stati</option>
           <option value="CONFERMATA">Confermata</option>
           <option value="DA_CONFERMARE">Da confermare</option>
@@ -12,6 +45,7 @@
           <option value="ANNULLATA_UTENTE">Annullata utente</option>
           <option value="ANNULLATA_ADMIN">Annullata admin</option>
         </select>
+        <input v-model="filtri.cerca" @input="resetAndCarica" placeholder="Cerca codice, nome, email…" class="input" />
       </div>
     </div>
 
@@ -186,18 +220,82 @@
 </template>
 
 <script setup>
+import { eventiApi, sessioniApi } from '@/api/eventi'
 import { prenotazioniApi } from '@/api/prenotazioni'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route  = useRoute()
 const enteId = route.params.enteId
 
 const prenotazioni = ref([])
+const eventi  = ref([])
+const sessioni = ref([])
 const meta    = ref(null)
 const loading = ref(false)
 const pagina  = ref(1)
-const filtri  = reactive({ cerca: '', stato: '' })
+const filtri  = reactive({ cerca: '', stato: '', evento_id: '', sessione_id: '' })
+
+// Filtro anno
+const annoCorrente = new Date().getFullYear()
+const annoFiltro   = ref(annoCorrente)
+const anniDisponibili = computed(() => {
+  const anni = []
+  for (let a = annoCorrente + 1; a >= 2022; a--) anni.push(a)
+  return anni
+})
+
+const caricaEventi = async () => {
+  const params = { per_page: 500 }
+  if (annoFiltro.value) params.anno = annoFiltro.value
+  const res = await eventiApi.index(enteId, params)
+  eventi.value = (res.data.data ?? res.data).sort((a, b) => a.titolo.localeCompare(b.titolo))
+}
+
+const onAnnoChange = async () => {
+  filtri.evento_id   = ''
+  filtri.sessione_id = ''
+  sessioni.value     = []
+  comboboxSearch.value = ''
+  await caricaEventi()
+  resetAndCarica()
+}
+
+// Combobox eventi
+const comboboxRef      = ref(null)
+const comboboxInputRef = ref(null)
+const comboboxOpen     = ref(false)
+const comboboxSearch   = ref('')
+const comboboxPlaceholder = computed(() => {
+  if (filtri.evento_id) {
+    return eventi.value.find(e => e.id === filtri.evento_id)?.titolo ?? 'Tutti gli eventi'
+  }
+  return 'Tutti gli eventi'
+})
+const eventiFiltrati = computed(() => {
+  const q = comboboxSearch.value.trim().toLowerCase()
+  if (!q) return eventi.value
+  return eventi.value.filter(e => e.titolo.toLowerCase().includes(q))
+})
+const toggleCombobox = () => {
+  comboboxOpen.value = !comboboxOpen.value
+  if (comboboxOpen.value) {
+    comboboxSearch.value = ''
+    comboboxInputRef.value?.focus()
+  }
+}
+const selectEvento = (e) => {
+  comboboxOpen.value = false
+  comboboxSearch.value = ''
+  filtri.evento_id = e ? e.id : ''
+  onEventoChange()
+}
+const onClickOutside = (ev) => {
+  if (comboboxRef.value && !comboboxRef.value.contains(ev.target)) {
+    comboboxOpen.value = false
+    comboboxSearch.value = ''
+  }
+}
 const dettaglio = ref(null)
 const annullamentoTarget  = ref(null)
 const annullamentoMotivo  = ref('')
@@ -216,6 +314,20 @@ const carica = async () => {
     loading.value = false
   }
 }
+
+const resetAndCarica = () => { pagina.value = 1; carica() }
+
+const onEventoChange = async () => {
+  filtri.sessione_id = ''
+  sessioni.value = []
+  if (filtri.evento_id) {
+    const res = await sessioniApi.index(enteId, filtri.evento_id, { per_page: 200 })
+    sessioni.value = (res.data.data ?? res.data).sort((a, b) => new Date(a.data_inizio) - new Date(b.data_inizio))
+  }
+  resetAndCarica()
+}
+
+const onSessioneChange = () => resetAndCarica()
 
 const approva = async (p) => {
   await prenotazioniApi.approva(enteId, p.id)
@@ -253,13 +365,32 @@ const totPosti = (p) => p.posti?.reduce((s, x) => s + x.quantita, 0) ?? p.posti_
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '–'
 const statoClass = (s) => s?.toLowerCase().replaceAll('_', '-') ?? ''
 
-onMounted(carica)
+onMounted(async () => {
+  document.addEventListener('click', onClickOutside)
+  await caricaEventi()
+  carica()
+})
+
+onUnmounted(() => document.removeEventListener('click', onClickOutside))
 </script>
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: .75rem; margin-bottom: 1.5rem; }
 .filtri-row { display: flex; gap: .75rem; flex-wrap: wrap; }
 .input { padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; }
+.input:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Combobox eventi */
+.combobox { position: relative; min-width: 220px; }
+.combobox-input-wrap { position: relative; display: flex; align-items: center; }
+.combobox-input { width: 100%; padding-right: 1.8rem; cursor: pointer; }
+.combobox-input:focus { outline: none; border-color: #4a90d9; box-shadow: 0 0 0 2px rgba(74,144,217,.2); cursor: text; }
+.combobox-arrow { position: absolute; right: .6rem; pointer-events: none; color: #888; font-size: .75rem; transition: transform .15s; }
+.combobox-arrow.open { transform: rotate(180deg); }
+.combobox-dropdown { position: absolute; top: calc(100% + 3px); left: 0; right: 0; background: white; border: 1px solid #ddd; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.12); max-height: 260px; overflow-y: auto; z-index: 200; margin: 0; padding: 0; list-style: none; }
+.combobox-dropdown li { padding: .45rem .75rem; font-size: .9rem; cursor: pointer; white-space: normal; line-height: 1.35; }
+.combobox-dropdown li:hover, .combobox-dropdown li.active { background: #f0f4ff; color: #1a4faa; }
+.combobox-dropdown li.no-results { color: #aaa; cursor: default; font-style: italic; }
 .loading, .empty { padding: 2rem; text-align: center; color: #aaa; }
 .muted { font-size: .78rem; color: #999; }
 .mono { font-family: monospace; font-size: .85rem; }

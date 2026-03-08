@@ -23,6 +23,9 @@ class EventoController extends Controller
             ->when($request->stato, fn ($q, $s) => $q->where('stato', $s))
             ->when($request->serie_id, fn ($q, $id) => $q->where('serie_id', $id))
             ->when($request->q, fn ($q, $search) => $q->where('titolo', 'like', "%{$search}%"))
+            ->when($request->filled('anno'), fn ($q) => $q->whereHas('sessioni', fn ($sq) =>
+                $sq->whereYear('data_inizio', (int) $request->anno)
+            ))
             ->with(['serie', 'tags', 'luoghi'])
             ->withCount('sessioni')
             ->orderBy('created_at', 'desc')
