@@ -41,6 +41,8 @@ class SessioneController extends Controller
         $data['posti_totali'] = $data['posti_totali'] ?? 0;
         // DEFAULT 15; null non ammesso dalla colonna
         $data['durata_lock_minuti'] = $data['durata_lock_minuti'] ?? 15;
+        // DEFAULT 24; null non ammesso dalla colonna
+        $data['lista_attesa_finestra_conferma_ore'] = $data['lista_attesa_finestra_conferma_ore'] ?? 24;
 
         // Inizializza posti_disponibili = posti_totali
         if (isset($data['posti_totali'])) {
