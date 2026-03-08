@@ -202,8 +202,20 @@ Nel riepilogo globale evento è presente il totale `in_lista_attesa` su tutte le
 ## Edge case gestiti
 
 - **Sessione con `tipo_conferma = NESSUNA`**: i dati vengono raccolti ma nessuna promozione automatica. L'operatore può gestire manualmente (es. approvando via admin).
-- **Posti insufficienti nella PRENOTAZIONE_AUTOMATICA**: il candidato viene saltato e si tenta il successivo che ne richiede di meno.
+
+- **Posti liberati insufficienti per il primo in coda (`PRENOTAZIONE_AUTOMATICA`)**: il candidato viene saltato e si tenta il successivo che ne richiede di meno. Esempio: si libera 1 posto, il primo in lista ne chiede 3 → viene promosso il secondo che ne chiede 1.
+
+- **Posti liberati insufficienti per il primo in coda (`PRENOTAZIONE_DA_CONFERMARE`)**: il sistema cerca il primo candidato compatibile (i cui `posti_prenotati` rientrano nei posti disponibili), rispettando comunque l'ordine di posizione. Se nessun candidato in lista rientra nei posti disponibili, la notifica non viene inviata e si attende il prossimo annullamento. Questo evita che l'utente riceva un'email "posto disponibile" per poi ottenere un errore al momento della conferma.
+
+  | Esempio | Azione |
+  |---|---|
+  | Liberati 100 posti, primo in lista ne chiede 110 | Nessuna notifica; si attende altro annullamento |
+  | Liberati 100 posti, primo chiede 110, secondo chiede 80 | Notificato il secondo (80 ≤ 100), rispettando l'ordine |
+
 - **Doppia iscrizione**: verificato per email + sessione_id — viene restituito 422.
+
 - **Sessione ancora con posti liberi**: il frontend smette di mostrare la lista attesa; se richiesta via API, viene restituito 422 ("procedi con la prenotazione normale").
-- **Conferma scaduta**: 422 con messaggio esplicito; la posizione in lista viene mantenuta (stato torna a `IN_LISTA_ATTESA` tramite il comando schedulato che poi notifica il successivo).
-- **Annullamento di IN\_LISTA\_ATTESA / NOTIFICATO**: non libera `posti_disponibili` (erano mai stati scalati); decrementa solo `posti_in_attesa`.
+
+- **Conferma scaduta**: 422 con messaggio esplicito; la prenotazione viene marcata `SCADUTA` dal comando schedulato, che poi tenta la promozione del successivo in lista.
+
+- **Annullamento di IN\_LISTA\_ATTESA / NOTIFICATO**: non libera `posti_disponibili` (non erano mai stati scalati); decrementa solo `posti_in_attesa`. Non innesca `processaPromozione` (nessun posto reale si è liberato).
