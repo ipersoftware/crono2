@@ -302,7 +302,10 @@
     <div v-if="tabAttivo === 'tipologie'" class="card">
       <div class="section-header">
         <h2>Tipologie di posto</h2>
-        <button @click="apriDialogTipologia()" class="btn btn-primary btn-sm">+ Aggiungi</button>
+        <div style="display:flex;gap:.5rem">
+          <button @click="apriCopiaTipologieModal" class="btn btn-secondary btn-sm">📋 Copia da altro evento</button>
+          <button @click="apriDialogTipologia()" class="btn btn-primary btn-sm">+ Aggiungi</button>
+        </div>
       </div>
 
       <div v-if="tipologie.length === 0" class="empty">Nessuna tipologia. Aggiungine una per gestire i posti.</div>
@@ -338,7 +341,10 @@
     <div v-if="tabAttivo === 'form'" class="card">
       <div class="section-header">
         <h2>Campi del modulo di prenotazione</h2>
-        <button @click="apriDialogCampo()" class="btn btn-primary btn-sm">+ Aggiungi campo</button>
+        <div style="display:flex;gap:.5rem">
+          <button @click="apriCopiaModal" class="btn btn-secondary btn-sm">📋 Copia da altro evento</button>
+          <button @click="apriDialogCampo()" class="btn btn-primary btn-sm">+ Aggiungi campo</button>
+        </div>
       </div>
 
       <div v-if="campi.length === 0" class="empty">Nessun campo. Il modulo utilizzerà solo i dati base (nome, email).</div>
@@ -369,6 +375,125 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- Modal: copia tipologie da altro evento -->
+    <div v-if="copiaTipologieModal.aperto" class="modal-overlay" @click.self="copiaTipologieModal.aperto = false">
+      <div class="modal-dialog" style="max-width:520px">
+        <h3 style="margin-bottom:1rem">📋 Copia tipologie da altro evento</h3>
+
+        <div class="form-group">
+          <label>Cerca evento</label>
+          <input v-model="copiaTipologieModal.cerca" @input="cercaEventiSorgenteTip" class="input" placeholder="Digita per cercare…" autocomplete="off" />
+        </div>
+
+        <div v-if="copiaTipologieModal.cercando" style="color:#aaa;font-size:.88rem;margin-bottom:.75rem">Ricerca…</div>
+
+        <div v-if="copiaTipologieModal.eventiSorgente.length" class="form-group">
+          <label>Seleziona evento</label>
+          <select v-model="copiaTipologieModal.eventoSorgenteId" @change="caricaTipologieSorgente" class="input">
+            <option value="">— scegli —</option>
+            <option v-for="e in copiaTipologieModal.eventiSorgente" :key="e.id" :value="e.id">{{ e.titolo }}</option>
+          </select>
+        </div>
+
+        <div v-if="copiaTipologieModal.tipologieSorgente.length" class="form-group">
+          <label style="display:flex;justify-content:space-between">
+            Tipologie disponibili
+            <span style="font-weight:400;font-size:.82rem">
+              <a href="#" @click.prevent="copiaTipSelezioniTutti(true)">Seleziona tutti</a>
+              &nbsp;/&nbsp;
+              <a href="#" @click.prevent="copiaTipSelezioniTutti(false)">Deseleziona</a>
+            </span>
+          </label>
+          <div class="copia-campi-lista">
+            <label v-for="t in copiaTipologieModal.tipologieSorgente" :key="t.id" class="copia-campo-row">
+              <input type="checkbox" :value="t.id" v-model="copiaTipologieModal.selezionati" />
+              <strong>{{ t.nome }}</strong>
+              <span style="margin-left:auto;color:#555;font-size:.8rem">
+                {{ t.gratuita ? 'Gratuita' : `€ ${Number(t.costo).toFixed(2)}` }}
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div v-if="copiaTipologieModal.eventoSorgenteId && !copiaTipologieModal.tipologieSorgente.length && !copiaTipologieModal.caricando"
+             style="color:#aaa;font-size:.88rem;margin-bottom:.75rem">
+          Nessuna tipologia in questo evento.
+        </div>
+        <div v-if="copiaTipologieModal.caricando" style="color:#aaa;font-size:.88rem;margin-bottom:.75rem">Caricamento…</div>
+
+        <div v-if="copiaTipologieModal.errore" style="color:#c0392b;font-size:.85rem;margin-bottom:.75rem">{{ copiaTipologieModal.errore }}</div>
+
+        <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem">
+          <button @click="copiaTipologieModal.aperto = false" class="btn btn-secondary btn-sm">Annulla</button>
+          <button
+            @click="importaTipologie"
+            class="btn btn-primary btn-sm"
+            :disabled="!copiaTipologieModal.selezionati.length || copiaTipologieModal.importando"
+          >{{ copiaTipologieModal.importando ? 'Importazione…' : `Importa ${copiaTipologieModal.selezionati.length || ''} tipologia/e` }}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: copia campi da altro evento -->
+    <div v-if="copiaModal.aperto" class="modal-overlay" @click.self="copiaModal.aperto = false">
+      <div class="modal-dialog" style="max-width:560px">
+        <h3 style="margin-bottom:1rem">📋 Copia campi da altro evento</h3>
+
+        <!-- Ricerca evento sorgente -->
+        <div class="form-group">
+          <label>Cerca evento</label>
+          <input v-model="copiaModal.cerca" @input="cercaEventiSorgente" class="input" placeholder="Digita per cercare…" autocomplete="off" />
+        </div>
+
+        <div v-if="copiaModal.cercando" style="color:#aaa;font-size:.88rem;margin-bottom:.75rem">Ricerca…</div>
+
+        <div v-if="copiaModal.eventiSorgente.length" class="form-group">
+          <label>Seleziona evento</label>
+          <select v-model="copiaModal.eventoSorgenteId" @change="caricaCampiSorgente" class="input">
+            <option value="">— scegli —</option>
+            <option v-for="e in copiaModal.eventiSorgente" :key="e.id" :value="e.id">{{ e.titolo }}</option>
+          </select>
+        </div>
+
+        <!-- Campi disponibili -->
+        <div v-if="copiaModal.campiSorgente.length" class="form-group">
+          <label style="display:flex;justify-content:space-between">
+            Campi disponibili
+            <span style="font-weight:400;font-size:.82rem">
+              <a href="#" @click.prevent="copiaSelezioniTutti(true)">Seleziona tutti</a>
+              &nbsp;/&nbsp;
+              <a href="#" @click.prevent="copiaSelezioniTutti(false)">Deseleziona</a>
+            </span>
+          </label>
+          <div class="copia-campi-lista">
+            <label v-for="c in copiaModal.campiSorgente" :key="c.id" class="copia-campo-row">
+              <input type="checkbox" :value="c.id" v-model="copiaModal.selezionati" />
+              <span class="tipo-badge" style="font-size:.72rem">{{ c.tipo }}</span>
+              {{ c.etichetta }}
+              <span v-if="c.obbligatorio" style="color:#e67e22;font-size:.75rem;margin-left:auto">obbligatorio</span>
+            </label>
+          </div>
+        </div>
+
+        <div v-if="copiaModal.eventoSorgenteId && !copiaModal.campiSorgente.length && !copiaModal.caricandoCampi"
+             style="color:#aaa;font-size:.88rem;margin-bottom:.75rem">
+          Nessun campo in questo evento.
+        </div>
+        <div v-if="copiaModal.caricandoCampi" style="color:#aaa;font-size:.88rem;margin-bottom:.75rem">Caricamento campi…</div>
+
+        <div v-if="copiaModal.errore" style="color:#c0392b;font-size:.85rem;margin-bottom:.75rem">{{ copiaModal.errore }}</div>
+
+        <div style="display:flex;justify-content:flex-end;gap:.6rem;margin-top:1rem">
+          <button @click="copiaModal.aperto = false" class="btn btn-secondary btn-sm">Annulla</button>
+          <button
+            @click="importaCampi"
+            class="btn btn-primary btn-sm"
+            :disabled="!copiaModal.selezionati.length || copiaModal.importando"
+          >{{ copiaModal.importando ? 'Importazione…' : `Importa ${copiaModal.selezionati.length || ''} campo/i` }}</button>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: Log attività -->
@@ -837,6 +962,82 @@ const salva = async () => {
   }
 }
 
+// --- Tipologie — copia da altro evento ---
+const copiaTipologieModal = reactive({
+  aperto: false,
+  cerca: '',
+  cercando: false,
+  eventiSorgente: [],
+  eventoSorgenteId: '',
+  caricando: false,
+  tipologieSorgente: [],
+  selezionati: [],
+  importando: false,
+  errore: '',
+})
+
+let cercaDebounce2 = null
+const apriCopiaTipologieModal = () => {
+  Object.assign(copiaTipologieModal, {
+    aperto: true, cerca: '', cercando: false, eventiSorgente: [],
+    eventoSorgenteId: '', caricando: false, tipologieSorgente: [],
+    selezionati: [], importando: false, errore: '',
+  })
+}
+const cercaEventiSorgenteTip = () => {
+  clearTimeout(cercaDebounce2)
+  cercaDebounce2 = setTimeout(async () => {
+    if (!copiaTipologieModal.cerca.trim()) { copiaTipologieModal.eventiSorgente = []; return }
+    copiaTipologieModal.cercando = true
+    try {
+      const res = await eventiApi.index(enteId.value, { q: copiaTipologieModal.cerca, per_page: 20 })
+      copiaTipologieModal.eventiSorgente = (res.data.data ?? res.data).filter(e => String(e.id) !== String(eventoId.value))
+    } finally {
+      copiaTipologieModal.cercando = false
+    }
+  }, 300)
+}
+const caricaTipologieSorgente = async () => {
+  copiaTipologieModal.tipologieSorgente = []
+  copiaTipologieModal.selezionati = []
+  if (!copiaTipologieModal.eventoSorgenteId) return
+  copiaTipologieModal.caricando = true
+  try {
+    const res = await tipologiePostoApi.index(enteId.value, copiaTipologieModal.eventoSorgenteId)
+    copiaTipologieModal.tipologieSorgente = res.data.data ?? res.data
+  } finally {
+    copiaTipologieModal.caricando = false
+  }
+}
+const copiaTipSelezioniTutti = (sel) => {
+  copiaTipologieModal.selezionati = sel ? copiaTipologieModal.tipologieSorgente.map(t => t.id) : []
+}
+const importaTipologie = async () => {
+  if (!copiaTipologieModal.selezionati.length) return
+  copiaTipologieModal.importando = true
+  copiaTipologieModal.errore = ''
+  try {
+    const daCopare = copiaTipologieModal.tipologieSorgente.filter(t => copiaTipologieModal.selezionati.includes(t.id))
+    for (const t of daCopare) {
+      const payload = {
+        nome: t.nome,
+        costo: t.costo ?? 0,
+        gratuita: t.gratuita,
+        min_prenotabili: t.min_prenotabili ?? null,
+        max_prenotabili: t.max_prenotabili ?? null,
+        visualizza_disponibili: t.visualizza_disponibili ?? false,
+      }
+      const res = await tipologiePostoApi.store(enteId.value, eventoId.value, payload)
+      tipologie.value.push(res.data)
+    }
+    copiaTipologieModal.aperto = false
+  } catch (e) {
+    copiaTipologieModal.errore = e.response?.data?.message ?? 'Errore durante l\'importazione.'
+  } finally {
+    copiaTipologieModal.importando = false
+  }
+}
+
 // --- Tipologie — dialog ---
 const dialogTipologia = reactive({
   aperto: false,
@@ -880,6 +1081,83 @@ const eliminaTipologia = async (t, i) => {
   if (!confirm(`Eliminare la tipologia "${t.nome}"?`)) return
   if (t.id) await tipologiePostoApi.destroy(enteId.value, eventoId.value, t.id)
   tipologie.value.splice(i, 1)
+}
+
+// --- Campi form — copia da altro evento ---
+const copiaModal = reactive({
+  aperto: false,
+  cerca: '',
+  cercando: false,
+ eventiSorgente: [],
+  eventoSorgenteId: '',
+  caricandoCampi: false,
+  campiSorgente: [],
+  selezionati: [],
+  importando: false,
+  errore: '',
+})
+
+let cercaDebounce = null
+const apriCopiaModal = () => {
+  Object.assign(copiaModal, {
+    aperto: true, cerca: '', cercando: false, eventiSorgente: [],
+    eventoSorgenteId: '', caricandoCampi: false, campiSorgente: [],
+    selezionati: [], importando: false, errore: '',
+  })
+}
+const cercaEventiSorgente = () => {
+  clearTimeout(cercaDebounce)
+  cercaDebounce = setTimeout(async () => {
+    if (!copiaModal.cerca.trim()) { copiaModal.eventiSorgente = []; return }
+    copiaModal.cercando = true
+    try {
+      const res = await eventiApi.index(enteId.value, { q: copiaModal.cerca, per_page: 20 })
+      copiaModal.eventiSorgente = (res.data.data ?? res.data).filter(e => String(e.id) !== String(eventoId.value))
+    } finally {
+      copiaModal.cercando = false
+    }
+  }, 300)
+}
+const caricaCampiSorgente = async () => {
+  copiaModal.campiSorgente = []
+  copiaModal.selezionati   = []
+  if (!copiaModal.eventoSorgenteId) return
+  copiaModal.caricandoCampi = true
+  try {
+    const res = await campiFormApi.index(enteId.value, copiaModal.eventoSorgenteId)
+    copiaModal.campiSorgente = res.data
+  } finally {
+    copiaModal.caricandoCampi = false
+  }
+}
+const copiaSelezioniTutti = (sel) => {
+  copiaModal.selezionati = sel ? copiaModal.campiSorgente.map(c => c.id) : []
+}
+const importaCampi = async () => {
+  if (!copiaModal.selezionati.length) return
+  copiaModal.importando = true
+  copiaModal.errore = ''
+  try {
+    const daCopare = copiaModal.campiSorgente.filter(c => copiaModal.selezionati.includes(c.id))
+    for (const c of daCopare) {
+      const payload = {
+        tipo: c.tipo,
+        etichetta: c.etichetta,
+        placeholder: c.placeholder ?? null,
+        obbligatorio: c.obbligatorio,
+        opzioni: c.opzioni ?? null,
+        validazione: c.validazione ?? null,
+        visibile_pubblico: c.visibile_pubblico,
+      }
+      const res = await campiFormApi.store(enteId.value, eventoId.value, payload)
+      campi.value.push(res.data)
+    }
+    copiaModal.aperto = false
+  } catch (e) {
+    copiaModal.errore = e.response?.data?.message ?? 'Errore durante l\'importazione.'
+  } finally {
+    copiaModal.importando = false
+  }
 }
 
 // --- Campi form — dialog ---
@@ -1095,6 +1373,11 @@ watch(() => route.params.eventoId, (newId) => {
   .ordine-cell { justify-content: space-between; }
 }
 .tipo-badge { background: #e8f4fd; color: #2980b9; padding: .15rem .5rem; border-radius: 4px; font-size: .8rem; font-weight: 600; }
+.copia-campi-lista { border: 1px solid #e0e0e0; border-radius: 6px; max-height: 240px; overflow-y: auto; }
+.copia-campo-row { display: flex; align-items: center; gap: .55rem; padding: .45rem .75rem; border-bottom: 1px solid #f0f0f0; font-size: .88rem; cursor: pointer; }
+.copia-campo-row:last-child { border-bottom: none; }
+.copia-campo-row:hover { background: #f8f9fa; }
+.copia-campo-row input[type=checkbox] { accent-color: #2980b9; flex-shrink: 0; }
 .ordine-cell { white-space: nowrap; }
 .btn-ordine { background: none; border: 1px solid #ddd; border-radius: 4px; width: 24px; height: 24px; cursor: pointer; font-size: .85rem; line-height: 1; padding: 0; color: #555; }
 .btn-ordine:hover:not(:disabled) { background: #f0f0f0; border-color: #bbb; }

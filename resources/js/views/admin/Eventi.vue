@@ -11,6 +11,10 @@
     <!-- Filtri -->
     <div class="card filtri">
       <div class="filtri-row">
+        <select v-model="filtri.anno" @change="carica" class="input" style="min-width:90px">
+          <option value="">Tutti gli anni</option>
+          <option v-for="a in anniDisponibili" :key="a" :value="a">{{ a }}</option>
+        </select>
         <input v-model="filtri.q" @input="carica" placeholder="Cerca titolo…" class="input" />
         <select v-model="filtri.stato" @change="carica" class="input">
           <option value="">Tutti gli stati</option>
@@ -222,7 +226,13 @@ const enteId = route.params.enteId
 
 const eventi = ref([])
 const loading = ref(false)
-const filtri = reactive({ q: '', stato: '' })
+const annoCorrente = new Date().getFullYear()
+const anniDisponibili = computed(() => {
+  const anni = []
+  for (let a = annoCorrente + 1; a >= 2022; a--) anni.push(a)
+  return anni
+})
+const filtri = reactive({ q: '', stato: '', anno: annoCorrente })
 
 const carica = async () => {
   loading.value = true
