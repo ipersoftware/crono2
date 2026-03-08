@@ -212,7 +212,7 @@ class SessioneController extends Controller
             'titolo'                           => 'nullable|string|max:255',
             'descrizione'                      => 'nullable|string',
             'data_inizio'                      => "{$req}|date",
-            'data_fine'                        => "{$req}|date|after:data_inizio",
+            'data_fine'                        => "{$req}|date|after_or_equal:data_inizio",
             'posti_totali'                     => 'nullable|integer|min:0',
             'prenotabile'                      => 'nullable|boolean',
             'forza_non_disponibile'            => 'nullable|boolean',
