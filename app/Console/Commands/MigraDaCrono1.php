@@ -212,8 +212,10 @@ class MigraDaCrono1 extends Command
                 'serie_id'                     => null,
                 'titolo'                        => $r->titolo,
                 'slug'                          => $slug,
+                // Crono1: `descrizione` = testo breve, `layout` = HTML ricco dell'editor
+                // Crono2: `descrizione_breve` = testo breve, `descrizione` = HTML ricco
                 'descrizione_breve'             => isset($r->descrizione) ? mb_substr(strip_tags($r->descrizione), 0, 512) : null,
-                'descrizione'                   => $r->descrizione ?? null,
+                'descrizione'                   => (isset($r->layout) && trim($r->layout) !== '') ? $r->layout : ($r->descrizione ?? null),
                 'stato'                         => $stato,
                 'pubblico'                      => (bool) ($r->pubblico ?? false),
                 'in_evidenza'                   => false,
@@ -442,8 +444,11 @@ class MigraDaCrono1 extends Command
         }
 
         foreach ($luoghiJson as $item) {
-            // Il campo può contenere l'id direttamente o un oggetto con {id, nome}
-            $luogoIdC1 = is_array($item) ? ($item['id'] ?? null) : (is_numeric($item) ? (int) $item : null);
+            // Il campo può contenere l'id direttamente, un oggetto con {id, nome}
+            // oppure un oggetto Crono1 con {referenceID, label, tag, metaClass}
+            $luogoIdC1 = is_array($item)
+                ? ($item['id'] ?? $item['referenceID'] ?? null)
+                : (is_numeric($item) ? (int) $item : null);
             if (! $luogoIdC1 || ! isset($this->luoghiMap[$luogoIdC1])) {
                 continue;
             }
