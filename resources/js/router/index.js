@@ -22,10 +22,19 @@ const routes = [
   },
 
   // ──────────────────────────────────────────────
-  // Area autenticata
+  // Landing pubblica
   // ──────────────────────────────────────────────
   {
     path: '/',
+    name: 'Landing',
+    component: () => import('@/views/LandingPage.vue'),
+  },
+
+  // ──────────────────────────────────────────────
+  // Area autenticata
+  // ──────────────────────────────────────────────
+  {
+    path: '/dashboard',
     name: 'Home',
     component: () => import('@/views/Home.vue'),
     meta: { requiresAuth: true },
@@ -162,7 +171,7 @@ router.beforeEach((to, from, next) => {
     return
   }
   if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') {
-    next('/')
+    next('/dashboard')
     return
   }
   next()

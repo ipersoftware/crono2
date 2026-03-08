@@ -17,8 +17,14 @@ use App\Http\Controllers\SessioneController;
 use App\Http\Controllers\TagController;
 use App\Http\Controllers\TipologiaPostoController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VetrinaController;
 use Illuminate\Support\Facades\Route;
+
+// -------------------------------------------------------
+// Landing page (no auth)
+// -------------------------------------------------------
+Route::post('/contatto-piattaforma', [LandingController::class, 'contatto']);
 
 // -------------------------------------------------------
 // Auth

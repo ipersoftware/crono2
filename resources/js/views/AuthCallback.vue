@@ -55,7 +55,7 @@ onMounted(async () => {
     await authStore.fetchUser()
 
     // Redirect to dashboard or home based on user role
-    router.push('/')
+    router.push('/dashboard')
   } catch (err) {
     console.error('Auth callback error:', err)
     error.value = 'Errore durante il completamento dell\'autenticazione'

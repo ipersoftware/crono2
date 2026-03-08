@@ -1,8 +1,8 @@
 <template>
   <div id="app">
-    <nav v-if="isAuthenticated" class="navbar">
+    <nav v-if="isAuthenticated && !isLanding" class="navbar">
       <div class="nav-container">
-        <router-link to="/" class="nav-brand">🗓 Crono2</router-link>
+        <router-link to="/dashboard" class="nav-brand">🗓 Crono2</router-link>
 
         <button class="nav-hamburger" @click="menuAperto = !menuAperto" :aria-expanded="menuAperto">
           <span></span><span></span><span></span>
@@ -33,13 +33,14 @@
     </nav>
 
     <!-- Banner impersonificazione -->
-    <div v-if="isImpersonating" class="impersonate-banner">
+    <div v-if="isImpersonating && !isLanding" class="impersonate-banner">
       <span>👁 Stai impersonificando: <strong>{{ authStore.impersonatingEnte?.nome }}</strong></span>
       <button @click="stopImpersonate" class="btn-stop-impersonate">✕ Termina impersonificazione</button>
     </div>
 
-    <main>
-      <router-view />
+    <router-view v-if="isLanding" />
+    <main v-else>
+      <router-view />  
     </main>
   </div>
 </template>
@@ -47,11 +48,14 @@
 <script setup>
 import { useAuthStore } from '@/stores/auth'
 import { computed, onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 const authStore = useAuthStore()
 const menuAperto = ref(false)
+
+const isLanding = computed(() => route.name === 'Landing')
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
