@@ -27,7 +27,10 @@ class UserController extends Controller
         }
 
         if ($request->has('role')) {
-            $query->where('role', $request->input('role'));
+            $roles = is_array($request->input('role'))
+                ? $request->input('role')
+                : array_map('trim', explode(',', $request->input('role')));
+            $query->whereIn('role', $roles);
         }
 
         if ($request->has('attivi')) {

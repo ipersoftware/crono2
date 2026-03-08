@@ -129,8 +129,29 @@
                   <span class="toggle-slider"></span>
                 </span>
               </label>
+            </div>            <div class="form-group">
+              <label class="toggle-label">
+                <span class="toggle-text">Rendi non disponibile se prenotazioni raggiungono</span>
+                <span class="toggle-state">{{ form.soglia_chiusura_prenotazioni !== null ? 'S\u00ec' : 'No' }}</span>
+                <span class="toggle-wrap">
+                  <input type="checkbox"
+                    :checked="form.soglia_chiusura_prenotazioni !== null"
+                    @change="form.soglia_chiusura_prenotazioni = $event.target.checked ? 1 : null"
+                    class="toggle-input" />
+                  <span class="toggle-slider"></span>
+                </span>
+              </label>
+              <div v-if="form.soglia_chiusura_prenotazioni !== null" style="margin-top:.5rem">
+                <input
+                  v-model.number="form.soglia_chiusura_prenotazioni"
+                  type="number" min="1" class="input"
+                  placeholder="es. 1"
+                  style="max-width:120px"
+                />
+                <span style="font-size:.8rem;color:#888;margin-left:.5rem">prenotazioni attive</span>
+              </div>
             </div>
-            <div class="form-group">
+          </div>            <div class="form-group">
               <label class="toggle-label">
                 <span class="toggle-text">Attiva lista d'attesa</span>
                 <span class="toggle-state">{{ form.attiva_lista_attesa ? 'Sì' : 'No' }}</span>
@@ -269,6 +290,7 @@ const formDefault = () => ({
   id: null, data_inizio: '', data_fine: '', posti_totali: null,
   prenotabile: true,
   forza_non_disponibile: false, attiva_lista_attesa: false,
+  soglia_chiusura_prenotazioni: null,
   tipo_conferma: 'NESSUNA', lista_attesa_finestra_conferma_ore: null,
   durata_lock_minuti: null, note_pubbliche: '', visualizza_disponibili: false,
   tipologie_posto: [], luogo_ids: [],
@@ -311,6 +333,7 @@ const apriModal = (s = null) => {
       controlla_posti_globale: s.controlla_posti_globale,
       prenotabile: s.prenotabile ?? true,
       forza_non_disponibile: s.forza_non_disponibile ?? false,
+      soglia_chiusura_prenotazioni: s.soglia_chiusura_prenotazioni ?? null,
       attiva_lista_attesa: s.attiva_lista_attesa ?? false,
       tipo_conferma: s.tipo_conferma ?? 'NESSUNA',
       lista_attesa_finestra_conferma_ore: s.lista_attesa_finestra_conferma_ore ?? null,

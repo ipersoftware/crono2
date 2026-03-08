@@ -94,6 +94,11 @@ class Evento extends Model
         return $this->belongsToMany(Tag::class, 'evento_tag');
     }
 
+    public function staffNotifiche(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'evento_staff_notifiche');
+    }
+
     public function luoghi(): BelongsToMany
     {
         return $this->belongsToMany(Luogo::class, 'evento_luogo')

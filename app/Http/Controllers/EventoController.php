@@ -40,7 +40,7 @@ class EventoController extends Controller
 
         $evento = Evento::create($data);
 
-        // Sync tags e luoghi
+        // Sync tags, luoghi e staff notifiche
         if ($request->has('tag_ids')) {
             $evento->tags()->sync($request->tag_ids);
         }
@@ -52,9 +52,15 @@ class EventoController extends Controller
             $evento->luoghi()->sync($luoghiPivot);
         }
 
+        if ($request->has('staff_ids')) {
+            $evento->staffNotifiche()->sync(
+                collect($request->staff_ids)->filter(fn ($id) => is_numeric($id))
+            );
+        }
+
         $this->log->log($evento->id, 'evento.creato', "Evento \u00abcreato: {$evento->titolo}\u00bb (stato: {$evento->stato})");
 
-        return response()->json($evento->load(['serie', 'tags', 'luoghi']), 201);
+        return response()->json($evento->load(['serie', 'tags', 'luoghi', 'staffNotifiche:id,nome,cognome,email']), 201);
     }
 
     /** GET /api/enti/{ente}/eventi/{evento} */
@@ -71,6 +77,7 @@ class EventoController extends Controller
                 'tipologiePosto',
                 'campiForm',
                 'ente:id,shop_url,slug',
+                'staffNotifiche:id,nome,cognome,email',
             ])
         );
     }
@@ -125,6 +132,12 @@ class EventoController extends Controller
             $evento->luoghi()->sync($luoghiPivot);
         }
 
+        if ($request->has('staff_ids')) {
+            $evento->staffNotifiche()->sync(
+                collect($request->staff_ids)->filter(fn ($id) => is_numeric($id))
+            );
+        }
+
         $etichette = [
             'titolo' => 'Titolo', 'stato' => 'Stato', 'pubblico' => 'Pubblico',
             'descrizione_breve' => 'Descrizione breve',
@@ -137,7 +150,8 @@ class EventoController extends Controller
             $this->log->log($evento->id, 'evento.modificato', $descrizione, $diff);
         }
 
-        return response()->json($evento->fresh(['serie', 'tags', 'luoghi']));
+        return response()->json($evento->fresh(['serie', 'tags', 'luoghi', 'staffNotifiche:id,nome,cognome,email']));
+
     }
 
     /** DELETE /api/enti/{ente}/eventi/{evento} */

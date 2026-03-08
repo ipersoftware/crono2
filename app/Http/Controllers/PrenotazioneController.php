@@ -268,6 +268,11 @@ class PrenotazioneController extends Controller
             $this->notifiche->invia($prenotazione, $tipoNotifica);
             $this->notifiche->inviaNotificaStaff($prenotazione);
 
+            // Chiusura automatica per soglia prenotazioni (solo se confermata subito)
+            if ($statoIniziale === 'CONFERMATA') {
+                $this->verificaSogliaChiusuraPrenotazioni($sessione);
+            }
+
             return response()->json($prenotazione->load(['posti', 'risposteForm']), 201);
         });
     }
@@ -382,6 +387,8 @@ class PrenotazioneController extends Controller
             'stato' => 'CONFERMATA',
         ]);
 
+        $this->verificaSogliaChiusuraPrenotazioni($prenotazione->sessione);
+
         $this->notifiche->invia($prenotazione, 'PRENOTAZIONE_APPROVATA');
         $this->log->log(
             $prenotazione->sessione->evento_id,
@@ -410,6 +417,26 @@ class PrenotazioneController extends Controller
     // ----------------------------------------
     // HELPERS
     // ----------------------------------------
+
+    /**
+     * Chiude automaticamente la sessione (forza_non_disponibile = true) quando
+     * il numero di prenotazioni attive raggiunge la soglia configurata.
+     */
+    private function verificaSogliaChiusuraPrenotazioni(Sessione $sessione): void
+    {
+        $soglia = $sessione->soglia_chiusura_prenotazioni;
+        if ($soglia === null || $soglia <= 0) {
+            return;
+        }
+
+        $attive = $sessione->prenotazioni()
+            ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE'])
+            ->count();
+
+        if ($attive >= $soglia) {
+            $sessione->update(['forza_non_disponibile' => true]);
+        }
+    }
 
     private function eseguiAnnullamento(Prenotazione $prenotazione, string $nuovoStato, ?string $motivo = null): JsonResponse
     {

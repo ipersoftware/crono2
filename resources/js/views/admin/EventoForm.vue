@@ -163,6 +163,46 @@
           </div>
         </div>
 
+        <!-- Staff notifiche -->
+        <div class="form-group">
+          <label>Staff notifiche <span class="label-hint">(riceveranno la mail «Notifica staff» ad ogni prenotazione)</span></label>
+          <div class="tag-combobox" @focusout="chiudiStaffDropdown" tabindex="-1">
+            <div class="tag-selected">
+              <span
+                v-for="u in staffSelezionati" :key="u.id"
+                class="tag-badge-sel staff-badge"
+              >
+                {{ u.nome }} {{ u.cognome }}
+                <button type="button" @click="rimuoviStaff(u)" class="tag-remove">×</button>
+              </span>
+              <input
+                v-model="staffSearch"
+                @input="staffDropdownAperto = true"
+                @focus="staffDropdownAperto = true"
+                @keydown.enter.prevent="selezionaPrimoStaff"
+                @keydown.backspace="backspaceStaff"
+                @keydown.escape="staffDropdownAperto = false"
+                class="tag-input"
+                placeholder="Cerca membro staff…"
+                autocomplete="off"
+              />
+            </div>
+            <ul v-if="staffDropdownAperto && staffFiltrati.length" class="tag-dropdown">
+              <li
+                v-for="u in staffFiltrati" :key="u.id"
+                @mousedown.prevent="aggiungiStaff(u)"
+                class="tag-option"
+              >
+                <span class="staff-option-avatar">{{ (u.nome?.[0] ?? '') + (u.cognome?.[0] ?? '') }}</span>
+                {{ u.nome }} {{ u.cognome }}
+                <span class="staff-option-email">{{ u.email }}</span>
+              </li>
+              <li v-if="staffFiltrati.length === 0 && staffSearch" class="tag-option tag-option-disabled">Nessun membro trovato</li>
+            </ul>
+          </div>
+          <p v-if="form.staff_ids.length === 0" class="field-hint">Se non selezioni nessuno, verrà usata la configurazione notifiche dell'ente.</p>
+        </div>
+
         <!-- Link Pubblico -->
         <div v-if="linkPubblico" class="form-group link-pubblico-group">
           <label>Link Pubblico</label>
@@ -441,6 +481,7 @@
 </template>
 
 <script setup>
+import api from '@/api'
 import { serieApi, tagsApi } from '@/api/admin'
 import { campiFormApi, eventiApi, tipologiePostoApi } from '@/api/eventi'
 import { useEnteStore } from '@/stores/ente'
@@ -485,12 +526,14 @@ const form = reactive({
   consenti_multi_sessione: false, mostra_disponibilita: true,
   visibile_dal: '', visibile_al: '', prenotabile_dal: '', prenotabile_al: '',
   tag_ids: [],
+  staff_ids: [],
   immagine: '',
   colore_primario: '',
   colore_secondario: '',
 })
 const serie = ref([])
 const tags  = ref([])
+const staffUtenti = ref([])  // tutti gli utenti staff dell'ente
 const tipologie = ref([])
 const campi = ref([])
 const saving = ref(false)
@@ -662,6 +705,44 @@ const chiudiDropdown = (e) => {
   if (!e.currentTarget.contains(e.relatedTarget)) tagDropdownAperto.value = false
 }
 
+// ── Staff notifiche combobox ──────────────────────────────────────────────────
+const staffSearch         = ref('')
+const staffDropdownAperto = ref(false)
+
+const staffSelezionati = computed(() =>
+  form.staff_ids.map(id => staffUtenti.value.find(u => u.id === id)).filter(Boolean)
+)
+
+const staffFiltrati = computed(() => {
+  const q = staffSearch.value.trim().toLowerCase()
+  return staffUtenti.value.filter(u =>
+    !form.staff_ids.includes(u.id) &&
+    (!q || `${u.nome} ${u.cognome} ${u.email}`.toLowerCase().includes(q))
+  )
+})
+
+const aggiungiStaff = (u) => {
+  if (!form.staff_ids.includes(u.id)) form.staff_ids.push(u.id)
+  staffSearch.value = ''
+  staffDropdownAperto.value = false
+}
+
+const rimuoviStaff = (u) => {
+  form.staff_ids = form.staff_ids.filter(id => id !== u.id)
+}
+
+const backspaceStaff = () => {
+  if (staffSearch.value === '' && form.staff_ids.length) form.staff_ids.pop()
+}
+
+const selezionaPrimoStaff = () => {
+  if (staffFiltrati.value.length) aggiungiStaff(staffFiltrati.value[0])
+}
+
+const chiudiStaffDropdown = (e) => {
+  if (!e.currentTarget.contains(e.relatedTarget)) staffDropdownAperto.value = false
+}
+
 // Auto-suggerimento: quando viene caricato l'evento (nuovo), propone tag il cui
 // nome compare nel titolo
 watch(() => [form.titolo, tags.value], ([titolo, tagList]) => {
@@ -678,17 +759,19 @@ const caricaDati = async () => {
   errore.value = ''
   loading.value = true
   try {
-    // Carica ente (per shop_url), tags e serie in parallelo
+    // Carica ente (per shop_url), tags, serie e staff in parallelo
     try {
-      const [tagsRes, serieRes] = await Promise.all([
+      const [tagsRes, serieRes, staffRes] = await Promise.all([
         tagsApi.index(enteId.value),
         serieApi.index(enteId.value),
+        api.get('/users', { params: { ente_id: enteId.value, role: 'operatore_ente,admin_ente,admin' } }),
         enteStore.ente?.id !== Number(enteId.value) ? enteStore.fetchEnte(enteId.value) : Promise.resolve(),
       ])
-      tags.value  = tagsRes.data.data ?? tagsRes.data
-      serie.value = serieRes.data.data ?? serieRes.data
+      tags.value        = tagsRes.data.data ?? tagsRes.data
+      serie.value       = serieRes.data.data ?? serieRes.data
+      staffUtenti.value = staffRes.data.data ?? staffRes.data
     } catch (e) {
-      console.warn('Errore caricamento tags/serie:', e)
+      console.warn('Errore caricamento tags/serie/staff:', e)
     }
 
     if (!isNuovo.value) {
@@ -709,6 +792,7 @@ const caricaDati = async () => {
       form.prenotabile_dal           = ev.prenotabile_dal ? ev.prenotabile_dal.slice(0, 16) : ''
       form.prenotabile_al            = ev.prenotabile_al ? ev.prenotabile_al.slice(0, 16) : ''
       form.tag_ids                   = ev.tags?.map(t => t.id) ?? []
+      form.staff_ids                 = ev.staff_notifiche?.map(u => u.id) ?? []
       eventoSlug.value               = ev.slug ?? ''
       enteShopUrl.value              = ev.ente?.shop_url ?? ev.ente?.slug ?? ''
       form.immagine                  = ev.immagine ?? ''
@@ -981,6 +1065,14 @@ watch(() => route.params.eventoId, (newId) => {
 .tag-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .tag-option-new { color: #2980b9; font-style: italic; }
 .tag-option-icon { font-style: normal; font-weight: 700; color: #2980b9; }
+/* Staff notifiche */
+.staff-badge { background: #e8f5e9 !important; color: #1b5e20 !important; }
+.staff-option-avatar { display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:#c8e6c9; color:#1b5e20; font-size:.7rem; font-weight:700; flex-shrink:0; }
+.staff-option-email { margin-left: auto; font-size:.78rem; color:#888; }
+.tag-option-disabled { color:#aaa; cursor:default; font-style:italic; }
+.tag-option-disabled:hover { background: none; }
+.label-hint { font-size:.78rem; color:#aaa; font-weight:400; margin-left:.35rem; }
+.field-hint { font-size:.78rem; color:#888; margin:.35rem 0 0; }
 .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
 .empty { padding: 2rem; text-align: center; color: #aaa; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; }

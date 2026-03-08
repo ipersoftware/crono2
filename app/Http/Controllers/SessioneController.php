@@ -217,6 +217,7 @@ class SessioneController extends Controller
             'prenotabile'                      => 'nullable|boolean',
             'forza_non_disponibile'            => 'nullable|boolean',
             'soglia_chiusura_automatica'       => 'nullable|integer|min:0',
+            'soglia_chiusura_prenotazioni'      => 'nullable|integer|min:1',
             'soglia_overbooking_percentuale'   => 'nullable|integer|min:0',
             'soglia_overbooking_assoluta'      => 'nullable|integer|min:0',
             'attiva_lista_attesa'              => 'nullable|boolean',

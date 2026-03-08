@@ -29,6 +29,7 @@ class Sessione extends Model
         'prenotabile',
         'forza_non_disponibile',
         'soglia_chiusura_automatica',
+        'soglia_chiusura_prenotazioni',
         'soglia_overbooking_percentuale',
         'soglia_overbooking_assoluta',
         'attiva_lista_attesa',

@@ -78,10 +78,11 @@ class NotificaService
     public function inviaNotificaStaff(Prenotazione $prenotazione): void
     {
         if (!$prenotazione->relationLoaded('sessione')) {
-            $prenotazione->load(['sessione.evento.ente', 'posti.tipologiaPosto']);
+            $prenotazione->load(['sessione.evento.ente', 'sessione.evento.staffNotifiche', 'posti.tipologiaPosto']);
         }
 
-        $ente = $prenotazione->sessione?->evento?->ente;
+        $ente  = $prenotazione->sessione?->evento?->ente;
+        $evento = $prenotazione->sessione?->evento;
         if (!$ente) {
             return;
         }
@@ -94,8 +95,13 @@ class NotificaService
         $placeholders = $this->buildPlaceholders($prenotazione);
         ['oggetto' => $oggetto, 'corpo' => $corpo] = $template->renderizza($placeholders);
 
-        // Recupera email staff dall'ente (config) o usa email ente
-        $emailsStaff = $this->getEmailsStaff($ente);
+        // Staff specifici dell'evento; fallback su config ente / email ente
+        $staffEvento = $evento?->staffNotifiche ?? collect();
+        if ($staffEvento->isNotEmpty()) {
+            $emailsStaff = $staffEvento->pluck('email')->filter()->values()->toArray();
+        } else {
+            $emailsStaff = $this->getEmailsStaff($ente);
+        }
 
         foreach ($emailsStaff as $emailStaff) {
             $log = NotificaLog::create([
