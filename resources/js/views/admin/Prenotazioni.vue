@@ -58,6 +58,7 @@
             <th>Codice</th>
             <th>Nominativo</th>
             <th>Evento / Sessione</th>
+            <th>Prenotato il</th>
             <th>Posti</th>
             <th>Importo</th>
             <th>Stato</th>
@@ -75,6 +76,7 @@
               {{ p.sessione?.evento?.titolo ?? '–' }}
               <div class="muted">{{ formatDateTime(p.sessione?.data_inizio) }}</div>
             </td>
+            <td data-label="Prenotato il" class="muted" style="white-space:nowrap">{{ formatDateTime(p.data_prenotazione) }}</td>
             <td data-label="Posti">{{ totPosti(p) }}</td>
             <td data-label="Importo">€ {{ Number(p.costo_totale ?? 0).toFixed(2) }}</td>
             <td data-label="Stato">

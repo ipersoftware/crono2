@@ -161,6 +161,18 @@ class EventoController extends Controller
     public function destroy(Ente $ente, Evento $evento): JsonResponse
     {
         $this->autorizza($ente, $evento);
+
+        $sessioniIds = $evento->sessioni()->pluck('id');
+        $prenotazioniAttive = \App\Models\Prenotazione::whereIn('sessione_id', $sessioniIds)
+            ->whereNotIn('stato', ['ANNULLATA_UTENTE', 'ANNULLATA_OPERATORE', 'ANNULLATA_ADMIN', 'SCADUTA'])
+            ->count();
+
+        abort_if(
+            $prenotazioniAttive > 0,
+            422,
+            "Impossibile eliminare: ci sono {$prenotazioniAttive} prenotazioni attive su questo evento. Annullale prima di procedere."
+        );
+
         $evento->delete();
 
         return response()->json(['message' => 'Evento eliminato.']);

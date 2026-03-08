@@ -79,7 +79,33 @@
     </div>
   </div>
 
-  <!-- Dialog Monitoraggio -->
+  <!-- Modal conferma eliminazione evento -->
+  <div v-if="eliminaTarget" class="modal-backdrop" @click.self="eliminaTarget = null">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-head">
+        <h2>🗑️ Elimina evento</h2>
+        <button @click="eliminaTarget = null" class="btn-close">&times;</button>
+      </div>
+      <div style="padding:1.25rem 1.5rem">
+        <p style="margin:0 0 .75rem">
+          Stai per eliminare l'evento <strong>{{ eliminaTarget.titolo }}</strong>.
+        </p>
+        <p style="margin:0 0 1.25rem;color:#666;font-size:.9rem">
+          Verranno eliminati anche tutte le sessioni, tipologie posto e campi form associati.
+          L'operazione è <strong>irreversibile</strong>.
+        </p>
+        <div v-if="eliminaErrore" style="background:#fdf0f0;border:1px solid #f5c6cb;border-radius:6px;padding:.75rem 1rem;color:#c0392b;font-size:.875rem;margin-bottom:1rem">
+          {{ eliminaErrore }}
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:.6rem">
+          <button @click="eliminaTarget = null" class="btn btn-secondary btn-sm">Annulla</button>
+          <button @click="confermElimina" :disabled="eliminaLoading" class="btn btn-sm btn-danger">
+            {{ eliminaLoading ? 'Eliminazione…' : 'Elimina definitivamente' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div v-if="monitDialog" class="modal-backdrop" @click.self="monitDialog = false">
     <div class="modal-box">
       <div class="modal-head">
@@ -226,6 +252,9 @@ const enteId = route.params.enteId
 
 const eventi = ref([])
 const loading = ref(false)
+const eliminaTarget  = ref(null)
+const eliminaErrore  = ref('')
+const eliminaLoading = ref(false)
 const annoCorrente = new Date().getFullYear()
 const anniDisponibili = computed(() => {
   const anni = []
@@ -254,10 +283,24 @@ const sospendi = async (ev) => {
   ev.stato = 'SOSPESO'
 }
 
-const elimina = async (ev) => {
-  if (!confirm(`Eliminare "${ev.titolo}"?`)) return
-  await eventiApi.destroy(enteId, ev.id)
-  eventi.value = eventi.value.filter(e => e.id !== ev.id)
+const elimina = (ev) => {
+  eliminaTarget.value  = ev
+  eliminaErrore.value  = ''
+  eliminaLoading.value = false
+}
+
+const confermElimina = async () => {
+  eliminaLoading.value = true
+  eliminaErrore.value  = ''
+  try {
+    await eventiApi.destroy(enteId, eliminaTarget.value.id)
+    eventi.value = eventi.value.filter(e => e.id !== eliminaTarget.value.id)
+    eliminaTarget.value = null
+  } catch (e) {
+    eliminaErrore.value = e.response?.data?.message ?? 'Errore durante l\'eliminazione.'
+  } finally {
+    eliminaLoading.value = false
+  }
 }
 
 const formatData = (d) => d ? new Date(d).toLocaleDateString('it-IT') : '–'
