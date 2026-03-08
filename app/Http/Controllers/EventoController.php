@@ -127,7 +127,7 @@ class EventoController extends Controller
 
         $etichette = [
             'titolo' => 'Titolo', 'stato' => 'Stato', 'pubblico' => 'Pubblico',
-            'descrizione_breve' => 'Descrizione breve', 'posti_max_per_prenotazione' => 'Posti max per prenotazione',
+            'descrizione_breve' => 'Descrizione breve',
             'richiede_approvazione' => 'Richiede approvazione', 'cancellazione_consentita_ore' => 'Cancellazione consentita (ore)',
             'prenotabile_dal' => 'Prenotabile dal', 'prenotabile_al' => 'Prenotabile al',
         ];
@@ -201,7 +201,6 @@ class EventoController extends Controller
             'visibile_al'                 => 'nullable|date',
             'prenotabile_dal'             => 'nullable|date',
             'prenotabile_al'              => 'nullable|date',
-            'posti_max_per_prenotazione'  => 'nullable|integer|min:1',
             'richiede_approvazione'       => 'nullable|boolean',
             'consenti_multi_sessione'     => 'nullable|boolean',
             'consenti_prenotazione_guest' => 'nullable|boolean',

@@ -53,7 +53,6 @@ Un Evento:
 | `visibile_al` | DATETIME nullable | fine finestra visibilità |
 | `prenotabile_dal` | DATETIME nullable | apertura prenotazioni |
 | `prenotabile_al` | DATETIME nullable | chiusura prenotazioni |
-| `posti_max_per_prenotazione` | INT default 1 | max posti acquistabili in una singola prenotazione |
 | `richiede_approvazione` | BOOLEAN default false | prenotazione → stato DA_CONFERMARE |
 | `consenti_multi_sessione` | BOOLEAN default false | permetti a un utente di prenotare più sessioni dello stesso evento. Vedi [§11 Multi-sessione](./06-prenotazioni.md#11-prenotazione-multi-sessione) |
 | `consenti_prenotazione_guest` | BOOLEAN default true | abilita prenotazioni senza registrazione per questo evento |

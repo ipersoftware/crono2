@@ -32,7 +32,6 @@ class Evento extends Model
         'visibile_al',
         'prenotabile_dal',
         'prenotabile_al',
-        'posti_max_per_prenotazione',
         'richiede_approvazione',
         'consenti_multi_sessione',
         'consenti_prenotazione_guest',

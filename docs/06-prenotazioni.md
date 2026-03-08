@@ -325,7 +325,7 @@ Permette visualizzazione temporanea dei dettagli e cancellazione (se nei termini
 | Posti totali | Sessione | — (0 = illimitato) |
 | Overbooking (percentuale o assoluta) | Sessione | NULL (disabilitato) |
 | Finestra prenotabilità (dal / al) | Evento / Sessione | — |
-| Numero massimo posti per prenotazione | Evento | 1 |
+| Min / Max posti per tipologia | Tipologia posto | NULL (nessun limite) |
 | Consenti prenotazione multi-sessione | Evento | false |
 | Richiede approvazione manuale | Evento | false |
 | Lista d'attesa abilitata | Sessione | false |

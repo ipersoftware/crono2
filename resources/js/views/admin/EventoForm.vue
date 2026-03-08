@@ -52,10 +52,6 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Max posti per prenotazione</label>
-            <input v-model.number="form.posti_max_per_prenotazione" type="number" min="1" class="input" />
-          </div>
-          <div class="form-group">
             <label>Cancellazione consentita (ore prima)</label>
             <input v-model.number="form.cancellazione_consentita_ore" type="number" min="0" class="input" placeholder="0 = non consentita" />
           </div>
@@ -484,7 +480,7 @@ const cambiaTab = (key) => {
 const form = reactive({
   titolo: '', descrizione_breve: '', descrizione: '',
   stato: 'BOZZA', serie_id: null,
-  posti_max_per_prenotazione: 1, cancellazione_consentita_ore: 0,
+  cancellazione_consentita_ore: 0,
   richiede_approvazione: false, consenti_prenotazione_guest: true,
   consenti_multi_sessione: false, mostra_disponibilita: true,
   visibile_dal: '', visibile_al: '', prenotabile_dal: '', prenotabile_al: '',
@@ -703,7 +699,6 @@ const caricaDati = async () => {
       form.descrizione               = ev.descrizione ?? ''
       form.stato                     = ev.stato ?? 'BOZZA'
       form.serie_id                  = ev.serie_id ?? null
-      form.posti_max_per_prenotazione = ev.posti_max_per_prenotazione ?? 1
       form.cancellazione_consentita_ore = ev.cancellazione_consentita_ore ?? 0
       form.richiede_approvazione     = !!ev.richiede_approvazione
       form.consenti_prenotazione_guest = ev.consenti_prenotazione_guest ?? true
