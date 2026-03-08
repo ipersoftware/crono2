@@ -111,28 +111,28 @@
             <div class="form-group">
               <label class="toggle-label">
                 <span class="toggle-text">Prenotabile</span>
-                <span class="toggle-state">{{ form.prenotabile ? 'Sì' : 'No' }}</span>
                 <span class="toggle-wrap">
                   <input type="checkbox" v-model="form.prenotabile" class="toggle-input" />
                   <span class="toggle-slider"></span>
                 </span>
+                <span class="toggle-state">{{ form.prenotabile ? 'Sì' : 'No' }}</span>
+              </label>
+            </div>
+            <div class="form-group">
+              <label class="toggle-label">
+                <span class="toggle-text" style="color:#c0392b">Forza chiusura</span>
+                <span class="toggle-wrap">
+                  <input type="checkbox" v-model="form.forza_non_disponibile" class="toggle-input" />
+                  <span class="toggle-slider"></span>
+                </span>
+                <span class="toggle-state" style="color:#c0392b">{{ form.forza_non_disponibile ? 'Sì' : 'No' }}</span>
               </label>
             </div>
           </div>
           <div class="grid-2">
             <div class="form-group">
               <label class="toggle-label">
-                <span class="toggle-text" style="color:#c0392b">Forza chiusura</span>
-                <span class="toggle-state" style="color:#c0392b">{{ form.forza_non_disponibile ? 'Sì' : 'No' }}</span>
-                <span class="toggle-wrap">
-                  <input type="checkbox" v-model="form.forza_non_disponibile" class="toggle-input" />
-                  <span class="toggle-slider"></span>
-                </span>
-              </label>
-            </div>            <div class="form-group">
-              <label class="toggle-label">
                 <span class="toggle-text">Rendi non disponibile se prenotazioni raggiungono</span>
-                <span class="toggle-state">{{ form.soglia_chiusura_prenotazioni !== null ? 'S\u00ec' : 'No' }}</span>
                 <span class="toggle-wrap">
                   <input type="checkbox"
                     :checked="form.soglia_chiusura_prenotazioni !== null"
@@ -140,6 +140,7 @@
                     class="toggle-input" />
                   <span class="toggle-slider"></span>
                 </span>
+                <span class="toggle-state">{{ form.soglia_chiusura_prenotazioni !== null ? 'Sì' : 'No' }}</span>
               </label>
               <div v-if="form.soglia_chiusura_prenotazioni !== null" style="margin-top:.5rem">
                 <input
@@ -154,11 +155,11 @@
           </div>            <div class="form-group">
               <label class="toggle-label">
                 <span class="toggle-text">Attiva lista d'attesa</span>
-                <span class="toggle-state">{{ form.attiva_lista_attesa ? 'Sì' : 'No' }}</span>
                 <span class="toggle-wrap">
                   <input type="checkbox" v-model="form.attiva_lista_attesa" class="toggle-input" />
                   <span class="toggle-slider"></span>
                 </span>
+                <span class="toggle-state">{{ form.attiva_lista_attesa ? 'Sì' : 'No' }}</span>
               </label>
             </div>
             <div v-if="form.attiva_lista_attesa" class="form-group">
@@ -200,11 +201,11 @@
           <div class="form-group">
             <label class="toggle-label">
               <span class="toggle-text">Mostra posti disponibili in fase di prenotazione</span>
-              <span class="toggle-state">{{ form.visualizza_disponibili ? 'Sì' : 'No' }}</span>
               <span class="toggle-wrap">
                 <input type="checkbox" v-model="form.visualizza_disponibili" class="toggle-input" />
                 <span class="toggle-slider"></span>
               </span>
+              <span class="toggle-state">{{ form.visualizza_disponibili ? 'Sì' : 'No' }}</span>
             </label>
           </div>
 
@@ -483,7 +484,7 @@ onMounted(carica)
 /* Toggle switch */
 .toggle-label { display: flex; align-items: center; gap: .75rem; cursor: pointer; user-select: none; }
 .toggle-text   { flex: 1; font-size: .9rem; }
-.toggle-state  { font-size: .8rem; color: #888; min-width: 1.8rem; text-align: right; }
+.toggle-state  { font-size: .8rem; color: #888; min-width: 1.8rem; text-align: left; }
 .toggle-wrap   { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
 .toggle-input  { opacity: 0; width: 0; height: 0; position: absolute; }
 .toggle-slider { position: absolute; inset: 0; background: #ccc; border-radius: 22px; transition: background .2s; }
