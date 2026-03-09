@@ -445,7 +445,7 @@ class PrenotazioneController extends Controller
         $campiForm = collect();
         if ($eventoId) {
             $campiForm = CampoForm::where('evento_id', $eventoId)
-                ->orderBy('ordinamento')
+                ->orderBy('ordine')
                 ->get();
         }
 
@@ -463,10 +463,10 @@ class PrenotazioneController extends Controller
             $headers[] = $campo->etichetta;
         }
 
-        // Riga intestazione
+        // Riga intestazione — API PhpSpreadsheet 5.x: setCellValue([$col,$row], $val)
         $col = 1;
         foreach ($headers as $h) {
-            $sheet->setCellValueByColumnAndRow($col, 1, $h);
+            $sheet->setCellValue([$col, 1], $h);
             $col++;
         }
         $lastCol = $col - 1;
@@ -485,26 +485,26 @@ class PrenotazioneController extends Controller
             $nPosti = $p->posti->sum('quantita');
             $col = 1;
 
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->codice);
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->cognome);
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->nome);
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->email);
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->telefono ?? '');
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->sessione?->evento?->titolo ?? '');
-            $sheet->setCellValueByColumnAndRow($col++, $row,
+            $sheet->setCellValue([$col++, $row], $p->codice);
+            $sheet->setCellValue([$col++, $row], $p->cognome);
+            $sheet->setCellValue([$col++, $row], $p->nome);
+            $sheet->setCellValue([$col++, $row], $p->email);
+            $sheet->setCellValue([$col++, $row], $p->telefono ?? '');
+            $sheet->setCellValue([$col++, $row], $p->sessione?->evento?->titolo ?? '');
+            $sheet->setCellValue([$col++, $row],
                 $p->sessione?->data_inizio ? Carbon::parse($p->sessione->data_inizio)->format('d/m/Y H:i') : ''
             );
-            $sheet->setCellValueByColumnAndRow($col++, $row,
+            $sheet->setCellValue([$col++, $row],
                 $p->data_prenotazione ? Carbon::parse($p->data_prenotazione)->format('d/m/Y H:i') : ''
             );
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->stato);
-            $sheet->setCellValueByColumnAndRow($col++, $row, $nPosti);
-            $sheet->setCellValueByColumnAndRow($col++, $row, (float) ($p->costo_totale ?? 0));
-            $sheet->setCellValueByColumnAndRow($col++, $row, $p->note ?? '');
+            $sheet->setCellValue([$col++, $row], $p->stato);
+            $sheet->setCellValue([$col++, $row], $nPosti);
+            $sheet->setCellValue([$col++, $row], (float) ($p->costo_totale ?? 0));
+            $sheet->setCellValue([$col++, $row], $p->note ?? '');
 
             foreach ($campiForm as $campo) {
                 $risposta = $p->risposteForm->first(fn($r) => (int) $r->campo_form_id === (int) $campo->id);
-                $sheet->setCellValueByColumnAndRow($col++, $row, $risposta?->valore ?? '');
+                $sheet->setCellValue([$col++, $row], $risposta?->valore ?? '');
             }
 
             // Righe alternate
@@ -520,7 +520,9 @@ class PrenotazioneController extends Controller
 
         // Auto-larghezza colonne
         for ($c = 1; $c <= $lastCol; $c++) {
-            $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
+            $sheet->getColumnDimension(
+                \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($c)
+            )->setAutoSize(true);
         }
 
         // Salva in cartella temp
