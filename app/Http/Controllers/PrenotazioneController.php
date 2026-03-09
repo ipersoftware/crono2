@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CampoForm;
 use App\Models\Ente;
 use App\Models\Prenotazione;
 use App\Models\PrenotazionePosto;
@@ -12,10 +13,16 @@ use App\Models\SessioneTipologiaPosto;
 use App\Services\NotificaService;
 use App\Services\ListaAttesaService;
 use App\Services\EventoLogService;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class PrenotazioneController extends Controller
 {
@@ -397,6 +404,138 @@ class PrenotazioneController extends Controller
         );
 
         return response()->json($prenotazione);
+    }
+
+    /**
+     * GET /api/enti/{ente}/prenotazioni/export-xls
+     * Esporta le prenotazioni filtrate in formato XLSX.
+     * Se viene passato evento_id, include anche le colonne dei campi personalizzati.
+     */
+    public function exportXls(Request $request, Ente $ente): BinaryFileResponse
+    {
+        $q = Prenotazione::where('ente_id', $ente->id)
+            ->with(['sessione.evento', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
+            ->orderByDesc('data_prenotazione');
+
+        $eventoId = $request->filled('evento_id') ? (int) $request->evento_id : null;
+
+        if ($eventoId) {
+            $sessioniIds = Sessione::where('evento_id', $eventoId)->pluck('id');
+            $q->whereIn('sessione_id', $sessioniIds);
+        }
+        if ($request->filled('sessione_id')) {
+            $q->where('sessione_id', $request->sessione_id);
+        }
+        if ($request->filled('stato')) {
+            $q->where('stato', $request->stato);
+        }
+        if ($request->filled('cerca')) {
+            $cerca = $request->cerca;
+            $q->where(function ($query) use ($cerca) {
+                $query->where('codice', 'like', "%{$cerca}%")
+                    ->orWhere('email', 'like', "%{$cerca}%")
+                    ->orWhere('nome', 'like', "%{$cerca}%")
+                    ->orWhere('cognome', 'like', "%{$cerca}%");
+            });
+        }
+
+        $prenotazioni = $q->get();
+
+        // Campi personalizzati: solo se è selezionato un evento
+        $campiForm = collect();
+        if ($eventoId) {
+            $campiForm = CampoForm::where('evento_id', $eventoId)
+                ->orderBy('ordinamento')
+                ->get();
+        }
+
+        // --- Costruzione foglio XLS ---
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Prenotazioni');
+
+        $headers = [
+            'Codice', 'Cognome', 'Nome', 'Email', 'Telefono',
+            'Evento', 'Data sessione', 'Prenotato il',
+            'Stato', 'N° posti', 'Importo €', 'Note',
+        ];
+        foreach ($campiForm as $campo) {
+            $headers[] = $campo->etichetta;
+        }
+
+        // Riga intestazione
+        $col = 1;
+        foreach ($headers as $h) {
+            $sheet->setCellValueByColumnAndRow($col, 1, $h);
+            $col++;
+        }
+        $lastCol = $col - 1;
+
+        // Stile intestazione: sfondo blu, testo bianco, grassetto
+        $lastColStr = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastCol);
+        $sheet->getStyle("A1:{$lastColStr}1")->applyFromArray([
+            'font'      => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1B4F8A']],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+        ]);
+
+        // Righe dati
+        $row = 2;
+        foreach ($prenotazioni as $p) {
+            $nPosti = $p->posti->sum('quantita');
+            $col = 1;
+
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->codice);
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->cognome);
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->nome);
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->email);
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->telefono ?? '');
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->sessione?->evento?->titolo ?? '');
+            $sheet->setCellValueByColumnAndRow($col++, $row,
+                $p->sessione?->data_inizio ? Carbon::parse($p->sessione->data_inizio)->format('d/m/Y H:i') : ''
+            );
+            $sheet->setCellValueByColumnAndRow($col++, $row,
+                $p->data_prenotazione ? Carbon::parse($p->data_prenotazione)->format('d/m/Y H:i') : ''
+            );
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->stato);
+            $sheet->setCellValueByColumnAndRow($col++, $row, $nPosti);
+            $sheet->setCellValueByColumnAndRow($col++, $row, (float) ($p->costo_totale ?? 0));
+            $sheet->setCellValueByColumnAndRow($col++, $row, $p->note ?? '');
+
+            foreach ($campiForm as $campo) {
+                $risposta = $p->risposteForm->first(fn($r) => (int) $r->campo_form_id === (int) $campo->id);
+                $sheet->setCellValueByColumnAndRow($col++, $row, $risposta?->valore ?? '');
+            }
+
+            // Righe alternate
+            if ($row % 2 === 0) {
+                $rowRange = 'A' . $row . ':' . \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($lastCol) . $row;
+                $sheet->getStyle($rowRange)->getFill()
+                    ->setFillType(Fill::FILL_SOLID)
+                    ->getStartColor()->setARGB('FFF0F4FF');
+            }
+
+            $row++;
+        }
+
+        // Auto-larghezza colonne
+        for ($c = 1; $c <= $lastCol; $c++) {
+            $sheet->getColumnDimensionByColumn($c)->setAutoSize(true);
+        }
+
+        // Salva in cartella temp
+        $tempDir = storage_path('app/temp');
+        if (! is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+        $filename = 'prenotazioni_' . now()->format('Ymd_His') . '.xlsx';
+        $filepath = $tempDir . DIRECTORY_SEPARATOR . $filename;
+
+        (new Xlsx($spreadsheet))->save($filepath);
+
+        return response()->download($filepath, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ])->deleteFileAfterSend(true);
     }
 
     /**

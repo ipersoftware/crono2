@@ -133,6 +133,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
             // Prenotazioni (gestione admin)
             Route::get('prenotazioni',                                  [PrenotazioneController::class, 'indexAdmin']);
+            Route::get('prenotazioni/export-xls',                       [PrenotazioneController::class, 'exportXls']);
             Route::patch('prenotazioni/{prenotazione}/approva',         [PrenotazioneController::class, 'approva']);
             Route::delete('prenotazioni/{prenotazione}',                [PrenotazioneController::class, 'annullaAdmin']);
 

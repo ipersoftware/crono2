@@ -46,6 +46,17 @@
           <option value="ANNULLATA_ADMIN">Annullata admin</option>
         </select>
         <input v-model="filtri.cerca" @input="resetAndCarica" placeholder="Cerca codice, nome, email…" class="input" />
+        <!-- Esporta XLS: visibile solo se è selezionato un evento -->
+        <button
+          v-if="filtri.evento_id"
+          @click="esportaXls"
+          :disabled="exportLoading"
+          class="btn btn-secondary btn-export"
+          title="Esporta risultati attuali in Excel (.xlsx)"
+        >
+          <span v-if="exportLoading">⏳ Generazione…</span>
+          <span v-else>📥 Esporta XLS</span>
+        </button>
       </div>
     </div>
 
@@ -302,6 +313,27 @@ const dettaglio = ref(null)
 const annullamentoTarget  = ref(null)
 const annullamentoMotivo  = ref('')
 const annullamentoLoading = ref(false)
+const exportLoading = ref(false)
+
+const esportaXls = async () => {
+  exportLoading.value = true
+  try {
+    const params = { ...filtri }
+    const res = await prenotazioniApi.exportXls(enteId, params)
+    const url = URL.createObjectURL(new Blob([res.data], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    }))
+    const nomeEvento = eventi.value.find(e => e.id === filtri.evento_id)?.titolo ?? 'prenotazioni'
+    const nomeFile = `${nomeEvento.replace(/[^a-zA-Z0-9_\- ]/g, '_')}_${new Date().toISOString().slice(0,10)}.xlsx`
+    const a = document.createElement('a')
+    a.href = url
+    a.download = nomeFile
+    a.click()
+    URL.revokeObjectURL(url)
+  } finally {
+    exportLoading.value = false
+  }
+}
 
 const carica = async () => {
   loading.value = true
@@ -398,6 +430,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 .mono { font-family: monospace; font-size: .85rem; }
 .actions { display: flex; gap: .4rem; }
 .badge { padding: .22rem .55rem; border-radius: 10px; font-size: .72rem; font-weight: 600; text-transform: uppercase; }
+.btn-export { display: flex; align-items: center; gap: .4rem; white-space: nowrap; }
 .badge-confermata       { background: #d5f5e3; color: #1a7a45; }
 .badge-da-confermare    { background: #fef9e7; color: #7d6608; }
 .badge-riservata        { background: #d6eaf8; color: #1a5276; }

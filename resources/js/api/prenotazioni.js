@@ -24,6 +24,9 @@ export const prenotazioniApi = {
   indexAdmin: (enteId, params = {}) =>
     api.get(`/enti/${enteId}/prenotazioni`, { params }),
 
+  exportXls: (enteId, params = {}) =>
+    api.get(`/enti/${enteId}/prenotazioni/export-xls`, { params, responseType: 'blob' }),
+
   approva: (enteId, prenotazioneId) =>
     api.patch(`/enti/${enteId}/prenotazioni/${prenotazioneId}/approva`),
 
