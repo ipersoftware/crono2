@@ -84,6 +84,8 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Users & Enti base
     Route::apiResource('users', UserController::class);
+    Route::post('users/{user}/reset-password',  [UserController::class, 'resetPassword']);
+    Route::patch('users/{user}/toggle-attivo',  [UserController::class, 'toggleAttivo']);
     Route::apiResource('enti',  EnteController::class)->parameters(['enti' => 'ente']);
 
     // -------------------------------------------------------

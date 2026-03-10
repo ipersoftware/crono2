@@ -275,6 +275,37 @@ HTML,
             ],
 
             [
+                'tipo'    => 'BENVENUTO_OPERATORE',
+                'oggetto' => 'Benvenuto su {{nome_ente}} – le tue credenziali di accesso',
+                'corpo'   => <<<HTML
+<p>Ciao <strong>{{nome_utente}} {{cognome_utente}}</strong>,</p>
+
+<p>Il tuo account operatore è stato creato con successo su <strong>{{nome_ente}}</strong>.</p>
+
+<p>Ecco le tue credenziali di primo accesso:</p>
+
+<table style="border-collapse:collapse;margin:16px 0">
+  <tr>
+    <td style="padding:6px 12px 6px 0;color:#555;font-weight:500">Email</td>
+    <td style="padding:6px 0"><strong>{{email_utente}}</strong></td>
+  </tr>
+  <tr>
+    <td style="padding:6px 12px 6px 0;color:#555;font-weight:500">Password temporanea</td>
+    <td style="padding:6px 0"><strong>{{password_temporanea}}</strong></td>
+  </tr>
+</table>
+
+<p style="color:#c0392b;font-size:13px">⚠️ Al primo accesso ti verrà chiesto di cambiare la password.</p>
+
+<p style="margin-top:24px">
+  <a href="{{link_login}}" style="background:#1a56db;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Accedi alla piattaforma</a>
+</p>
+
+<p>A presto,<br><strong>{{nome_ente}}</strong></p>
+HTML,
+            ],
+
+            [
                 'tipo'    => 'RESET_PASSWORD',
                 'oggetto' => 'Reimposta la tua password – {{nome_ente}}',
                 'corpo'   => <<<HTML

@@ -4,15 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\KeycloakAdminService;
+use App\Services\NotificaService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Validation\Rules\Password;
 
 class UserController extends Controller
 {
-    public function __construct(private readonly KeycloakAdminService $keycloakAdminService)
-    {
+    public function __construct(
+        private readonly KeycloakAdminService $keycloakAdminService,
+        private readonly NotificaService      $notificaService,
+    ) {
     }
 
     /**
@@ -65,33 +69,42 @@ class UserController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'cognome' => ['required', 'string', 'max:255'],
-            'nome' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'unique:users'],
-            'password' => ['required', Password::min(8)],
-            'role' => ['required', Rule::in(['utente', 'operatore_ente', 'admin_ente', 'admin'])],
-            'ente_id' => ['nullable', 'exists:enti,id'],
+            'cognome'  => ['required', 'string', 'max:255'],
+            'nome'     => ['required', 'string', 'max:255'],
+            'email'    => ['required', 'email', 'unique:users'],
+            'role'     => ['required', Rule::in(['utente', 'operatore_ente', 'admin_ente', 'admin'])],
+            'ente_id'  => ['nullable', 'exists:enti,id'],
             'telefono' => ['nullable', 'string', 'max:20'],
-            'attivo' => ['boolean'],
+            'attivo'   => ['boolean'],
         ]);
 
-        $validated['password'] = Hash::make($validated['password']);
+        // Password auto-generata — verrà impostata come temporanea su Keycloak
+        $plainPassword          = Str::password(12);
+        $validated['password']  = Hash::make($plainPassword);
 
-        $user = User::create($validated);
+        try {
+            $user = DB::transaction(function () use ($validated, $plainPassword) {
+                $user = User::create($validated);
 
-        if (config('auth_provider.driver') === 'keycloak') {
-            try {
-                $this->keycloakAdminService->syncUser($user, $request->input('password'), false);
-            } catch (\Throwable $exception) {
-                return response()->json([
-                    'message' => 'Errore sincronizzazione con Keycloak: ' . $exception->getMessage(),
-                ], 502);
-            }
+                if (config('auth_provider.driver') === 'keycloak') {
+                    // temporary = true: Keycloak forza il cambio password al primo login
+                    $this->keycloakAdminService->syncUser($user, $plainPassword, true);
+                }
+
+                return $user;
+            });
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'message' => 'Errore creazione utente: ' . $exception->getMessage(),
+            ], 502);
         }
+
+        // Invio benvenuto fuori dalla transazione: un errore email non rollbacka la creazione
+        $this->notificaService->inviaBenvenutoUtente($user->load('ente'), $plainPassword);
 
         return response()->json([
             'message' => 'Utente creato con successo',
-            'user' => $user->load(['ente']),
+            'user'    => $user->load(['ente']),
         ], 201);
     }
 
@@ -147,6 +160,49 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Utente eliminato con successo',
+        ]);
+    }
+
+    /**
+     * POST /api/users/{user}/reset-password
+     * Invia email di reset credenziali tramite Keycloak (link sicuro, nessuna password in chiaro).
+     */
+    public function resetPassword(User $user)
+    {
+        if (config('auth_provider.driver') === 'keycloak') {
+            try {
+                $this->keycloakAdminService->sendPasswordResetEmail($user);
+            } catch (\Throwable $exception) {
+                return response()->json([
+                    'message' => 'Errore reset credenziali: ' . $exception->getMessage(),
+                ], 502);
+            }
+        }
+
+        return response()->json(['message' => 'Email di reset credenziali inviata.']);
+    }
+
+    /**
+     * PATCH /api/users/{user}/toggle-attivo
+     * Sospende o riattiva l'accesso dell'utente.
+     */
+    public function toggleAttivo(User $user)
+    {
+        $user->update(['attivo' => !$user->attivo]);
+
+        if (config('auth_provider.driver') === 'keycloak') {
+            try {
+                $this->keycloakAdminService->syncUser($user);
+            } catch (\Throwable $exception) {
+                return response()->json([
+                    'message' => 'Errore sincronizzazione stato su Keycloak: ' . $exception->getMessage(),
+                ], 502);
+            }
+        }
+
+        return response()->json([
+            'message' => $user->attivo ? 'Utente riattivato.' : 'Utente sospeso.',
+            'user'    => $user->load(['ente']),
         ]);
     }
 }

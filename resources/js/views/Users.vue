@@ -28,11 +28,17 @@
               <td>{{ user.ente?.nome || '-' }}</td>
               <td>
                 <span :class="['badge', user.attivo ? 'badge-success' : 'badge-danger']">
-                  {{ user.attivo ? 'Attivo' : 'Disattivato' }}
+                  {{ user.attivo ? 'Attivo' : 'Sospeso' }}
                 </span>
               </td>
-              <td>
-                <button @click="deleteUser(user.id)" class="btn btn-danger btn-sm">
+              <td class="actions-cell">
+                <button @click="toggleAttivo(user)" :class="['btn btn-sm', user.attivo ? 'btn-warning' : 'btn-success']" :title="user.attivo ? 'Sospendi accesso' : 'Riattiva accesso'">
+                  {{ user.attivo ? 'Sospendi' : 'Riattiva' }}
+                </button>
+                <button @click="resetPassword(user.id)" class="btn btn-secondary btn-sm" title="Invia email di reset credenziali">
+                  Reset credenziali
+                </button>
+                <button @click="deleteUser(user.id)" class="btn btn-danger btn-sm" title="Elimina utente">
                   Elimina
                 </button>
               </td>
@@ -62,10 +68,7 @@
             <input type="email" v-model="newUser.email" required />
           </div>
           
-          <div class="form-group">
-            <label>Password</label>
-            <input type="password" v-model="newUser.password" required minlength="8" />
-          </div>
+          <p class="form-note">ℹ️ La password temporanea verrà generata automaticamente e inviata via email all'utente.</p>
           
           <div class="form-group">
             <label>Ruolo</label>
@@ -87,12 +90,16 @@
             </select>
           </div>
           
+          <div v-if="formError" class="form-error">
+            {{ formError }}
+          </div>
+
           <div class="modal-actions">
-            <button type="button" @click="showModal = false" class="btn">
+            <button type="button" @click="showModal = false; formError = null" class="btn">
               Annulla
             </button>
-            <button type="submit" class="btn btn-primary">
-              Crea
+            <button type="submit" class="btn btn-primary" :disabled="formLoading">
+              {{ formLoading ? 'Creazione...' : 'Crea' }}
             </button>
           </div>
         </form>
@@ -108,11 +115,12 @@ import { onMounted, ref } from 'vue'
 const users = ref([])
 const enti = ref([])
 const showModal = ref(false)
+const formError = ref(null)
+const formLoading = ref(false)
 const newUser = ref({
   nome: '',
   cognome: '',
   email: '',
-  password: '',
   role: 'utente',
   ente_id: null
 })
@@ -128,23 +136,64 @@ const fetchEnti = async () => {
 }
 
 const createUser = async () => {
-  await api.post('/users', newUser.value)
-  showModal.value = false
-  newUser.value = {
-    nome: '',
-    cognome: '',
-    email: '',
-    password: '',
-    role: 'utente',
-    ente_id: null
+  formError.value = null
+  formLoading.value = true
+  try {
+    await api.post('/users', newUser.value)
+    showModal.value = false
+    newUser.value = {
+      nome: '',
+      cognome: '',
+      email: '',
+      role: 'utente',
+      ente_id: null
+    }
+    await fetchUsers()
+  } catch (err) {
+    const data = err.response?.data
+    if (err.response?.status === 422 && data?.errors) {
+      formError.value = Object.values(data.errors).flat().join(' ')
+    } else {
+      formError.value = data?.message || 'Errore durante la creazione dell\'utente.'
+    }
+  } finally {
+    formLoading.value = false
   }
-  await fetchUsers()
 }
 
 const deleteUser = async (id) => {
   if (confirm('Sei sicuro di voler eliminare questo utente?')) {
-    await api.delete(`/users/${id}`)
-    await fetchUsers()
+    try {
+      await api.delete(`/users/${id}`)
+      await fetchUsers()
+    } catch (err) {
+      alert(err.response?.data?.message || 'Errore durante l\'eliminazione dell\'utente.')
+    }
+  }
+}
+
+const resetPassword = async (id) => {
+  if (confirm('Inviare email di reset credenziali all\'utente?')) {
+    try {
+      await api.post(`/users/${id}/reset-password`)
+      alert('Email di reset inviata con successo.')
+    } catch (err) {
+      alert(err.response?.data?.message || 'Errore durante il reset delle credenziali.')
+    }
+  }
+}
+
+const toggleAttivo = async (user) => {
+  const azione = user.attivo ? 'sospendere' : 'riattivare'
+  if (confirm(`Sei sicuro di voler ${azione} l'accesso di ${user.nome} ${user.cognome}?`)) {
+    try {
+      const res = await api.patch(`/users/${user.id}/toggle-attivo`)
+      // Aggiorna localmente senza refetch completo
+      const idx = users.value.findIndex(u => u.id === user.id)
+      if (idx !== -1) users.value[idx] = res.data.user
+    } catch (err) {
+      alert(err.response?.data?.message || `Errore durante l\'operazione.`)
+    }
   }
 }
 
@@ -169,6 +218,59 @@ onMounted(() => {
 .btn-sm {
   padding: 0.25rem 0.5rem;
   font-size: 0.875rem;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.375rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.btn-warning {
+  background-color: #f39c12;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-warning:hover {
+  background-color: #d68910;
+}
+
+.btn-success {
+  background-color: #2ecc71;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-success:hover {
+  background-color: #27ae60;
+}
+
+.btn-secondary {
+  background-color: #95a5a6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background-color: #7f8c8d;
+}
+
+.form-note {
+  font-size: 0.85rem;
+  color: #555;
+  background: #eaf4ff;
+  border-left: 3px solid #1a56db;
+  padding: 0.5rem 0.75rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
 }
 
 .badge {
@@ -215,5 +317,15 @@ onMounted(() => {
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1.5rem;
+}
+
+.form-error {
+  background-color: #fde8e8;
+  color: #c0392b;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
 }
 </style>

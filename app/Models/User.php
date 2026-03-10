@@ -14,6 +14,10 @@ class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
+    protected $attributes = [
+        'attivo' => true,
+    ];
+
     protected $fillable = [
         'ente_id',
         'cognome',

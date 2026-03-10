@@ -81,6 +81,35 @@ class KeycloakAdminService
         }
     }
 
+    /**
+     * Invia email di reset password tramite Keycloak (execute-actions-email).
+     * Keycloak genera un link sicuro e scadente, nessuna password in chiaro nelle email.
+     */
+    public function sendPasswordResetEmail(User $user): void
+    {
+        if (!$this->isSyncEnabled()) {
+            return;
+        }
+
+        $keycloakUser = $this->findUserByKeycloakIdOrEmail($user->keycloak_id, $user->email);
+        if ($keycloakUser === null) {
+            throw new RuntimeException('Utente non trovato su Keycloak.');
+        }
+
+        $keycloakId = (string) ($keycloakUser['id'] ?? '');
+        if ($keycloakId === '') {
+            throw new RuntimeException('Utente Keycloak trovato senza id.');
+        }
+
+        $response = $this->adminRequest()
+            ->withBody(json_encode(['UPDATE_PASSWORD'], JSON_UNESCAPED_UNICODE), 'application/json')
+            ->put($this->adminEndpoint("/users/{$keycloakId}/execute-actions-email"));
+
+        if (!$response->successful() && $response->status() !== 204) {
+            throw new RuntimeException('Errore invio email reset password su Keycloak: ' . $response->body());
+        }
+    }
+
     private function isSyncEnabled(): bool
     {
         return config('auth_provider.driver') === 'keycloak'

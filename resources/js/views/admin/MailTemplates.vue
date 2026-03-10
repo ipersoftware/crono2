@@ -101,6 +101,7 @@ const tipiDisponibili = [
   'REMINDER_EVENTO',
   'REGISTRAZIONE_CONFERMATA',
   'RESET_PASSWORD',
+  'BENVENUTO_OPERATORE',
 ]
 
 const templates            = ref([])
@@ -162,6 +163,7 @@ const tipoLabel = (tipo) => ({
   REMINDER_EVENTO:               '⏰ Promemoria evento',
   REGISTRAZIONE_CONFERMATA:      '👋 Registrazione confermata',
   RESET_PASSWORD:                '🔑 Reset password',
+  BENVENUTO_OPERATORE:           '🔐 Benvenuto operatore',
 }[tipo] ?? tipo)
 
 onMounted(carica)

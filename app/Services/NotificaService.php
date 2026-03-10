@@ -6,6 +6,7 @@ use App\Mail\TemplatePrenotazioneMail;
 use App\Models\MailTemplate;
 use App\Models\NotificaLog;
 use App\Models\Prenotazione;
+use App\Models\User;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 
@@ -271,5 +272,67 @@ class NotificaService
 
         // Fallback: email dell'ente
         return $ente->email ? [$ente->email] : [];
+    }
+
+    /**
+     * Invia email di benvenuto a un utente appena creato dall'admin.
+     * Usa il template BENVENUTO_OPERATORE per staff, REGISTRAZIONE_CONFERMATA per utenti normali.
+     */
+    public function inviaBenvenutoUtente(User $user, string $plainPassword): void
+    {
+        $tipo = in_array($user->role, ['operatore_ente', 'admin_ente', 'admin'], true)
+            ? 'BENVENUTO_OPERATORE'
+            : 'REGISTRAZIONE_CONFERMATA';
+
+        $enteId = $user->ente_id ?? 0;
+        $template = MailTemplate::risolvi($enteId, $tipo);
+
+        if (!$template) {
+            Log::info("NotificaService: nessun template per {$tipo}, skip benvenuto utente #{$user->id}");
+            return;
+        }
+
+        if (!$user->relationLoaded('ente') && $user->ente_id) {
+            $user->load('ente');
+        }
+
+        $ente        = $user->ente;
+        $frontendUrl = rtrim(config('app.frontend_url', config('app.url', '')), '/');
+
+        $placeholders = [
+            '{{nome_utente}}'        => $user->nome ?? '',
+            '{{cognome_utente}}'     => $user->cognome ?? '',
+            '{{email_utente}}'       => $user->email ?? '',
+            '{{password_temporanea}}'=> $plainPassword,
+            '{{nome_ente}}'          => $ente?->nome ?? config('app.name', ''),
+            '{{email_ente}}'         => $ente?->email ?? '',
+            '{{telefono_ente}}'      => $ente?->telefono ?? '',
+            '{{link_vetrina}}'       => $ente
+                ? $frontendUrl . '/vetrina/' . ($ente->shop_url ?? $ente->slug ?? '')
+                : $frontendUrl,
+            '{{link_login}}'         => $frontendUrl . '/login',
+        ];
+
+        ['oggetto' => $oggetto, 'corpo' => $corpo] = $template->renderizza($placeholders);
+
+        $log = null;
+        if ($user->ente_id !== null) {
+            $log = NotificaLog::create([
+                'ente_id'            => $user->ente_id,
+                'prenotazione_id'    => null,
+                'tipo'               => $tipo,
+                'destinatario_email' => $user->email,
+                'oggetto'            => $oggetto,
+                'stato'              => 'IN_CODA',
+            ]);
+        }
+
+        try {
+            Mail::to($user->email)->send(new TemplatePrenotazioneMail($oggetto, $corpo));
+            $log?->update(['stato' => 'INVIATA', 'inviata_at' => now()]);
+        } catch (\Throwable $e) {
+            $log?->update(['stato' => 'ERRORE', 'errore' => $e->getMessage()]);
+            Log::error("NotificaService: errore invio benvenuto a {$user->email}: {$e->getMessage()}");
+        }
     }
 }
