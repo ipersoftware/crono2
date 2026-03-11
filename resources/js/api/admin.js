@@ -63,3 +63,9 @@ export const richiesteContattoApi = {
   destroy: (enteId, id) =>
     api.delete(`/enti/${enteId}/richieste-contatto/${id}`),
 }
+
+// Log notifiche
+export const notificheLogApi = {
+  index: (enteId, params = {}) =>
+    api.get(`/enti/${enteId}/notifiche-log`, { params }),
+}

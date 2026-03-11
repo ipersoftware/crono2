@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccessoLogController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\NotificaLogController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CampoFormController;
 use App\Http\Controllers\DocumentController;
@@ -159,7 +160,10 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('richieste-contatto/{richiesta}',                           [RichiestaContattoController::class, 'destroy']);
 
             // Log accessi (solo admin_ente e superiori)
-            Route::get('accessi-log', [AccessoLogController::class, 'index'])->middleware('ente.access:admin_ente');
+            Route::get('accessi-log',   [AccessoLogController::class,  'index'])->middleware('ente.access:admin_ente');
+
+            // Log notifiche (solo admin_ente e superiori)
+            Route::get('notifiche-log', [NotificaLogController::class, 'index'])->middleware('ente.access:admin_ente');
         });
 });
 

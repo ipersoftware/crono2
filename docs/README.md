@@ -20,7 +20,7 @@ La documentazione è organizzata per capitoli tematici, ciascuno corrispondente 
 | [08-integrazioni.md](./08-integrazioni.md) | Integrazioni con sistemi esterni (Ermes, Smartpass) | ✅ Bozza |
 | [09-autenticazione.md](./09-autenticazione.md) | Keycloak SSO, provider locale | 🔲 Da fare |
 | [10-modello-dati.md](./10-modello-dati.md) | Schema DB, entità, relazioni | ✅ Bozza |
-| [11-dashboard-e-reportistica.md](./11-dashboard-e-reportistica.md) | Statistiche, export, viste operative | 🔲 Da fare |
+| [11-dashboard-e-reportistica.md](./11-dashboard-e-reportistica.md) | Statistiche, export, viste operative | ✅ Bozza |
 
 ---
 

@@ -28,6 +28,7 @@
             <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>
             <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/accessi-log`">🔐 Accessi</router-link>
+            <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/notifiche-log`">✉ Log mail</router-link>
           </template>
 
           <!-- Solo ruolo 'utente' -->
