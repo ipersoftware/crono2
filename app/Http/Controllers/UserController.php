@@ -2,12 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\NotificaLog;
 use App\Models\User;
 use App\Services\KeycloakAdminService;
 use App\Services\NotificaService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -71,15 +73,15 @@ class UserController extends Controller
         $validated = $request->validate([
             'cognome'  => ['required', 'string', 'max:255'],
             'nome'     => ['required', 'string', 'max:255'],
-            'email'    => ['required', 'email', 'unique:users'],
+            'email'    => ['required', 'email', Rule::unique('users')->whereNull('deleted_at')],
             'role'     => ['required', Rule::in(['utente', 'operatore_ente', 'admin_ente', 'admin'])],
             'ente_id'  => ['nullable', 'exists:enti,id'],
             'telefono' => ['nullable', 'string', 'max:20'],
             'attivo'   => ['boolean'],
         ]);
 
-        // Password auto-generata — verrà impostata come temporanea su Keycloak
-        $plainPassword          = Str::password(12);
+        // Password auto-generata — lettere+numeri, no simboli per evitare problemi di rendering HTML nelle email
+        $plainPassword          = Str::password(14, letters: true, numbers: true, symbols: false, spaces: false);
         $validated['password']  = Hash::make($plainPassword);
 
         try {
@@ -156,7 +158,7 @@ class UserController extends Controller
             }
         }
 
-        $user->delete();
+        $user->forceDelete();
 
         return response()->json([
             'message' => 'Utente eliminato con successo',
@@ -178,6 +180,25 @@ class UserController extends Controller
                 ], 502);
             }
         }
+
+        // Log su notifiche_log se l'utente appartiene a un ente
+        if ($user->ente_id !== null) {
+            NotificaLog::create([
+                'ente_id'            => $user->ente_id,
+                'prenotazione_id'    => null,
+                'tipo'               => 'RESET_PASSWORD',
+                'destinatario_email' => $user->email,
+                'oggetto'            => 'Reset credenziali inviato da Keycloak',
+                'stato'              => 'INVIATA',
+                'inviata_at'         => now(),
+            ]);
+        }
+
+        Log::info('Reset credenziali inviato', [
+            'user_id' => $user->id,
+            'email'   => $user->email,
+            'ente_id' => $user->ente_id,
+        ]);
 
         return response()->json(['message' => 'Email di reset credenziali inviata.']);
     }

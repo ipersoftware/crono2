@@ -303,7 +303,7 @@ class NotificaService
             '{{nome_utente}}'        => $user->nome ?? '',
             '{{cognome_utente}}'     => $user->cognome ?? '',
             '{{email_utente}}'       => $user->email ?? '',
-            '{{password_temporanea}}'=> $plainPassword,
+            '{{password_temporanea}}'=> htmlspecialchars($plainPassword, ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             '{{nome_ente}}'          => $ente?->nome ?? config('app.name', ''),
             '{{email_ente}}'         => $ente?->email ?? '',
             '{{telefono_ente}}'      => $ente?->telefono ?? '',

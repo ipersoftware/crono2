@@ -39,7 +39,7 @@
       <div v-if="keycloakEnabled" class="keycloak-login">
         <hr />
         <div class="btn btn-keycloak" @click="loginWithKeycloak">
-          Accedi con Keycloak
+          Sei un operatore di un ente ? Clicca qui per accedere
         </div>
       </div>
     </div>

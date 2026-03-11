@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\CampoFormController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\EnteController;
@@ -146,6 +147,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::put('mail-templates/{mailTemplate}',                 [MailTemplateController::class, 'update']);
             Route::delete('mail-templates/{mailTemplate}',              [MailTemplateController::class, 'destroy']);
             Route::get('mail-templates/{mailTemplate}/anteprima',       [MailTemplateController::class, 'anteprima']);
+
+            // Dashboard statistiche
+            Route::get('dashboard', [DashboardController::class, 'index']);
 
             // Richieste contatto
             Route::get('richieste-contatto',                                          [RichiestaContattoController::class, 'index']);

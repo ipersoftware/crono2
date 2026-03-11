@@ -330,17 +330,23 @@ class AuthController extends Controller
             if (!$user) {
                 // Create user from Keycloak data
                 $user = User::create([
-                    'email' => $keycloakUser['email'],
-                    'nome' => $keycloakUser['given_name'] ?? '',
-                    'cognome' => $keycloakUser['family_name'] ?? '',
-                    'password' => Hash::make(\Str::random(32)), // Random password for Keycloak users
-                    'role' => $userRole,
-                    'attivo' => true,
+                    'email'                  => $keycloakUser['email'],
+                    'nome'                   => $keycloakUser['given_name'] ?? '',
+                    'cognome'                => $keycloakUser['family_name'] ?? '',
+                    'password'               => Hash::make(\Str::random(32)),
+                    'role'                   => $userRole,
+                    'attivo'                 => true,
                     'primo_accesso_eseguito' => true,
+                    'last_login_at'          => now(),
                 ]);
             } else {
-                // Update user role from Keycloak
-                $user->update(['role' => $userRole]);
+                // Non sovrascrivere il ruolo dal token: il ruolo viene assegnato
+                // dall'admin al momento della creazione ed è il DB a fare da fonte
+                // di verità. Il token Keycloak è usato solo per autenticare.
+                $user->update([
+                    'primo_accesso_eseguito' => true,
+                    'last_login_at'          => now(),
+                ]);
             }
 
             if (!$user->attivo) {

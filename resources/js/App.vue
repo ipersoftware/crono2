@@ -9,6 +9,9 @@
         </button>
 
         <div class="nav-links" :class="{ 'nav-links--open': menuAperto }" @click="menuAperto = false">
+          <!-- Dashboard — sempre visibile -->
+          <router-link to="/dashboard">Dashboard</router-link>
+
           <!-- Admin sistema -->
           <template v-if="isAdmin">
             <router-link to="/users">Utenti</router-link>
@@ -24,8 +27,8 @@
             <router-link :to="`/admin/${enteId}/serie`">📚 Serie</router-link>
             <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>            <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>          </template>
 
-          <!-- Utente autenticato -->
-          <router-link to="/prenotazioni/mie">Le mie prenotazioni</router-link>
+          <!-- Solo ruolo 'utente' -->
+          <router-link v-if="isUtente" to="/prenotazioni/mie">Le mie prenotazioni</router-link>
 
           <button @click="logout" class="btn-logout">Esci</button>
         </div>
@@ -59,6 +62,7 @@ const isLanding = computed(() => route.name === 'Landing')
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin = computed(() => authStore.user?.role === 'admin')
+const isUtente = computed(() => authStore.user?.role === 'utente')
 const isImpersonating = computed(() => authStore.isImpersonating)
 
 // Durante impersonificazione mostra i link ente dell'ente impersonificato
