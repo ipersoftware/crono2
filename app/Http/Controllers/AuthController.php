@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\AccessoLog;
 use App\Services\KeycloakAdminService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -350,8 +351,29 @@ class AuthController extends Controller
             }
 
             if (!$user->attivo) {
+                AccessoLog::create([
+                    'user_id'    => $user->id,
+                    'ente_id'    => $user->ente_id,
+                    'role'       => $user->role,
+                    'ip'         => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                    'client_id'  => $keycloakUser['azp'] ?? 'crono-web',
+                    'esito'      => 'account_disabilitato',
+                    'created_at' => now(),
+                ]);
                 return redirect(config('app.url') . '/login?error=account_disabled');
             }
+
+            AccessoLog::create([
+                'user_id'    => $user->id,
+                'ente_id'    => $user->ente_id,
+                'role'       => $user->role,
+                'ip'         => $request->ip(),
+                'user_agent' => $request->userAgent(),
+                'client_id'  => $keycloakUser['azp'] ?? 'crono-web',
+                'esito'      => 'ok',
+                'created_at' => now(),
+            ]);
 
             // Create Sanctum token
             $token = $user->createToken('keycloak-auth')->plainTextToken;

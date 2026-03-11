@@ -25,7 +25,10 @@
             <router-link :to="`/admin/${enteId}/tags`">🏷 Tag</router-link>
             <router-link :to="`/admin/${enteId}/luoghi`">📍 Luoghi</router-link>
             <router-link :to="`/admin/${enteId}/serie`">📚 Serie</router-link>
-            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>            <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>          </template>
+            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>
+            <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>
+            <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/accessi-log`">🔐 Accessi</router-link>
+          </template>
 
           <!-- Solo ruolo 'utente' -->
           <router-link v-if="isUtente" to="/prenotazioni/mie">Le mie prenotazioni</router-link>
@@ -61,8 +64,9 @@ const menuAperto = ref(false)
 const isLanding = computed(() => route.name === 'Landing')
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
-const isAdmin = computed(() => authStore.user?.role === 'admin')
-const isUtente = computed(() => authStore.user?.role === 'utente')
+const isAdmin      = computed(() => authStore.user?.role === 'admin')
+const isAdminEnte  = computed(() => ['admin', 'admin_ente'].includes(authStore.user?.role))
+const isUtente     = computed(() => authStore.user?.role === 'utente')
 const isImpersonating = computed(() => authStore.isImpersonating)
 
 // Durante impersonificazione mostra i link ente dell'ente impersonificato

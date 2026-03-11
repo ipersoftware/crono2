@@ -121,6 +121,12 @@ const routes = [
     component: () => import('@/views/admin/RichiesteContatto.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/admin/:enteId/accessi-log',
+    name: 'AdminAccessiLog',
+    component: () => import('@/views/admin/AccessiLog.vue'),
+    meta: { requiresAuth: true },
+  },
 
   // ──────────────────────────────────────────────
   // Prenotazioni utente
