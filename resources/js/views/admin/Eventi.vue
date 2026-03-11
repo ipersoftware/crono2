@@ -3,9 +3,14 @@
     <!-- Header -->
     <div class="page-header">
       <h1>📋 Eventi</h1>
-      <router-link :to="`/admin/${enteId}/eventi/nuovo`" class="btn btn-primary">
-        + Nuovo evento
-      </router-link>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button @click="esportaXls" :disabled="exportLoading" class="btn btn-secondary">
+          {{ exportLoading ? 'Esportazione…' : '📥 Esporta XLS' }}
+        </button>
+        <router-link :to="`/admin/${enteId}/eventi/nuovo`" class="btn btn-primary">
+          + Nuovo evento
+        </router-link>
+      </div>
     </div>
 
     <!-- Filtri -->
@@ -255,6 +260,7 @@ const loading = ref(false)
 const eliminaTarget  = ref(null)
 const eliminaErrore  = ref('')
 const eliminaLoading = ref(false)
+const exportLoading  = ref(false)
 const annoCorrente = new Date().getFullYear()
 const anniDisponibili = computed(() => {
   const anni = []
@@ -304,6 +310,23 @@ const confermElimina = async () => {
 }
 
 const formatData = (d) => d ? new Date(d).toLocaleDateString('it-IT') : '–'
+
+const esportaXls = async () => {
+  exportLoading.value = true
+  try {
+    const res = await eventiApi.exportXls(enteId, { ...filtri })
+    const url  = URL.createObjectURL(new Blob([res.data]))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `eventi_${new Date().toISOString().slice(0,10)}.xlsx`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (e) {
+    alert('Errore durante l\'esportazione: ' + (e.response?.data?.message ?? e.message))
+  } finally {
+    exportLoading.value = false
+  }
+}
 const formatDataOra = (d) => d ? new Date(d).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '–'
 
 // ─── Monitoraggio ────────────────────────────────────────────

@@ -106,6 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('serie', SerieController::class);
 
             // Eventi
+            Route::get('eventi/export-xls',           [EventoController::class, 'exportXls']);
             Route::apiResource('eventi', EventoController::class)
                 ->parameters(['eventi' => 'evento']);
             Route::post('eventi/{evento}/pubblica',   [EventoController::class, 'pubblica']);

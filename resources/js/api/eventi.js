@@ -43,6 +43,10 @@ export const eventiApi = {
   // Log attività
   log: (enteId, eventoId, params = {}) =>
     api.get(`/enti/${enteId}/eventi/${eventoId}/log`, { params }),
+
+  // Esporta XLS
+  exportXls: (enteId, params = {}) =>
+    api.get(`/enti/${enteId}/eventi/export-xls`, { params, responseType: 'blob' }),
 }
 
 export const sessioniApi = {
