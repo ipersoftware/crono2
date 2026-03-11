@@ -198,7 +198,7 @@ const plans = [
     price: '29',
     featured: true,
     desc: 'Per associazioni e organizzatori che crescono.',
-    features: ['1 ente', 'Fino a 3 eventi attivi', 'Tipologie di posto', 'Lista d\'attesa', 'Serie ricorrenti', 'Monitoraggio live', 'Integrazione Keycloak', 'Supporto prioritario'],
+    features: ['1 ente', 'Fino a 3 eventi attivi', 'Tipologie di posto', 'Lista d\'attesa', 'Serie ricorrenti', 'Monitoraggio live', 'Integrazione Ermes', 'Integrazione Smartpass','Supporto prioritario'],
   },
   {
     name: 'Enterprise',
