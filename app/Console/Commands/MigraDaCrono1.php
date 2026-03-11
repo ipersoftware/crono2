@@ -162,7 +162,7 @@ class MigraDaCrono1 extends Command
                     $this->luoghiMap[$r->id] = $existing->id;
                     $this->contatori['luoghi']['update']++;
                 } else {
-                    $data['created_at'] = now();
+                    $data['created_at'] = $this->dataSicura($r->created_at ?? null) ?? now();
                     $id = DB::table('luoghi')->insertGetId($data);
                     $this->luoghiMap[$r->id] = $id;
                     $this->contatori['luoghi']['insert']++;
@@ -242,7 +242,7 @@ class MigraDaCrono1 extends Command
                     $eventoId = $existing->id;
                     $this->contatori['eventi']['update']++;
                 } else {
-                    $data['created_at'] = now();
+                    $data['created_at'] = $this->dataSicura($r->dataCreazione ?? $r->created_at ?? null) ?? now();
                     $eventoId = DB::table('eventi')->insertGetId($data);
                     $this->contatori['eventi']['insert']++;
                 }
@@ -445,7 +445,7 @@ class MigraDaCrono1 extends Command
                     $sessioneId = $existing->id;
                     $this->contatori['sessioni']['update']++;
                 } else {
-                    $data['created_at'] = now();
+                    $data['created_at'] = $this->dataSicura($r->created_at ?? null) ?? $dataInizio ?? now();
                     $sessioneId = DB::table('sessioni')->insertGetId($data);
                     $this->contatori['sessioni']['insert']++;
                 }
