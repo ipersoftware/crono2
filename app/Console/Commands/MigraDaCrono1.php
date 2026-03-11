@@ -39,7 +39,7 @@ class MigraDaCrono1 extends Command
     // Mappe idCrono1 → idCrono2 costruite durante la migrazione
     private array $luoghiMap    = [];  // luogo.id       → Luogo.id
     private array $eventiMap    = [];  // eventi.id       → Evento.id
-    private array $tipologieMap = [];  // eventi.id       → TipologiaPosto.id (tipologia "Ordinario")
+    private array $tipologieMap = [];  // eventi.id       → [tipologiaNome => TipologiaPosto.id, ...]
     private array $sessioniMap  = [];  // eventi_date.id  → Sessione.id
     private array $campiFormMap = [];  // eventoIdC2      → campo_form.id (campo "Ente/Organizzazione")
 
@@ -247,20 +247,93 @@ class MigraDaCrono1 extends Command
                     $this->contatori['eventi']['insert']++;
                 }
                 $this->eventiMap[$r->id] = $eventoId;
-                $tipologiaId = $this->creaTipologiaDefault($r->id, $eventoId, $enteId);
-                $this->tipologieMap[$r->id] = $tipologiaId;
+                $this->tipologieMap[$r->id] = $this->creaTipologieDaPostiJson($r->id, $eventoId, $enteId);
                 $this->line("    ✓ {$r->titolo} → ID {$eventoId}");
             } else {
                 $this->line("    [DRY] {$r->titolo}");
                 $this->eventiMap[$r->id]    = -$r->id;
-                $this->tipologieMap[$r->id] = -$r->id;
+                $this->tipologieMap[$r->id] = ['_dry' => -$r->id];
                 $this->contatori['eventi']['insert']++;
             }
         }
     }
 
-    /** Crea (o recupera) la tipologia posto "Ordinario" per un evento Crono2. */
-    private function creaTipologiaDefault(int $eventoIdC1, int $eventoId, int $enteId): int
+    /**
+     * Legge le tipologie di posto dal campo JSON `posti` delle eventi_date di Crono1
+     * e crea (o recupera) i corrispondenti record in tipologie_posto di Crono2.
+     * Restituisce una mappa [tipologiaNome => tipologiaC2_id].
+     * Fallback a 'Ordinario' se non ci sono tipologie nel JSON.
+     */
+    private function creaTipologieDaPostiJson(int $eventoIdC1, int $eventoId, int $enteId): array
+    {
+        // Raccoglie le tipologie uniche da tutte le sessioni dell'evento
+        $tipoMap = [];
+        $sessioniC1 = DB::connection('crono1')->table('eventi_date')
+            ->where('idEvento', $eventoIdC1)
+            ->whereNull('deleted_at')
+            ->get(['posti']);
+
+        foreach ($sessioniC1 as $s) {
+            if (empty($s->posti)) {
+                continue;
+            }
+            $postiArr = json_decode($s->posti, true);
+            if (! is_array($postiArr)) {
+                continue;
+            }
+            foreach ($postiArr as $p) {
+                $nome = trim($p['tipologia'] ?? $p['id'] ?? '');
+                if ($nome === '' || isset($tipoMap[$nome])) {
+                    continue;
+                }
+                $tipoMap[$nome] = $p;
+            }
+        }
+
+        if (empty($tipoMap)) {
+            // Nessuna tipologia nel JSON: fallback a 'Ordinario'
+            return ['Ordinario' => $this->creaTipologiaOrdinariaFallback($eventoId, $enteId)];
+        }
+
+        $result = [];
+        $ord = 0;
+        foreach ($tipoMap as $nome => $p) {
+            $costo = isset($p['costoUnitario']) && $p['costoUnitario'] > 0 ? (float) $p['costoUnitario'] : null;
+            $max   = isset($p['massimo'])      && $p['massimo']      > 0 ? (int)   $p['massimo']      : null;
+            $min   = isset($p['minimo'])       && $p['minimo']       > 0 ? (int)   $p['minimo']       : 1;
+
+            $existing = DB::table('tipologie_posto')
+                ->where('evento_id', $eventoId)
+                ->where('nome', $nome)
+                ->whereNull('deleted_at')
+                ->first();
+
+            if ($existing) {
+                $result[$nome] = $existing->id;
+            } else {
+                $result[$nome] = DB::table('tipologie_posto')->insertGetId([
+                    'evento_id'       => $eventoId,
+                    'ente_id'         => $enteId,
+                    'nome'            => $nome,
+                    'descrizione'     => $p['descrizione'] ?? null,
+                    'gratuita'        => ($costo === null),
+                    'costo'           => $costo,
+                    'min_prenotabili' => $min,
+                    'max_prenotabili' => $max,
+                    'ordinamento'     => $ord,
+                    'attiva'          => true,
+                    'created_at'      => now(),
+                    'updated_at'      => now(),
+                ]);
+            }
+            $ord++;
+        }
+
+        return $result;
+    }
+
+    /** Crea (o recupera) la tipologia posto "Ordinario" come fallback. */
+    private function creaTipologiaOrdinariaFallback(int $eventoId, int $enteId): int
     {
         $existing = DB::table('tipologie_posto')
             ->where('evento_id', $eventoId)
@@ -273,34 +346,28 @@ class MigraDaCrono1 extends Command
         }
 
         return DB::table('tipologie_posto')->insertGetId([
-            'evento_id'      => $eventoId,
-            'ente_id'        => $enteId,
-            'nome'           => 'Ordinario',
-            'gratuita'       => true,
-            'costo'          => null,
-            'min_prenotabili'=> 1,
-            'max_prenotabili'=> null,
-            'ordinamento'    => 0,
-            'attiva'         => true,
-            'created_at'     => now(),
-            'updated_at'     => now(),
+            'evento_id'       => $eventoId,
+            'ente_id'         => $enteId,
+            'nome'            => 'Ordinario',
+            'gratuita'        => true,
+            'costo'           => null,
+            'min_prenotabili' => 1,
+            'max_prenotabili' => null,
+            'ordinamento'     => 0,
+            'attiva'          => true,
+            'created_at'      => now(),
+            'updated_at'      => now(),
         ]);
     }
 
-    /** Recupera l'id della tipologia default già esistente e la inserisce nella mappa. */
+    /** Recupera (o crea) la mappa tipologie per un evento già esistente in Crono2. */
     private function recuperaTipologiaDefault(int $eventoIdC1, int $eventoId, int $enteId): void
     {
         if (isset($this->tipologieMap[$eventoIdC1])) {
             return;
         }
 
-        $tp = DB::table('tipologie_posto')
-            ->where('evento_id', $eventoId)
-            ->where('nome', 'Ordinario')
-            ->whereNull('deleted_at')
-            ->first();
-
-        $this->tipologieMap[$eventoIdC1] = $tp ? $tp->id : $this->creaTipologiaDefault($eventoIdC1, $eventoId, $enteId);
+        $this->tipologieMap[$eventoIdC1] = $this->creaTipologieDaPostiJson($eventoIdC1, $eventoId, $enteId);
     }
 
     // -------------------------------------------------------------------------
@@ -385,30 +452,69 @@ class MigraDaCrono1 extends Command
 
                 $this->sessioniMap[$r->id] = $sessioneId;
 
-                // sessione_tipologie_posto per la tipologia "Ordinario"
-                $tipologiaId = $this->tipologieMap[$r->idEvento] ?? null;
-                if ($tipologiaId) {
-                    $stpExist = DB::table('sessione_tipologie_posto')
-                        ->where('sessione_id', $sessioneId)
-                        ->where('tipologia_posto_id', $tipologiaId)
-                        ->first();
+                // sessione_tipologie_posto: una riga per ciascuna tipologia dal JSON posti
+                $postiSessioneJson = !empty($r->posti) ? json_decode($r->posti, true) : null;
+                $tipologieEvento   = $this->tipologieMap[$r->idEvento] ?? [];
 
-                    if (! $stpExist) {
-                        DB::table('sessione_tipologie_posto')->insert([
-                            'sessione_id'         => $sessioneId,
-                            'tipologia_posto_id'  => $tipologiaId,
-                            'posti_totali'        => $postiTotali,
-                            'posti_disponibili'   => (int) ($r->postiDisponibili ?? $postiTotali),
-                            'posti_riservati'     => 0,
-                            'attiva'              => true,
-                        ]);
-                    } elseif ($this->force) {
-                        DB::table('sessione_tipologie_posto')
-                            ->where('id', $stpExist->id)
-                            ->update([
-                                'posti_totali'      => $postiTotali,
-                                'posti_disponibili' => (int) ($r->postiDisponibili ?? $postiTotali),
+                if ($postiSessioneJson && is_array($postiSessioneJson) && !empty($tipologieEvento)) {
+                    foreach ($postiSessioneJson as $p) {
+                        $nomeT = trim($p['tipologia'] ?? $p['id'] ?? '');
+                        $tpId  = $tipologieEvento[$nomeT] ?? null;
+                        if (! $tpId) {
+                            continue;
+                        }
+                        // Se la tipologia ha posti propri li usa, altrimenti 0 (condivide il pool globale)
+                        $postiTp = isset($p['postiTotali']) && $p['postiTotali'] > 0 ? (int) $p['postiTotali'] : 0;
+
+                        $stpExist = DB::table('sessione_tipologie_posto')
+                            ->where('sessione_id', $sessioneId)
+                            ->where('tipologia_posto_id', $tpId)
+                            ->first();
+
+                        if (! $stpExist) {
+                            DB::table('sessione_tipologie_posto')->insert([
+                                'sessione_id'        => $sessioneId,
+                                'tipologia_posto_id' => $tpId,
+                                'posti_totali'       => $postiTp,
+                                'posti_disponibili'  => $postiTp,
+                                'posti_riservati'    => 0,
+                                'attiva'             => true,
                             ]);
+                        } elseif ($this->force) {
+                            DB::table('sessione_tipologie_posto')
+                                ->where('id', $stpExist->id)
+                                ->update([
+                                    'posti_totali'      => $postiTp,
+                                    'posti_disponibili' => $postiTp,
+                                ]);
+                        }
+                    }
+                } else {
+                    // Fallback: unica tipologia (Ordinario o prima disponibile)
+                    $tipologiaId = ! empty($tipologieEvento) ? reset($tipologieEvento) : null;
+                    if ($tipologiaId) {
+                        $stpExist = DB::table('sessione_tipologie_posto')
+                            ->where('sessione_id', $sessioneId)
+                            ->where('tipologia_posto_id', $tipologiaId)
+                            ->first();
+
+                        if (! $stpExist) {
+                            DB::table('sessione_tipologie_posto')->insert([
+                                'sessione_id'        => $sessioneId,
+                                'tipologia_posto_id' => $tipologiaId,
+                                'posti_totali'       => $postiTotali,
+                                'posti_disponibili'  => (int) ($r->postiDisponibili ?? $postiTotali),
+                                'posti_riservati'    => 0,
+                                'attiva'             => true,
+                            ]);
+                        } elseif ($this->force) {
+                            DB::table('sessione_tipologie_posto')
+                                ->where('id', $stpExist->id)
+                                ->update([
+                                    'posti_totali'      => $postiTotali,
+                                    'posti_disponibili' => (int) ($r->postiDisponibili ?? $postiTotali),
+                                ]);
+                        }
                     }
                 }
 
@@ -510,17 +616,23 @@ class MigraDaCrono1 extends Command
             $stato = self::STATI_PRENOTAZIONE_MAP[$r->stato ?? ''] ?? 'CONFERMATA';
             $posti = max(1, (int) ($r->postiPrenotati ?? 1));
 
+            // Mappa tipologie evento: [nomeTipologia => tipologiaC2_id]
+            $tipologieEvento = isset($r->eventoID) ? ($this->tipologieMap[$r->eventoID] ?? []) : [];
+            // Parsa il breakdown tipologico della prenotazione
+            $postiPrenotJsonRaw = !empty($r->posti) ? json_decode($r->posti, true) : null;
+            $postiBreakdown     = (is_array($postiPrenotJsonRaw) && !empty($tipologieEvento))
+                                    ? $postiPrenotJsonRaw
+                                    : null;
+
+            // Fallback tipologia singola: prima nella mappa o prima nella sessione
             $tipologiaId = null;
-            // Ricava il tipologia_id dalla sessione → evento Crono1
-            if (isset($r->eventoID)) {
-                $tipologiaId = $this->tipologieMap[$r->eventoID] ?? null;
-            }
-            if (! $tipologiaId) {
-                // Fallback: cerca la tipologia "Ordinario" della sessione
+            if (empty($tipologieEvento)) {
                 $stp = DB::table('sessione_tipologie_posto')
                     ->where('sessione_id', $sessioneIdC2)
                     ->first();
                 $tipologiaId = $stp ? $stp->tipologia_posto_id : null;
+            } elseif (! $postiBreakdown) {
+                $tipologiaId = reset($tipologieEvento);
             }
 
             // Snapshot evento
@@ -567,8 +679,34 @@ class MigraDaCrono1 extends Command
                     $this->contatori['prenotazioni']['insert']++;
                 }
 
-                // prenotazione_posti
-                if ($tipologiaId) {
+                // prenotazione_posti: uno per tipologia se disponibile il breakdown, altrimenti unico record
+                if ($postiBreakdown) {
+                    foreach ($postiBreakdown as $pb) {
+                        $nomeT = trim($pb['tipologia'] ?? '');
+                        $tpId  = $tipologieEvento[$nomeT] ?? null;
+                        if (! $tpId) {
+                            continue;
+                        }
+                        $qty       = max(1, (int) ($pb['quantitaRichiesta'] ?? 0));
+                        $costoUnit = isset($pb['costoUnitario']) && $pb['costoUnitario'] > 0
+                                        ? (float) $pb['costoUnitario'] : null;
+
+                        $ppExists = DB::table('prenotazione_posti')
+                            ->where('prenotazione_id', $prenotazioneId)
+                            ->where('tipologia_posto_id', $tpId)
+                            ->exists();
+
+                        if (! $ppExists) {
+                            DB::table('prenotazione_posti')->insert([
+                                'prenotazione_id'    => $prenotazioneId,
+                                'tipologia_posto_id' => $tpId,
+                                'quantita'           => $qty,
+                                'costo_unitario'     => $costoUnit,
+                                'costo_riga'         => $costoUnit ? $qty * $costoUnit : null,
+                            ]);
+                        }
+                    }
+                } elseif ($tipologiaId) {
                     $ppExists = DB::table('prenotazione_posti')
                         ->where('prenotazione_id', $prenotazioneId)
                         ->where('tipologia_posto_id', $tipologiaId)
