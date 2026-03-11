@@ -622,9 +622,9 @@ const isNuovo = computed(() => !route.params.eventoId)
 
 const tabs = [
   { key: 'dettagli',  label: '📝 Dettagli'       },
-  { key: 'layout',    label: '🖋 Layout'          },
-  { key: 'sessioni',  label: '🗓 Sessioni'        },
   { key: 'tipologie', label: '🪑 Tipologie posto' },
+  { key: 'sessioni',  label: '🗓 Sessioni'        },
+  { key: 'layout',    label: '🖋 Layout'          },
   { key: 'form',      label: '📋 Campi form'      },
   { key: 'log',       label: '🕑 Log attività'    },
 ]
