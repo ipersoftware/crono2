@@ -181,7 +181,7 @@ const features = [
   { icon: '📧', title: 'Notifiche automatiche',   desc: 'Email di conferma, promemoria e notifiche allo staff inviate automaticamente ad ogni evento.' },
   { icon: '⏳', title: 'Lista d\'attesa',          desc: 'Quando i posti sono esauriti, gli utenti possono iscriversi alla lista d\'attesa e ricevere notifica automatica.' },
   { icon: '📊', title: 'Monitoraggio live',       desc: 'Visualizza in tempo reale i posti disponibili, le prenotazioni attive e i lock temporanei per sessione.' },
-  { icon: '🔗', title: 'Integrazione Keycloak',   desc: 'Autenticazione enterprise con Keycloak. Login SSO, gestione ruoli avanzata e sincronizzazione utenti.' },
+  { icon: '🔗', title: 'Integrazione Enterprise',   desc: 'Integrazione con i sistemi Ermes (Messaggistica) e <a href="https://smartpass.ipersoftware.it">Smartpass</a> (Abbonamenti digitali)' },
   { icon: '🏢', title: 'Multi-ente',              desc: 'Ogni organizzazione ha il proprio spazio isolato. Un\'unica installazione, più enti indipendenti.' },
 ]
 
