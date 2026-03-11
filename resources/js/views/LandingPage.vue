@@ -56,7 +56,7 @@
           <div class="lp-feature-card" v-for="f in features" :key="f.title">
             <div class="lp-feature-icon">{{ f.icon }}</div>
             <h3 class="lp-feature-title">{{ f.title }}</h3>
-            <p class="lp-feature-desc">{{ f.desc }}</p>
+            <p class="lp-feature-desc" v-html="f.desc"></p>
           </div>
         </div>
       </div>
