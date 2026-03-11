@@ -159,6 +159,7 @@
                 <th>Luogo</th>
                 <th>Posti tot.</th>
                 <th>Disponibili</th>
+                <th>Prenotati</th>
                 <th>In attesa</th>
                 <th>Prenotaz. attive</th>
                 <th>Confermate</th>
@@ -175,6 +176,9 @@
                   <td class="text-center" :class="s.posti_totali > 0 && s.posti_disponibili === 0 ? 'monit-danger' : ''">
                     {{ s.posti_totali > 0 ? s.posti_disponibili : '∞' }}
                   </td>
+                  <td class="text-center">
+                    {{ s.posti_totali > 0 ? (s.posti_totali - s.posti_disponibili) : '∞' }}
+                  </td>
                   <td class="text-center">{{ s.posti_in_attesa || 0 }}</td>
                   <td class="text-center fw link-cell" @click="apriPrenotazioni(s.id, null)">{{ s.prenotazioni_attive }}</td>
                   <td class="text-center link-cell" @click="apriPrenotazioni(s.id, 'CONFERMATA')">{{ s.prenotazioni_confermate }}</td>
@@ -182,7 +186,7 @@
                   <td class="text-center monit-muted link-cell" @click="apriPrenotazioni(s.id, 'ANNULLATA_UTENTE')">{{ s.prenotazioni_annullate }}</td>
                 </tr>
                 <tr v-if="s.tipologie.length" class="row-tipologie">
-                  <td colspan="9">
+                  <td colspan="10">
                     <span v-for="tp in s.tipologie" :key="tp.nome" class="tp-chip">
                       <strong>{{ tp.nome }}</strong>:
                       <span v-if="tp.posti_totali === 0" class="tp-illim">Illim.</span>
