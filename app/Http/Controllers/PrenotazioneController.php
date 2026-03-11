@@ -377,6 +377,12 @@ class PrenotazioneController extends Controller
                     ->orWhere('cognome', 'like', "%{$cerca}%");
             });
         }
+        if ($request->filled('data_dal')) {
+            $q->whereDate('data_prenotazione', '>=', $request->data_dal);
+        }
+        if ($request->filled('data_al')) {
+            $q->whereDate('data_prenotazione', '<=', $request->data_al);
+        }
 
         return response()->json($q->paginate(50));
     }
@@ -438,6 +444,12 @@ class PrenotazioneController extends Controller
                     ->orWhere('cognome', 'like', "%{$cerca}%");
             });
         }
+        if ($request->filled('data_dal')) {
+            $q->whereDate('data_prenotazione', '>=', $request->data_dal);
+        }
+        if ($request->filled('data_al')) {
+            $q->whereDate('data_prenotazione', '<=', $request->data_al);
+        }
 
         $prenotazioni = $q->get();
 
@@ -457,7 +469,7 @@ class PrenotazioneController extends Controller
         $headers = [
             'Codice', 'Cognome', 'Nome', 'Email', 'Telefono',
             'Evento', 'Data sessione', 'Prenotato il',
-            'Stato', 'N° posti', 'Importo €', 'Note',
+            'Stato', 'N° posti', 'Tipologie posti', 'Importo €', 'Note',
         ];
         foreach ($campiForm as $campo) {
             $headers[] = $campo->etichetta;
@@ -499,6 +511,11 @@ class PrenotazioneController extends Controller
             );
             $sheet->setCellValue([$col++, $row], $p->stato);
             $sheet->setCellValue([$col++, $row], $nPosti);
+            $tipologieStr = $p->posti
+                ->filter(fn($pp) => $pp->quantita > 0)
+                ->map(fn($pp) => ($pp->tipologiaPosto?->nome ?? '?') . '×' . $pp->quantita)
+                ->join(', ');
+            $sheet->setCellValue([$col++, $row], $tipologieStr);
             $sheet->setCellValue([$col++, $row], (float) ($p->costo_totale ?? 0));
             $sheet->setCellValue([$col++, $row], $p->note ?? '');
 

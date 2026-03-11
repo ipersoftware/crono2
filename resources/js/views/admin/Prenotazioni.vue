@@ -46,6 +46,8 @@
           <option value="ANNULLATA_ADMIN">Annullata admin</option>
         </select>
         <input v-model="filtri.cerca" @input="resetAndCarica" placeholder="Cerca codice, nome, email…" class="input" />
+        <input v-model="filtri.data_dal" @change="resetAndCarica" type="date" class="input" title="Prenotato dal" />
+        <input v-model="filtri.data_al"  @change="resetAndCarica" type="date" class="input" title="Prenotato al" />
         <!-- Esporta XLS: visibile solo se è selezionato un evento -->
         <button
           v-if="filtri.evento_id"
@@ -247,7 +249,7 @@ const sessioni = ref([])
 const meta    = ref(null)
 const loading = ref(false)
 const pagina  = ref(1)
-const filtri  = reactive({ cerca: '', stato: '', evento_id: '', sessione_id: '' })
+const filtri = reactive({ cerca: '', stato: '', evento_id: '', sessione_id: '', data_dal: '', data_al: '' })
 
 // Filtro anno
 const annoCorrente = new Date().getFullYear()
