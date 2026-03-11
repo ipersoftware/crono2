@@ -191,21 +191,21 @@ const plans = [
     price: '0',
     featured: false,
     desc: 'Per chi vuole iniziare senza impegno.',
-    features: ['1 ente', 'Fino a 3 eventi attivi', 'Prenotazioni illimitate', 'Vetrina pubblica', 'Notifiche email', 'Supporto community'],
+    features: ['1 ente', 'Fino a 1 evento attivo', 'Prenotazioni illimitate', 'Vetrina pubblica', 'Notifiche email', 'Supporto community'],
   },
   {
     name: 'Professional',
     price: '29',
     featured: true,
     desc: 'Per associazioni e organizzatori che crescono.',
-    features: ['1 ente', 'Eventi illimitati', 'Tipologie di posto', 'Lista d\'attesa', 'Serie ricorrenti', 'Monitoraggio live', 'Integrazione Keycloak', 'Supporto prioritario'],
+    features: ['1 ente', 'Fino a 3 eventi attivi', 'Tipologie di posto', 'Lista d\'attesa', 'Serie ricorrenti', 'Monitoraggio live', 'Integrazione Keycloak', 'Supporto prioritario'],
   },
   {
     name: 'Enterprise',
     price: '—',
     featured: false,
     desc: 'Per reti di enti e realtà complesse.',
-    features: ['Multi-ente illimitati', 'Tutto di Professional', 'SSO avanzato', 'SLA garantito', 'Onboarding dedicato', 'Prezzi personalizzati'],
+    features: ['Multi-ente con eventi illimitati', 'Tutto di Professional', 'SSO avanzato', 'SLA garantito', 'Onboarding dedicato', 'Prezzi personalizzati'],
   },
 ]
 
