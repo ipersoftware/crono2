@@ -112,6 +112,16 @@
               </span>
             </label>
           </div>
+          <div class="form-group" v-if="form.consenti_multi_sessione">
+            <label class="toggle-label">
+              <span class="toggle-text">Consenti prenotazioni multiple sulla stessa sessione</span>
+              <span class="toggle-state">{{ form.consenti_prenotazioni_multiple ? 'Sì' : 'No' }}</span>
+              <span class="toggle-wrap">
+                <input type="checkbox" v-model="form.consenti_prenotazioni_multiple" class="toggle-input" />
+                <span class="toggle-slider"></span>
+              </span>
+            </label>
+          </div>
           <div class="form-group">
             <label class="toggle-label">
               <span class="toggle-text">Mostra disponibilità in vetrina</span>
@@ -648,7 +658,7 @@ const form = reactive({
   stato: 'BOZZA', serie_id: null,
   cancellazione_consentita_ore: 0,
   richiede_approvazione: false, consenti_prenotazione_guest: true,
-  consenti_multi_sessione: false, mostra_disponibilita: true,
+  consenti_multi_sessione: false, consenti_prenotazioni_multiple: false, mostra_disponibilita: true,
   visibile_dal: '', visibile_al: '', prenotabile_dal: '', prenotabile_al: '',
   tag_ids: [],
   staff_ids: [],
@@ -910,8 +920,9 @@ const caricaDati = async () => {
       form.cancellazione_consentita_ore = ev.cancellazione_consentita_ore ?? 0
       form.richiede_approvazione     = !!ev.richiede_approvazione
       form.consenti_prenotazione_guest = ev.consenti_prenotazione_guest ?? true
-      form.consenti_multi_sessione   = !!ev.consenti_multi_sessione
-      form.mostra_disponibilita      = ev.mostra_disponibilita ?? true
+      form.consenti_multi_sessione          = !!ev.consenti_multi_sessione
+      form.consenti_prenotazioni_multiple    = !!ev.consenti_prenotazioni_multiple
+      form.mostra_disponibilita              = ev.mostra_disponibilita ?? true
       form.visibile_dal              = ev.visibile_dal ? ev.visibile_dal.slice(0, 16) : ''
       form.visibile_al               = ev.visibile_al ? ev.visibile_al.slice(0, 16) : ''
       form.prenotabile_dal           = ev.prenotabile_dal ? ev.prenotabile_dal.slice(0, 16) : ''

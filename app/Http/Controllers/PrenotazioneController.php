@@ -193,16 +193,17 @@ class PrenotazioneController extends Controller
             });
 
         if ($evento->consenti_multi_sessione) {
-            // Permette prenotazioni su sessioni diverse, ma non sulla stessa sessione due volte
-            $queryDuplicato->where('sessione_id', $sessione->id);
-            $messaggioDuplicato = 'Esiste già una prenotazione attiva per questa sessione.';
+            if (!$evento->consenti_prenotazioni_multiple) {
+                // Permette sessioni diverse, ma non la stessa sessione due volte
+                $queryDuplicato->where('sessione_id', $sessione->id);
+                abort_if($queryDuplicato->exists(), 422, 'Esiste già una prenotazione attiva per questa sessione.');
+            }
+            // consenti_prenotazioni_multiple = true → nessun controllo duplicato
         } else {
             // Non permette più prenotazioni sullo stesso evento
             $queryDuplicato->whereHas('sessione', fn($q) => $q->where('evento_id', $evento->id));
-            $messaggioDuplicato = 'Esiste già una prenotazione attiva per questo evento.';
+            abort_if($queryDuplicato->exists(), 422, 'Esiste già una prenotazione attiva per questo evento.');
         }
-
-        abort_if($queryDuplicato->exists(), 422, $messaggioDuplicato);
 
         return DB::transaction(function () use ($data, $lock, $sessione, $evento, $request) {
             $codice = $this->generaCodice();
