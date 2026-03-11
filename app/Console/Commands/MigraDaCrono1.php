@@ -777,38 +777,49 @@ class MigraDaCrono1 extends Command
             }
 
             $sessione = DB::table('sessioni')->find($sessioneId);
-            if (! $sessione || $sessione->posti_totali === 0) {
-                continue; // illimitati
+            if (! $sessione) {
+                continue;
             }
 
-            $occupati = DB::table('prenotazioni')
+            $postiTotaliSess = (int) $sessione->posti_totali;
+
+            if ($postiTotaliSess > 0) {
+                $occupati    = DB::table('prenotazioni')
+                    ->where('sessione_id', $sessioneId)
+                    ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE'])
+                    ->whereNull('deleted_at')
+                    ->sum('posti_prenotati');
+
+                $disponibili = max(0, $postiTotaliSess - (int) $occupati);
+                DB::table('sessioni')->where('id', $sessioneId)->update(['posti_disponibili' => $disponibili]);
+            }
+
+            // Aggiorna sessione_tipologie_posto per tutte le tipologie (anche illimitati)
+            $stps = DB::table('sessione_tipologie_posto')->where('sessione_id', $sessioneId)->get();
+
+            $prenotazioniIds = DB::table('prenotazioni')
                 ->where('sessione_id', $sessioneId)
                 ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE'])
                 ->whereNull('deleted_at')
-                ->sum('posti_prenotati');
+                ->pluck('id');
 
-            $disponibili = max(0, $sessione->posti_totali - $occupati);
-            DB::table('sessioni')->where('id', $sessioneId)->update(['posti_disponibili' => $disponibili]);
-
-            // Aggiorna anche sessione_tipologie_posto
-            $stps = DB::table('sessione_tipologie_posto')->where('sessione_id', $sessioneId)->get();
             foreach ($stps as $stp) {
-                if ($stp->posti_totali === 0) {
-                    continue;
-                }
+                $postiTotaliTp = (int) $stp->posti_totali;
 
-                $prenotazioniIds = DB::table('prenotazioni')
-                    ->where('sessione_id', $stp->sessione_id)
-                    ->whereIn('stato', ['CONFERMATA', 'DA_CONFERMARE'])
-                    ->whereNull('deleted_at')
-                    ->pluck('id');
-
-                $occTp = DB::table('prenotazione_posti')
+                $occTp = (int) DB::table('prenotazione_posti')
                     ->whereIn('prenotazione_id', $prenotazioniIds)
                     ->where('tipologia_posto_id', $stp->tipologia_posto_id)
                     ->sum('quantita');
 
-                $dispTp = max(0, $stp->posti_totali - $occTp);
+                if ($postiTotaliTp > 0) {
+                    // Tipologia con cap: posti_disponibili = cap - prenotati
+                    $dispTp = max(0, $postiTotaliTp - $occTp);
+                } else {
+                    // Tipologia illimitata: posti_disponibili traccia i prenotati
+                    // (posti_totali=0 = illimitati; il frontend mostra "N/∞")
+                    $dispTp = $occTp;
+                }
+
                 DB::table('sessione_tipologie_posto')
                     ->where('id', $stp->id)
                     ->update(['posti_disponibili' => $dispTp]);
