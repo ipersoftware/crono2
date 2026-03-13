@@ -90,11 +90,11 @@
                   </span>
                 </div>
                 <router-link
-                  v-if="prenotazioneAperta"
+                  v-if="sessionePrenotabile(s)"
                   :to="`/vetrina/${shopUrl}/prenota/${evento.slug}/${s.id}`"
                   class="sessione-prenota"
                 >Prenota →</router-link>
-                <div v-else class="sessione-prenota-closed">{{ prenotabileMessage }}</div>
+                <div v-else class="sessione-prenota-closed">{{ sessioneMessaggio(s) }}</div>
               </div>
             </div>
           </div>
@@ -182,6 +182,29 @@ const prenotazioneAperta = computed(() => {
   if (ev.prenotabile_al && new Date(ev.prenotabile_al) < now) return false
   return true
 })
+
+// Controlla se una sessione specifica è prenotabile (date evento + posti disponibili)
+const sessionePrenotabile = (s) => {
+  if (!prenotazioneAperta.value) return false
+  // 1. Posti a livello sessione (autoritativo quando definito)
+  if (s.posti_totali > 0 && (s.posti_disponibili - (s.posti_riservati ?? 0)) <= 0) return false
+  // 2. Posti per-tipologia: controlla solo STP che hanno un limite proprio
+  if (s.tipologie_posto?.length) {
+    const stpConLimite = s.tipologie_posto.filter(t => t.posti_totali > 0)
+    if (stpConLimite.length > 0) {
+      const haPostiLiberi = stpConLimite.some(t =>
+        (t.posti_disponibili - (t.posti_riservati ?? 0)) > 0
+      )
+      if (!haPostiLiberi) return false
+    }
+  }
+  return true
+}
+
+const sessioneMessaggio = (s) => {
+  if (!prenotazioneAperta.value) return prenotabileMessage.value
+  return 'Posti esauriti'
+}
 
 const prenotabileMessage = computed(() => {
   const ev = evento.value
