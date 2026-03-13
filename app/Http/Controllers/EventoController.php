@@ -29,9 +29,13 @@ class EventoController extends Controller
             ->when($request->stato, fn ($q, $s) => $q->where('stato', $s))
             ->when($request->serie_id, fn ($q, $id) => $q->where('serie_id', $id))
             ->when($request->q, fn ($q, $search) => $q->where('titolo', 'like', "%{$search}%"))
-            ->when($request->filled('anno'), fn ($q) => $q->whereHas('sessioni', fn ($sq) =>
-                $sq->whereYear('data_inizio', (int) $request->anno)
-            ))
+            ->when($request->filled('anno'), fn ($q) => $q->where(function ($q) use ($request) {
+                $anno = (int) $request->anno;
+                $q->whereHas('sessioni', fn ($sq) => $sq->whereYear('data_inizio', $anno))
+                  ->orWhere(fn ($q2) =>
+                      $q2->doesntHave('sessioni')->whereYear('created_at', $anno)
+                  );
+            }))
             ->with(['serie', 'tags', 'luoghi'])
             ->withCount('sessioni')
             ->orderBy('created_at', 'desc')
@@ -297,6 +301,25 @@ class EventoController extends Controller
         $evento->update(['immagine' => $url]);
 
         return response()->json(['immagine' => $url, 'document_id' => $document->id]);
+    }
+
+    /**
+     * POST /api/enti/{ente}/editor/upload-image
+     * Upload immagine dall'editor rich-text (TinyMCE). Risponde con { location } per TinyMCE.
+     */
+    public function editorUploadImmagine(Request $request, Ente $ente): JsonResponse
+    {
+        $request->validate([
+            'file' => 'required|image|mimes:jpeg,jpg,png,webp,gif|max:5120',
+        ]);
+
+        $document = $this->documentStorage->store(
+            $request->file('file'),
+            $ente->id,
+            'Upload editor rich-text'
+        );
+
+        return response()->json(['location' => $this->documentStorage->url($document)]);
     }
 
     /** DELETE /api/enti/{ente}/eventi/{evento}/immagine */

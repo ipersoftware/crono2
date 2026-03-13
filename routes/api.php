@@ -119,6 +119,9 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::post('eventi/{evento}/immagine',   [EventoController::class, 'uploadImmagine']);
             Route::delete('eventi/{evento}/immagine', [EventoController::class, 'eliminaImmagine']);
 
+            // Upload immagini per editor rich-text
+            Route::post('editor/upload-image', [EventoController::class, 'editorUploadImmagine']);
+
             // Documenti (elimina)
             Route::delete('documents/{document}', [DocumentController::class, 'destroy']);
 

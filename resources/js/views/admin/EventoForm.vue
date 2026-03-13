@@ -775,6 +775,24 @@ const tinyInitLayout = {
   ].join(' | '),
   toolbar_mode: 'sliding',
   image_advtab: true,
+  automatic_uploads: true,
+  file_picker_types: 'image',
+  images_upload_handler: async (blobInfo) => {
+    const formData = new FormData()
+    formData.append('file', blobInfo.blob(), blobInfo.filename())
+    const token = localStorage.getItem('token')
+    const res = await fetch(`/api/enti/${enteId.value}/editor/upload-image`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.message ?? 'Errore durante il caricamento dell\'immagine.')
+    }
+    const data = await res.json()
+    return data.location
+  },
   branding: false,
   promotion: false,
   resize: true,
