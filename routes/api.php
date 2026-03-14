@@ -23,6 +23,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VetrinaController;
 use App\Http\Controllers\NewsletterController;
+use App\Http\Controllers\StatisticheController;
 use Illuminate\Support\Facades\Route;
 
 // -------------------------------------------------------
@@ -172,6 +173,19 @@ Route::middleware('auth:sanctum')->group(function () {
             // Newsletter / Ermes
             Route::get('newsletter/ermes-attivo',  [NewsletterController::class, 'ermesAttivo']);
             Route::post('newsletter/snapshot',     [NewsletterController::class, 'creaSnapshot']);
+
+            // Statistiche (operatore_ente e superiori)
+            Route::prefix('statistiche')->group(function () {
+                Route::get('kpi',             [StatisticheController::class, 'kpi']);
+                Route::get('andamento',       [StatisticheController::class, 'andamento']);
+                Route::get('stati',           [StatisticheController::class, 'stati']);
+                Route::get('top-eventi',      [StatisticheController::class, 'topEventi']);
+                Route::get('occupazione',     [StatisticheController::class, 'occupazione']);
+                Route::get('giorni-settimana',[StatisticheController::class, 'giorniSettimana']);
+                Route::get('fasce-orarie',    [StatisticheController::class, 'fasceOrarie']);
+                Route::get('lista-attesa',    [StatisticheController::class, 'listaAttesa']);
+                Route::get('tipologie-posto', [StatisticheController::class, 'tipologiePosto']);
+            });
         });
 });
 

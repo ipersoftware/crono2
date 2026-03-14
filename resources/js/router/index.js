@@ -133,6 +133,12 @@ const routes = [
     component: () => import('@/views/admin/NotificheLog.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/admin/:enteId/statistiche',
+    name: 'AdminStatistiche',
+    component: () => import('@/views/admin/Statistiche.vue'),
+    meta: { requiresAuth: true },
+  },
 
   // ──────────────────────────────────────────────
   // Prenotazioni utente

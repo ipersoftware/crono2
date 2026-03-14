@@ -29,6 +29,7 @@
             <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/accessi-log`">🔐 Accessi</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/notifiche-log`">✉ Log mail</router-link>
+            <router-link :to="`/admin/${enteId}/statistiche`">📊 Statistiche</router-link>
             <a v-if="ermesUrl" :href="ermesUrl" target="_blank" rel="noopener" class="nav-ermes-link">📨 Ermes</a>
           </template>
 
