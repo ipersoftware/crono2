@@ -55,4 +55,9 @@ return [
         ],
     ],
 
+    'ermes' => [
+        'url'       => env('ERMES_URL', ''),
+        'api_token' => env('ERMES_API_TOKEN', ''),
+    ],
+
 ];

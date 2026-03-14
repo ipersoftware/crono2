@@ -29,6 +29,7 @@
             <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/accessi-log`">🔐 Accessi</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/notifiche-log`">✉ Log mail</router-link>
+            <a v-if="ermesUrl" :href="ermesUrl" target="_blank" rel="noopener" class="nav-ermes-link">📨 Ermes</a>
           </template>
 
           <!-- Solo ruolo 'utente' -->
@@ -53,6 +54,7 @@
 </template>
 
 <script setup>
+import api from '@/api'
 import { useAuthStore } from '@/stores/auth'
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -76,9 +78,22 @@ const enteId = computed(() => {
   return authStore.user?.ente_id ?? null
 })
 
+const ermesUrl = ref(null)
+
+const caricaErmesStatus = async (id) => {
+  if (!id) return
+  try {
+    const res = await api.get(`/enti/${id}/newsletter/ermes-attivo`)
+    ermesUrl.value = res.data.attivo ? (res.data.ermes_url || null) : null
+  } catch { ermesUrl.value = null }
+}
+
 onMounted(async () => {
   if (authStore.isAuthenticated && !authStore.user) {
     await authStore.fetchUser()
+  }
+  if (enteId.value) {
+    caricaErmesStatus(enteId.value)
   }
 })
 
@@ -183,6 +198,21 @@ body {
 
 .btn-logout:hover {
   background-color: #c0392b;
+}
+
+.nav-ermes-link {
+  color: #f39c12;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 0.4rem 0.75rem;
+  border-radius: 4px;
+  border: 1px solid #f39c12;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.nav-ermes-link:hover {
+  background-color: #f39c12;
+  color: white;
 }
 
 .nav-hamburger {

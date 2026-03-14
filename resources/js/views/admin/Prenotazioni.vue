@@ -59,6 +59,17 @@
           <span v-if="exportLoading">⏳ Generazione…</span>
           <span v-else>📥 Esporta XLS</span>
         </button>
+        <!-- Newsletter Ermes: visibile solo se il servizio è abilitato per l'ente -->
+        <button
+          v-if="ermesAbilitato"
+          @click="creaNelwsletter"
+          :disabled="newsLoading"
+          class="btn btn-secondary btn-export"
+          title="Crea newsletter Ermes con i prenotati filtrati"
+        >
+          <span v-if="newsLoading">⏳ Preparazione…</span>
+          <span v-else>📨 Crea Newsletter</span>
+        </button>
       </div>
     </div>
 
@@ -235,6 +246,7 @@
 </template>
 
 <script setup>
+import { newsletterApi } from '@/api/admin'
 import { eventiApi, sessioniApi } from '@/api/eventi'
 import { prenotazioniApi } from '@/api/prenotazioni'
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
@@ -315,7 +327,10 @@ const dettaglio = ref(null)
 const annullamentoTarget  = ref(null)
 const annullamentoMotivo  = ref('')
 const annullamentoLoading = ref(false)
-const exportLoading = ref(false)
+const exportLoading  = ref(false)
+const newsLoading    = ref(false)
+const ermesAbilitato = ref(false)
+const ermesUrlEnte   = ref(null)
 
 const esportaXls = async () => {
   exportLoading.value = true
@@ -401,9 +416,30 @@ const totPosti = (p) => p.posti?.reduce((s, x) => s + x.quantita, 0) ?? p.posti_
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '–'
 const statoClass = (s) => s?.toLowerCase().replaceAll('_', '-') ?? ''
 
+const caricaErmesStatus = async () => {
+  try {
+    const res = await newsletterApi.ermesAttivo(enteId)
+    ermesAbilitato.value = res.data.attivo ?? false
+    ermesUrlEnte.value   = res.data.ermes_url ?? null
+  } catch {
+    ermesAbilitato.value = false
+  }
+}
+
+const creaNelwsletter = async () => {
+  newsLoading.value = true
+  try {
+    const res = await newsletterApi.creaSnapshot(enteId, { ...filtri })
+    const url = `${ermesUrlEnte.value}/newsletter/new?crono2_token=${res.data.token}&crono2_url=${encodeURIComponent(location.origin)}`
+    window.open(url, '_blank')
+  } finally {
+    newsLoading.value = false
+  }
+}
+
 onMounted(async () => {
   document.addEventListener('click', onClickOutside)
-  await caricaEventi()
+  await Promise.all([caricaEventi(), caricaErmesStatus()])
   carica()
 })
 

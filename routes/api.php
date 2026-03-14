@@ -22,6 +22,7 @@ use App\Http\Controllers\TipologiaPostoController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VetrinaController;
+use App\Http\Controllers\NewsletterController;
 use Illuminate\Support\Facades\Route;
 
 // -------------------------------------------------------
@@ -167,6 +168,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
             // Log notifiche (solo admin_ente e superiori)
             Route::get('notifiche-log', [NotificaLogController::class, 'index'])->middleware('ente.access:admin_ente');
+
+            // Newsletter / Ermes
+            Route::get('newsletter/ermes-attivo',  [NewsletterController::class, 'ermesAttivo']);
+            Route::post('newsletter/snapshot',     [NewsletterController::class, 'creaSnapshot']);
         });
 });
 
@@ -178,4 +183,12 @@ Route::get('/health', function () {
         'status'    => 'ok',
         'timestamp' => now()->toISOString(),
     ]);
+});
+
+// -------------------------------------------------------
+// API v1 per sistemi esterni (es. Ermes)
+// Autenticati con Bearer token configurato in ERMES_API_TOKEN
+// -------------------------------------------------------
+Route::prefix('v1')->group(function () {
+    Route::get('newsletter/{token}/subscribers', [NewsletterController::class, 'subscribers']);
 });

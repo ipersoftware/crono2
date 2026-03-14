@@ -69,3 +69,11 @@ export const notificheLogApi = {
   index: (enteId, params = {}) =>
     api.get(`/enti/${enteId}/notifiche-log`, { params }),
 }
+
+// Newsletter / Ermes
+export const newsletterApi = {
+  ermesAttivo: (enteId) =>
+    api.get(`/enti/${enteId}/newsletter/ermes-attivo`),
+  creaSnapshot: (enteId, filtri) =>
+    api.post(`/enti/${enteId}/newsletter/snapshot`, { filtri }),
+}
