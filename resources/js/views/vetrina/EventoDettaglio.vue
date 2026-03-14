@@ -133,8 +133,9 @@
 </template>
 
 <script setup>
+import { useHead } from '@unhead/vue'
 import { vetrinaApi } from '@/api/vetrina'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route   = useRoute()
@@ -215,6 +216,67 @@ const prenotabileMessage = computed(() => {
   if (ev.prenotabile_al && new Date(ev.prenotabile_al) < now)
     return 'Prenotazioni chiuse'
   return ''
+})
+
+// ── SEO: meta tag dinamici + schema.org ─────────────────────────────────────
+watchEffect(() => {
+  if (!evento.value) return
+  const ev    = evento.value
+  const title = `${ev.titolo}${ev.ente_info?.nome ? ' — ' + ev.ente_info.nome : ''}`
+  const desc  = ev.descrizione_breve || ev.titolo
+  const image = ev.immagine || ''
+  const url   = location.href
+
+  // Schema.org Event per la prima sessione disponibile (o il set completo)
+  const jsonLd = {
+    '@context':            'https://schema.org',
+    '@type':               ev.sessioni?.length > 1 ? 'EventSeries' : 'Event',
+    name:                  ev.titolo,
+    description:           desc,
+    ...(image ? { image } : {}),
+    url,
+    organizer: ev.ente_info ? {
+      '@type': 'Organization',
+      name:    ev.ente_info.nome,
+    } : undefined,
+    ...(ev.luoghi?.length ? {
+      location: {
+        '@type':  'Place',
+        name:     ev.luoghi[0].nome,
+        address:  ev.luoghi[0].indirizzo ?? ev.luoghi[0].nome,
+      }
+    } : {}),
+    ...(ev.sessioni?.length ? {
+      startDate: ev.sessioni[0].data_inizio,
+      endDate:   ev.sessioni[ev.sessioni.length - 1].data_fine ?? ev.sessioni[ev.sessioni.length - 1].data_inizio,
+    } : {}),
+    eventStatus:         'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    offers: {
+      '@type':       'Offer',
+      url,
+      availability:  'https://schema.org/InStock',
+    },
+  }
+
+  useHead({
+    title,
+    meta: [
+      { name:     'description',        content: desc },
+      { property: 'og:type',            content: 'event' },
+      { property: 'og:title',           content: ev.titolo },
+      { property: 'og:description',     content: desc },
+      ...(image ? [{ property: 'og:image', content: image }] : []),
+      { property: 'og:url',             content: url },
+      { property: 'og:site_name',       content: ev.ente_info?.nome ?? 'Crono' },
+      { name:     'twitter:card',       content: 'summary_large_image' },
+      { name:     'twitter:title',      content: ev.titolo },
+      { name:     'twitter:description',content: desc },
+      ...(image ? [{ name: 'twitter:image', content: image }] : []),
+    ],
+    link:   [{ rel: 'canonical', href: url }],
+    script: [{ type: 'application/ld+json', innerHTML: JSON.stringify(jsonLd) }],
+  })
 })
 
 onMounted(carica)

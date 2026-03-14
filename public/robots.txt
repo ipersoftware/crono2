@@ -1,2 +1,10 @@
 User-agent: *
-Disallow:
+Disallow: /admin/
+Disallow: /api/
+Disallow: /vetrina/*/prenota/
+Disallow: /vetrina/*/conferma/
+Disallow: /auth/
+
+Allow: /vetrina/
+
+Sitemap: /sitemap.xml
