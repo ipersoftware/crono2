@@ -133,8 +133,8 @@
 </template>
 
 <script setup>
-import { useHead } from '@unhead/vue'
 import { vetrinaApi } from '@/api/vetrina'
+import { useHead } from '@unhead/vue'
 import { computed, onMounted, ref, watchEffect } from 'vue'
 import { useRoute } from 'vue-router'
 
