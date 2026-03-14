@@ -118,10 +118,6 @@
             <router-link to="/login" class="vetfooter-link">Accedi</router-link>
             <router-link to="/register" class="vetfooter-link">Registrati</router-link>
           </div>
-          <div v-if="evento.ente_info?.privacy_url" class="vetfooter-col">
-            <div class="vetfooter-col-title">Informazioni</div>
-            <a :href="evento.ente_info.privacy_url" target="_blank" rel="noopener" class="vetfooter-link">Privacy Policy</a>
-          </div>
         </div>
         <div class="vetfooter-bottom">
           © {{ new Date().getFullYear() }} {{ evento.ente_info?.nome }}. Powered by Crono.
@@ -135,7 +131,7 @@
 <script setup>
 import { vetrinaApi } from '@/api/vetrina'
 import { useHead } from '@unhead/vue'
-import { computed, onMounted, ref, watchEffect } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route   = useRoute()
@@ -219,22 +215,26 @@ const prenotabileMessage = computed(() => {
 })
 
 // ── SEO: meta tag dinamici + schema.org ─────────────────────────────────────
-watchEffect(() => {
-  if (!evento.value) return
-  const ev    = evento.value
-  const title = `${ev.titolo}${ev.ente_info?.nome ? ' — ' + ev.ente_info.nome : ''}`
-  const desc  = ev.descrizione_breve || ev.titolo
-  const image = ev.immagine || ''
-  const url   = location.href
+const seoTitle = computed(() => {
+  const ev = evento.value
+  if (!ev) return 'Crono'
+  return `${ev.titolo}${ev.ente_info?.nome ? ' — ' + ev.ente_info.nome : ''}`
+})
 
-  // Schema.org Event per la prima sessione disponibile (o il set completo)
-  const jsonLd = {
+const seoDesc = computed(() => evento.value?.descrizione_breve || evento.value?.titolo || '')
+const seoImage = computed(() => evento.value?.immagine || '')
+const seoUrl = computed(() => location.href)
+
+const seoJsonLd = computed(() => {
+  const ev = evento.value
+  if (!ev) return null
+  return JSON.stringify({
     '@context':            'https://schema.org',
     '@type':               ev.sessioni?.length > 1 ? 'EventSeries' : 'Event',
     name:                  ev.titolo,
-    description:           desc,
-    ...(image ? { image } : {}),
-    url,
+    description:           seoDesc.value,
+    ...(seoImage.value ? { image: seoImage.value } : {}),
+    url:                   seoUrl.value,
     organizer: ev.ente_info ? {
       '@type': 'Organization',
       name:    ev.ente_info.nome,
@@ -254,29 +254,33 @@ watchEffect(() => {
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
     offers: {
       '@type':       'Offer',
-      url,
+      url:           seoUrl.value,
       availability:  'https://schema.org/InStock',
     },
-  }
-
-  useHead({
-    title,
-    meta: [
-      { name:     'description',        content: desc },
-      { property: 'og:type',            content: 'event' },
-      { property: 'og:title',           content: ev.titolo },
-      { property: 'og:description',     content: desc },
-      ...(image ? [{ property: 'og:image', content: image }] : []),
-      { property: 'og:url',             content: url },
-      { property: 'og:site_name',       content: ev.ente_info?.nome ?? 'Crono' },
-      { name:     'twitter:card',       content: 'summary_large_image' },
-      { name:     'twitter:title',      content: ev.titolo },
-      { name:     'twitter:description',content: desc },
-      ...(image ? [{ name: 'twitter:image', content: image }] : []),
-    ],
-    link:   [{ rel: 'canonical', href: url }],
-    script: [{ type: 'application/ld+json', innerHTML: JSON.stringify(jsonLd) }],
   })
+})
+
+// useHead va chiamato una volta sola in setup(), con valori computed reattivi
+useHead({
+  title: seoTitle,
+  meta: computed(() => [
+    { name:     'description',         content: seoDesc.value },
+    { property: 'og:type',             content: 'event' },
+    { property: 'og:title',            content: evento.value?.titolo ?? '' },
+    { property: 'og:description',      content: seoDesc.value },
+    ...(seoImage.value ? [{ property: 'og:image', content: seoImage.value }] : []),
+    { property: 'og:url',              content: seoUrl.value },
+    { property: 'og:site_name',        content: evento.value?.ente_info?.nome ?? 'Crono' },
+    { name:     'twitter:card',        content: 'summary_large_image' },
+    { name:     'twitter:title',       content: evento.value?.titolo ?? '' },
+    { name:     'twitter:description', content: seoDesc.value },
+    ...(seoImage.value ? [{ name: 'twitter:image', content: seoImage.value }] : []),
+  ]),
+  link:   computed(() => [{ rel: 'canonical', href: seoUrl.value }]),
+  script: computed(() => seoJsonLd.value
+    ? [{ type: 'application/ld+json', innerHTML: seoJsonLd.value }]
+    : []
+  ),
 })
 
 onMounted(carica)

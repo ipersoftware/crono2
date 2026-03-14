@@ -188,10 +188,6 @@
             <router-link to="/login" class="vetfooter-link">Accedi</router-link>
             <router-link to="/register" class="vetfooter-link">Registrati</router-link>
           </div>
-          <div v-if="ente.privacy_url" class="vetfooter-col">
-            <div class="vetfooter-col-title">Informazioni</div>
-            <a :href="ente.privacy_url" target="_blank" rel="noopener" class="vetfooter-link">Privacy Policy</a>
-          </div>
         </div>
         <div class="vetfooter-bottom">
           © {{ new Date().getFullYear() }} {{ ente.nome }}. Powered by Crono.

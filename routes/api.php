@@ -48,6 +48,7 @@ Route::prefix('vetrina/{shopUrl}')->group(function () {
     Route::get('/serie',   [VetrinaController::class, 'serie']);
     Route::get('/tags',    [VetrinaController::class, 'tags']);
     Route::post('/contatto', [VetrinaController::class, 'contatto']);
+    Route::get('/privacy', [VetrinaController::class, 'privacy']);
 });
 
 // Serve documenti — pubblico, no auth (URL opaco con ID)

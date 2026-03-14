@@ -60,4 +60,9 @@ return [
         'api_token' => env('ERMES_API_TOKEN', ''),
     ],
 
+    'governance' => [
+        'url'   => env('GOVERNANCE_URL', ''),
+        'token' => env('GOVERNANCE_TOKEN', ''),
+    ],
+
 ];

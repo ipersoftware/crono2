@@ -9,6 +9,7 @@ use App\Models\RichiestaContatto;
 use App\Models\Sessione;
 use App\Models\SessioneTipologiaPosto;
 use App\Models\Serie;
+use App\Services\GovernancePrivacyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -47,7 +48,6 @@ class VetrinaController extends Controller
                 'citta'              => $ente->citta,
                 'provincia'          => $ente->provincia,
                 'email'              => $ente->email,
-                'privacy_url'        => $ente->privacy_url,
                 'form_contatti_attivo' => (bool) $ente->form_contatti_attivo,
             ],
             'eventi_in_evidenza' => $inEvidenza,
@@ -131,11 +131,9 @@ class VetrinaController extends Controller
         // Se lo slug è nella history, reindirizza logicamente con il nuovo slug
         $risposta = $evento->toArray();
         $risposta['redirect_slug'] = ($evento->slug !== $slug) ? $evento->slug : null;
-        $risposta['ente_privacy_url'] = $ente->privacy_url;
         $risposta['ente_info'] = [
             'nome'        => $ente->nome,
             'shop_url'    => $ente->shop_url,
-            'privacy_url' => $ente->privacy_url,
             'indirizzo'   => $ente->indirizzo,
             'citta'       => $ente->citta,
             'provincia'   => $ente->provincia,
@@ -240,6 +238,30 @@ class VetrinaController extends Controller
         ]);
 
         return response()->json(['message' => 'Richiesta inviata con successo.'], 201);
+    }
+
+    /**
+     * GET /api/vetrina/{shop_url}/privacy
+     * Restituisce il contenuto HTML dell'informativa privacy attiva per l'ente.
+     * Endpoint pubblico — il token Governance non viene mai esposto al browser.
+     */
+    public function privacy(string $shopUrl): JsonResponse
+    {
+        $ente = $this->enteAttivo($shopUrl);
+
+        /** @var \App\Services\GovernancePrivacyService $svc */
+        $svc  = app(\App\Services\GovernancePrivacyService::class);
+        $data = $svc->getInformativa('crono', $ente->id);
+
+        if (!$data) {
+            return response()->json(['trovato' => false, 'contenuto_body' => null, 'versione' => null]);
+        }
+
+        return response()->json([
+            'trovato'        => true,
+            'contenuto_body'  => $data['contenuto_body'] ?? null,
+            'versione'        => $data['versione']  ?? null,
+        ]);
     }
 
     private function enteAttivo(string $shopUrl): Ente

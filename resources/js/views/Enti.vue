@@ -55,13 +55,6 @@
                   {{ sincronizzandoId === ente.id ? '⏳…' : '📧 Template mail' }}
                 </button>
                 <button
-                  @click="apriPrivacyModal(ente)"
-                  class="btn btn-secondary btn-sm"
-                  title="Configura URL informativa privacy"
-                >
-                  🔒 Privacy URL
-                </button>
-                <button
                   @click="toggleFormContatti(ente)"
                   :class="['btn', 'btn-sm', ente.form_contatti_attivo ? 'btn-success' : 'btn-secondary']"
                   :title="ente.form_contatti_attivo ? 'Disabilita form contatti vetrina' : 'Abilita form contatti vetrina'"
@@ -217,29 +210,6 @@
       </div>
     </div>
 
-    <!-- Modal Privacy URL -->
-    <div v-if="privacyModal.show" class="modal">
-      <div class="modal-content">
-        <h2>🔒 Privacy URL — {{ privacyModal.ente?.nome }}</h2>
-        <p class="modal-desc">URL della pagina informativa sulla privacy (link &ldquo;Maggiori informazioni&rdquo; mostrato in fase di prenotazione).</p>
-        <div class="form-group">
-          <label>URL Informativa Privacy</label>
-          <input
-            v-model="privacyModal.url"
-            type="url"
-            class="input"
-            placeholder="https://..."
-          />
-        </div>
-        <div v-if="privacyModal.errore" class="modal-error">{{ privacyModal.errore }}</div>
-        <div class="modal-actions">
-          <button type="button" @click="privacyModal.show = false" class="btn">Annulla</button>
-          <button type="button" @click="salvaPrivacyUrl" :disabled="privacyModal.saving" class="btn btn-primary">
-            {{ privacyModal.saving ? 'Salvataggio…' : 'Salva' }}
-          </button>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -405,29 +375,6 @@ const eseguiImportazione = async () => {
     govErrore.value = true
   } finally {
     govImporting.value = false
-  }
-}
-
-// ──────────────────────────── Privacy URL ────────────────────────────
-const privacyModal = ref({ show: false, ente: null, url: '', errore: '', saving: false })
-
-const apriPrivacyModal = (ente) => {
-  privacyModal.value = { show: true, ente, url: ente.privacy_url ?? '', errore: '', saving: false }
-}
-
-const salvaPrivacyUrl = async () => {
-  privacyModal.value.errore = ''
-  privacyModal.value.saving = true
-  try {
-    await api.put(`/enti/${privacyModal.value.ente.id}`, { privacy_url: privacyModal.value.url || null })
-    // Aggiorna locale
-    const idx = enti.value.findIndex(e => e.id === privacyModal.value.ente.id)
-    if (idx !== -1) enti.value[idx].privacy_url = privacyModal.value.url || null
-    privacyModal.value.show = false
-  } catch (e) {
-    privacyModal.value.errore = e.response?.data?.message ?? 'Errore durante il salvataggio.'
-  } finally {
-    privacyModal.value.saving = false
   }
 }
 

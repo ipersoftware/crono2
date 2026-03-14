@@ -1,4 +1,4 @@
-import { createUnhead } from '@unhead/vue'
+import { createUnhead, headSymbol } from '@unhead/vue'
 import Echo from 'laravel-echo'
 import { createPinia } from 'pinia'
 import Pusher from 'pusher-js'
@@ -22,6 +22,6 @@ const app = createApp(App)
 
 app.use(createPinia())
 app.use(router)
-app.use(createUnhead())
+app.provide(headSymbol, createUnhead())
 
 app.mount('#app')

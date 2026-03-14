@@ -203,10 +203,16 @@
 
             <!-- GDPR / Trattamento dati personali -->
             <div class="gdpr-box">
-              <p class="gdpr-text">
-                Trattamento dei dati personali secondo le informazioni di cui al GDPR Regolamento Europeo UE 2016/679.
-                <a v-if="privacyUrl" :href="privacyUrl" target="_blank" rel="noopener" class="gdpr-link">Maggiori informazioni</a>
-              </p>
+              <details class="gdpr-details">
+                <summary class="gdpr-summary">
+                  Informativa sulla Privacy (GDPR Reg. UE 2016/679)
+                </summary>
+                <div v-if="privacyLoading" class="gdpr-loading">Caricamento informativa…</div>
+                <div v-else-if="privacyHtml" class="gdpr-body" v-html="privacyHtml"></div>
+                <p v-else class="gdpr-fallback">
+                  Trattamento dei dati personali secondo il GDPR Regolamento Europeo UE 2016/679.
+                </p>
+              </details>
               <label class="gdpr-option" :class="{ 'gdpr-option--selected': privacyOk === true }">
                 <input type="radio" :value="true" v-model="privacyOk" /> Acconsento
               </label>
@@ -376,7 +382,9 @@ const lockToken         = ref(null)
 const scadenzaSecondi   = ref(0)
 const prenotazioneConfermata = ref(null)
 const privacyOk         = ref(null)   // null = non ancora scelto, true = acconsento
-const privacyUrl        = ref('')
+const privacyHtml       = ref('')
+const privacyVersione   = ref(null)
+const privacyLoading    = ref(false)
 let timer = null
 
 const getQty = (id) => posti[id] ?? 0
@@ -517,7 +525,16 @@ const carica = async () => {
     sessione.value  = res.data.sessioni?.find(s => s.id === sessioneId) ?? null
     tipologie.value = sessione.value?.tipologie_posto?.filter(t => t.attiva) ?? []
     campiForm.value = res.data.campi_form ?? []
-    privacyUrl.value = res.data.ente_privacy_url ?? ''
+
+    // Carica informativa privacy da Governance (in parallelo, non bloccante)
+    privacyLoading.value = true
+    vetrinaApi.privacy(shopUrl)
+      .then(pr => {
+        privacyHtml.value     = pr.data.contenuto_body ?? ''
+        privacyVersione.value = pr.data.versione  ?? null
+      })
+      .catch(() => { /* non bloccante */ })
+      .finally(() => { privacyLoading.value = false })
 
     if (!sessione.value) {
       erroreCaricamento.value = 'Sessione non trovata o non disponibile.'
@@ -617,7 +634,8 @@ const confermaPrenot = async () => {
     const res = await prenotazioniApi.store({
       token: lockToken.value,
       ...datiPersonali,
-      privacy_ok: privacyOk.value === true,
+      privacy_ok:       privacyOk.value === true,
+      privacy_versione: privacyVersione.value,
       posti: postiPayload,
       risposte: rispostePayload,
     })
@@ -668,7 +686,8 @@ const iscriviListaAttesa = async () => {
     const res = await prenotazioniApi.iscriviListaAttesa({
       sessione_id: sessioneId,
       ...datiPersonali,
-      privacy_ok: true,
+      privacy_ok:       true,
+      privacy_versione: privacyVersione.value,
       posti: postiPayload,
     })
     rispostaListaAttesa.value = res.data
@@ -738,8 +757,12 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .qty-hint { color: #e67e22; font-size: .78rem; margin-top: .1rem; }
 /* GDPR */
 .gdpr-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: .9rem 1rem; margin-top: 1.25rem; }
-.gdpr-text { font-size: .88rem; color: #444; margin: 0 0 .65rem; line-height: 1.45; }
-.gdpr-link { color: #2980b9; text-decoration: underline; }
+.gdpr-details { margin-bottom: .65rem; }
+.gdpr-summary { font-size: .88rem; color: #444; cursor: pointer; user-select: none; padding: .15rem 0; }
+.gdpr-summary:hover { color: #2980b9; }
+.gdpr-body { margin-top: .75rem; max-height: 320px; overflow-y: auto; font-size: .82rem; line-height: 1.55; color: #333; padding: .75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px; }
+.gdpr-fallback { font-size: .85rem; color: #666; margin: .5rem 0 0; }
+.gdpr-loading { font-size: .82rem; color: #aaa; margin: .5rem 0 0; }
 .gdpr-option { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; padding: .2rem 0; }
 .gdpr-option input[type="radio"] { accent-color: #2980b9; width: 1rem; height: 1rem; cursor: pointer; }
 .gdpr-option--selected { font-weight: 600; color: #1a5276; }
