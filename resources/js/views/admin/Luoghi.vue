@@ -5,6 +5,10 @@
       <button @click="apriModal()" class="btn btn-primary">+ Nuovo luogo</button>
     </div>
 
+    <transition name="toast">
+      <div v-if="successo" class="toast-success">✅ {{ successo }}</div>
+    </transition>
+
     <div class="card">
       <div class="search-bar">
         <input v-model="cerca" class="input" placeholder="🔍 Cerca per nome, indirizzo, città…" />
@@ -95,6 +99,7 @@ const loading = ref(false)
 const modal   = ref(false)
 const saving  = ref(false)
 const errore  = ref('')
+const successo = ref('')
 const cerca   = ref('')
 const form    = reactive({ id: null, nome: '', indirizzo: '', lat: null, lng: null, maps_url: '', stato: 'ATTIVO' })
 
@@ -128,12 +133,16 @@ const salva = async () => {
   errore.value = ''
   try {
     if (form.id) {
-      await luoghiApi.update(enteId, form.id, form)
+      const res = await luoghiApi.update(enteId, form.id, form)
+      const idx = luoghi.value.findIndex(l => l.id === form.id)
+      if (idx !== -1) luoghi.value[idx] = res.data
     } else {
-      await luoghiApi.store(enteId, form)
+      const res = await luoghiApi.store(enteId, form)
+      luoghi.value.push(res.data)
     }
     modal.value = false
-    await carica()
+    successo.value = 'Luogo salvato con successo.'
+    setTimeout(() => { successo.value = '' }, 3000)
   } catch (e) {
     errore.value = e.response?.data?.message ?? 'Errore.'
   } finally { saving.value = false }
@@ -150,6 +159,9 @@ onMounted(carica)
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
+.toast-success { background: #d5f5e3; color: #1a7a45; border: 1px solid #a9dfbf; border-radius: 8px; padding: .75rem 1.25rem; margin-bottom: 1rem; font-weight: 500; }
+.toast-enter-active, .toast-leave-active { transition: opacity .3s, transform .3s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateY(-8px); }
 .search-bar { padding: .75rem 1rem; border-bottom: 1px solid #f0f0f0; }
 .search-bar .input { max-width: 360px; }
 .loading, .empty { padding: 2rem; text-align: center; color: #aaa; }
