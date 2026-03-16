@@ -105,7 +105,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('tags', TagController::class)->except(['show']);
 
             // Luoghi
-            Route::apiResource('luoghi', LuogoController::class);
+            Route::apiResource('luoghi', LuogoController::class)->parameters(['luoghi' => 'luogo']);
 
             // Serie
             Route::apiResource('serie', SerieController::class);
