@@ -32,17 +32,17 @@
           <div v-if="!tipologie.length" class="empty">Nessuna tipologia di posto disponibile.</div>
           <div v-for="t in tipologie" :key="t.tipologia_posto.id"
             class="tipologia-row"
-            :class="{ 'tipologia-row--esaurita': !mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0 }">
+            :class="{ 'tipologia-row--esaurita': !mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0 }">
             <div class="tipologia-info">
               <strong>{{ t.tipologia_posto.nome }}</strong>
               <span class="prezzo">
                 {{ t.tipologia_posto.gratuita ? 'Gratuito' : `€ ${Number(t.tipologia_posto.costo).toFixed(2)}` }}
               </span>
-              <span v-if="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0" class="posti-esauriti">
+              <span v-if="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0" class="posti-esauriti">
                 Disponibilità terminata
               </span>
               <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali > 0" class="posti-left-tp">
-                {{ t.posti_disponibili }} disponibili
+                {{ tipDisp(t) }} disponibili
               </span>
               <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali === 0" class="posti-left-tp">
                 Disponibilità libera
@@ -58,7 +58,7 @@
               <button type="button"
                 @click="cambiaQty(t.tipologia_posto.id, -1)"
                 class="qty-btn"
-                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">−</button>
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0">−</button>
               <input
                 type="number"
                 min="0"
@@ -67,12 +67,12 @@
                 :value="getQty(t.tipologia_posto.id)"
                 @change="setQty(t.tipologia_posto.id, $event.target.value, $event)"
                 @focus="$event.target.select()"
-                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0"
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0"
               />
               <button type="button"
                 @click="cambiaQty(t.tipologia_posto.id, +1)"
                 class="qty-btn"
-                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">+</button>
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0">+</button>
             </div>
           </div>
 
@@ -395,8 +395,10 @@ let timer = null
 const getQty = (id) => posti[id] ?? 0
 
 // In modalità lista d'attesa usa il totale come cap, non la disponibilità residua
-const capTipologia = (t) => t.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? t.posti_totali : (t.posti_disponibili ?? 0))
-const capSessione  = (s) => s.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? s.posti_totali : (s.posti_disponibili ?? 0))
+// Disponibilità effettiva tipologia = disponibili - riservati da lock attivi
+const tipDisp = (t) => Math.max(0, (t.posti_disponibili ?? 0) - (t.posti_riservati ?? 0))
+const capTipologia = (t) => t.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? t.posti_totali : tipDisp(t))
+const capSessione  = (s) => s.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? s.posti_totali : (Math.max(0, (s.posti_disponibili ?? 0) - (s.posti_riservati ?? 0))))
 
 const maxQtyTipologia = (id) => {
   const t = tipologie.value.find(x => x.tipologia_posto.id === id)
