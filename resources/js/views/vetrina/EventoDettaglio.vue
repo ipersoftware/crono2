@@ -314,14 +314,19 @@ useHead({
   ),
 })
 
+// Ricarica i dati se l'utente torna sulla tab (copre i casi in cui il WebSocket drop ha fatto perdere l'evento)
+const handleVisibility = () => { if (!document.hidden) carica() }
+
 onMounted(async () => {
   await carica()
   sottoscriviCanali()
+  document.addEventListener('visibilitychange', handleVisibility)
 })
 
 onUnmounted(() => {
   clearTimeout(avvisoTimer)
   if (window.Echo) channelNames.forEach(ch => window.Echo.leave(ch))
+  document.removeEventListener('visibilitychange', handleVisibility)
 })
 </script>
 

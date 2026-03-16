@@ -726,6 +726,7 @@ const avviaTimer = () => {
       scadenzaSecondi.value--
     } else {
       fermaTimer()
+      rilasciaLock() // rilascia subito → triggera il broadcast "posti tornati disponibili"
     }
   }, 1000)
 }
