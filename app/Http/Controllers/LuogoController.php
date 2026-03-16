@@ -35,6 +35,8 @@ class LuogoController extends Controller
             'lat'         => 'nullable|numeric|between:-90,90',
             'lng'         => 'nullable|numeric|between:-180,180',
             'maps_url'    => 'nullable|string|max:1024',
+        ]);
+
         $data['slug']    = Str::slug($data['nome']);
 
         $luogo = Luogo::create($data);
@@ -65,6 +67,9 @@ class LuogoController extends Controller
             'lat'         => 'nullable|numeric|between:-90,90',
             'lng'         => 'nullable|numeric|between:-180,180',
             'maps_url'    => 'nullable|string|max:1024',
+        ]);
+
+        if (isset($data['nome'])) {
             $data['slug'] = Str::slug($data['nome']);
         }
 
