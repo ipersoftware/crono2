@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Models\PrenotazionePosto;
 use App\Models\PrenotazioneTemporanea;
 use App\Models\Sessione;
 use App\Models\SessioneTipologiaPosto;
@@ -11,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 class PurgaLockScaduti extends Command
 {
     protected $signature   = 'prenotazioni:purga-lock {--forza : Rimuove tutti i lock, anche quelli non ancora scaduti}';
-    protected $description = 'Elimina i lock temporanei scaduti e ripristina i posti_riservati';
+    protected $description = 'Elimina i lock temporanei scaduti, ripristina i posti_riservati e ricalibra posti_disponibili';
 
     public function handle(): int
     {
@@ -23,13 +24,16 @@ class PurgaLockScaduti extends Command
 
         if ($lockScaduti->isEmpty()) {
             $this->line('Nessun lock scaduto da rimuovere.');
+            // Ricalibra comunque per correggere eventuali inconsistenze pregresse
+            $this->ricalibra(collect());
             return self::SUCCESS;
         }
 
-        $rimossi = 0;
+        // Raccoglie gli id sessione coinvolti prima di eliminare i lock
+        $sessionIds = $lockScaduti->pluck('sessione_id')->unique();
 
+        $rimossi = 0;
         foreach ($lockScaduti as $lock) {
-            /** @var \App\Models\PrenotazioneTemporanea $lock */
             DB::transaction(function () use ($lock) {
                 $sessione = Sessione::lockForUpdate()->find($lock->sessione_id);
                 if ($sessione) {
@@ -40,9 +44,10 @@ class PurgaLockScaduti extends Command
                     foreach ($posti as $posto) {
                         SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                             ->where('tipologia_posto_id', $posto['tipologia_id'])
-                            ->each(function ($st) use ($posto) {
-                                $st->decrement('posti_riservati', max(0, min($posto['quantita'], $st->posti_riservati)));
-                            });
+                            ->each(fn($st) => $st->decrement(
+                                'posti_riservati',
+                                max(0, min($posto['quantita'], $st->posti_riservati))
+                            ));
                     }
                 }
                 $lock->delete();
@@ -51,6 +56,90 @@ class PurgaLockScaduti extends Command
         }
 
         $this->info("Rimossi {$rimossi} lock scaduti.");
+
+        // Ricalibra posti_disponibili per le sessioni interessate
+        $this->ricalibra($sessionIds);
+
         return self::SUCCESS;
+    }
+
+    /**
+     * Ricalcola posti_disponibili e posti_riservati per le sessioni indicate
+     * (o per tutte le sessioni attive se $sessionIds è vuoto).
+     * Usa le prenotazioni reali come fonte di verità.
+     */
+    private function ricalibra(\Illuminate\Support\Collection $sessionIds): void
+    {
+        $statiAttivi = ['CONFERMATA', 'DA_CONFERMARE', 'RISERVATA'];
+
+        $query = Sessione::where('posti_totali', '>', 0);
+        if ($sessionIds->isNotEmpty()) {
+            $query->whereIn('id', $sessionIds);
+        }
+        $sessioni = $query->get();
+
+        foreach ($sessioni as $sessione) {
+            DB::transaction(function () use ($sessione, $statiAttivi) {
+                $sessione = Sessione::lockForUpdate()->find($sessione->id);
+
+                // Posti confermati reali
+                $confermati = $sessione->prenotazioni()
+                    ->whereIn('stato', $statiAttivi)
+                    ->sum('posti_prenotati');
+
+                // Lock ancora attivi (non scaduti) per questa sessione
+                $lockAttivi = PrenotazioneTemporanea::where('sessione_id', $sessione->id)
+                    ->where('scadenza_at', '>', now())
+                    ->sum('posti_totali');
+
+                $nuovoDisp = max(0, $sessione->posti_totali - $confermati);
+
+                if ($sessione->posti_disponibili !== $nuovoDisp || $sessione->posti_riservati !== $lockAttivi) {
+                    $this->line(sprintf(
+                        '  Sessione %d: disp %d→%d, riservati %d→%d',
+                        $sessione->id,
+                        $sessione->posti_disponibili, $nuovoDisp,
+                        $sessione->posti_riservati, $lockAttivi
+                    ));
+                    $sessione->update(['posti_disponibili' => $nuovoDisp, 'posti_riservati' => $lockAttivi]);
+                }
+
+                // Ricalibra per tipologia
+                $stps = SessioneTipologiaPosto::where('sessione_id', $sessione->id)
+                    ->where('posti_totali', '>', 0)
+                    ->get();
+
+                foreach ($stps as $stp) {
+                    $confermatiTip = PrenotazionePosto::where('sessione_id', $sessione->id)
+                        ->where('tipologia_posto_id', $stp->tipologia_posto_id)
+                        ->whereHas('prenotazione', fn($q) => $q->whereIn('stato', $statiAttivi))
+                        ->sum('quantita');
+
+                    // Lock attivi per questa tipologia
+                    $lockAttiviTip = PrenotazioneTemporanea::where('sessione_id', $sessione->id)
+                        ->where('scadenza_at', '>', now())
+                        ->get()
+                        ->sum(function ($lr) use ($stp) {
+                            $det = collect($lr->dettaglio_tipologie)
+                                ->firstWhere('tipologia_id', $stp->tipologia_posto_id);
+                            return $det ? (int) $det['quantita'] : 0;
+                        });
+
+                    $nuovoDispTip = max(0, $stp->posti_totali - $confermatiTip);
+
+                    if ($stp->posti_disponibili !== $nuovoDispTip || $stp->posti_riservati !== $lockAttiviTip) {
+                        $this->line(sprintf(
+                            '    Tipologia %d (sessione %d): disp %d→%d, riservati %d→%d',
+                            $stp->tipologia_posto_id, $sessione->id,
+                            $stp->posti_disponibili, $nuovoDispTip,
+                            $stp->posti_riservati, $lockAttiviTip
+                        ));
+                        $stp->update(['posti_disponibili' => $nuovoDispTip, 'posti_riservati' => $lockAttiviTip]);
+                    }
+                }
+            });
+        }
+
+        $this->info('Ricalibrazione completata.');
     }
 }
