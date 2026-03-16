@@ -6,14 +6,19 @@
     </div>
 
     <div class="card">
+      <div class="search-bar">
+        <input v-model="cerca" class="input" placeholder="🔍 Cerca per nome, indirizzo, città…" />
+      </div>
       <div v-if="loading" class="loading">Caricamento…</div>
-      <div v-else-if="luoghi.length === 0" class="empty">Nessun luogo. Aggiungine uno.</div>
+      <div v-else-if="luoghiFiltrati.length === 0" class="empty">
+        {{ cerca ? 'Nessun risultato.' : 'Nessun luogo. Aggiungine uno.' }}
+      </div>
       <table v-else class="table">
         <thead>
           <tr><th>Nome</th><th>Indirizzo</th><th>Stato</th><th>Azioni</th></tr>
         </thead>
         <tbody>
-          <tr v-for="l in luoghi" :key="l.id">
+          <tr v-for="l in luoghiFiltrati" :key="l.id">
             <td data-label="Nome">{{ l.nome }}</td>
             <td data-label="Indirizzo" class="muted">{{ l.indirizzo }}</td>
             <td data-label="Stato">
@@ -79,7 +84,7 @@
 
 <script setup>
 import { luoghiApi } from '@/api/admin'
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route  = useRoute()
@@ -90,7 +95,18 @@ const loading = ref(false)
 const modal   = ref(false)
 const saving  = ref(false)
 const errore  = ref('')
+const cerca   = ref('')
 const form    = reactive({ id: null, nome: '', indirizzo: '', lat: null, lng: null, maps_url: '', stato: 'ATTIVO' })
+
+const luoghiFiltrati = computed(() => {
+  const q = cerca.value.trim().toLowerCase()
+  if (!q) return luoghi.value
+  return luoghi.value.filter(l =>
+    l.nome?.toLowerCase().includes(q) ||
+    l.indirizzo?.toLowerCase().includes(q) ||
+    l.citta?.toLowerCase().includes(q)
+  )
+})
 
 const carica = async () => {
   loading.value = true
@@ -134,6 +150,8 @@ onMounted(carica)
 
 <style scoped>
 .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: .5rem; }
+.search-bar { padding: .75rem 1rem; border-bottom: 1px solid #f0f0f0; }
+.search-bar .input { max-width: 360px; }
 .loading, .empty { padding: 2rem; text-align: center; color: #aaa; }
 .muted { color: #999; font-size: .85rem; }
 .actions { display: flex; gap: .4rem; }
