@@ -110,9 +110,11 @@ class PurgaLockScaduti extends Command
                     ->get();
 
                 foreach ($stps as $stp) {
-                    $confermatiTip = PrenotazionePosto::where('sessione_id', $sessione->id)
-                        ->where('tipologia_posto_id', $stp->tipologia_posto_id)
-                        ->whereHas('prenotazione', fn($q) => $q->whereIn('stato', $statiAttivi))
+                    $confermatiTip = PrenotazionePosto::where('tipologia_posto_id', $stp->tipologia_posto_id)
+                        ->whereHas('prenotazione', fn($q) => $q
+                            ->where('sessione_id', $sessione->id)
+                            ->whereIn('stato', $statiAttivi)
+                        )
                         ->sum('quantita');
 
                     // Lock attivi per questa tipologia
