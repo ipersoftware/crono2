@@ -156,24 +156,18 @@ const carica = async () => {
 // ── WebSocket: posti tornati disponibili ──────────────────────────────────
 const avviso      = ref('')
 let   avvisoTimer = null
-const channelNames = []
 
+// Sottoscrive il canale EVENTO (non i singoli canali sessione): in questo
+// modo riceve la notifica anche quando la sessione era esaurita e quindi
+// non presente nella lista caricata inizialmente.
 const sottoscriviCanali = () => {
-  if (!window.Echo || !evento.value?.sessioni) return
-  evento.value.sessioni.forEach(s => {
-    const ch = `sessione.${s.id}`
-    channelNames.push(ch)
-    window.Echo.channel(ch).listen('.posti.disponibili', (data) => {
-      // Aggiorna disponibilità locale
-      const idx = evento.value.sessioni.findIndex(x => x.id === data.sessione_id)
-      if (idx !== -1) {
-        evento.value.sessioni[idx].posti_disponibili = data.posti_liberi
-        evento.value.sessioni[idx].posti_riservati   = 0
-      }
-      clearTimeout(avvisoTimer)
-      avviso.value = '🎉 Posti tornati disponibili! Prenota ora prima che si esauriscano.'
-      avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
-    })
+  if (!window.Echo || !evento.value?.id) return
+  window.Echo.channel(`evento.${evento.value.id}`).listen('.posti.disponibili', (data) => {
+    // Ricarica tutto l'evento per avere i dati aggiornati
+    carica()
+    clearTimeout(avvisoTimer)
+    avviso.value = '🎉 Posti tornati disponibili! Prenota ora prima che si esauriscano.'
+    avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
   })
 }
 
@@ -325,7 +319,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   clearTimeout(avvisoTimer)
-  if (window.Echo) channelNames.forEach(ch => window.Echo.leave(ch))
+  if (window.Echo && evento.value?.id) window.Echo.leave(`evento.${evento.value.id}`)
   document.removeEventListener('visibilitychange', handleVisibility)
 })
 </script>

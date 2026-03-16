@@ -25,11 +25,18 @@ class PostiTornatiDisponibili implements ShouldBroadcastNow
     }
 
     /**
-     * Canale pubblico per sessione — tutti gli utenti che guardano l'evento lo ricevono.
+     * Canale per-sessione (Booking.vue) + canale per-evento (EventoDettaglio).
+     * Così chiunque guardi l'evento riceve la notifica anche se la sessione
+     * era esaurita e non compariva nella lista sottoscritta.
+     *
+     * @return Channel[]
      */
-    public function broadcastOn(): Channel
+    public function broadcastOn(): array
     {
-        return new Channel("sessione.{$this->sessione_id}");
+        return [
+            new Channel("sessione.{$this->sessione_id}"),
+            new Channel("evento.{$this->evento_id}"),
+        ];
     }
 
     public function broadcastAs(): string
