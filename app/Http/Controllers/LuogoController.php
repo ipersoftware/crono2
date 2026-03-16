@@ -34,15 +34,7 @@ class LuogoController extends Controller
             'cap'         => 'nullable|string|size:5',
             'lat'         => 'nullable|numeric|between:-90,90',
             'lng'         => 'nullable|numeric|between:-180,180',
-            'maps_url'    => 'nullable|url|max:512',
-            'telefono'    => 'nullable|string|max:30',
-            'email'       => 'nullable|email|max:255',
-            'link_pubblico' => 'nullable|url|max:255',
-            'immagine'    => 'nullable|string|max:255',
-            'stato'       => 'nullable|in:ATTIVO,SOSPESO',
-        ]);
-
-        $data['ente_id'] = $ente->id;
+            'maps_url'    => 'nullable|string|max:1024',
         $data['slug']    = Str::slug($data['nome']);
 
         $luogo = Luogo::create($data);
@@ -72,15 +64,7 @@ class LuogoController extends Controller
             'cap'         => 'nullable|string|size:5',
             'lat'         => 'nullable|numeric|between:-90,90',
             'lng'         => 'nullable|numeric|between:-180,180',
-            'maps_url'    => 'nullable|url|max:512',
-            'telefono'    => 'nullable|string|max:30',
-            'email'       => 'nullable|email|max:255',
-            'link_pubblico' => 'nullable|url|max:255',
-            'immagine'    => 'nullable|string|max:255',
-            'stato'       => 'nullable|in:ATTIVO,SOSPESO',
-        ]);
-
-        if (isset($data['nome'])) {
+            'maps_url'    => 'nullable|string|max:1024',
             $data['slug'] = Str::slug($data['nome']);
         }
 
