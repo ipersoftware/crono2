@@ -125,6 +125,9 @@ class CampoFormController extends Controller
 
     private function autorizzaEvento(Ente $ente, Evento $evento): void
     {
+        if (request()->user()?->isAdmin()) {
+            return;
+        }
         abort_if((int) $evento->ente_id !== (int) $ente->id, 403, 'Evento non appartiene a questo Ente.');
     }
 

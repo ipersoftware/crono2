@@ -100,6 +100,9 @@ class LuogoController extends Controller
 
     private function autorizza(Ente $ente, Luogo $luogo): void
     {
+        if (request()->user()?->isAdmin()) {
+            return;
+        }
         abort_if((int) $luogo->ente_id !== (int) $ente->id, 403, 'Luogo non appartiene a questo Ente.');
     }
 }

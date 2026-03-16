@@ -13,7 +13,9 @@ class EventoLogController extends Controller
     /** GET /api/enti/{ente}/eventi/{evento}/log */
     public function index(Request $request, Ente $ente, Evento $evento): JsonResponse
     {
-        abort_if((int) $evento->ente_id !== (int) $ente->id, 403, 'Non autorizzato.');
+        if (!request()->user()?->isAdmin()) {
+            abort_if((int) $evento->ente_id !== (int) $ente->id, 403, 'Non autorizzato.');
+        }
 
         $log = EventoLog::where('evento_id', $evento->id)
             ->with('user:id,nome,cognome,email')
