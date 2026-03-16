@@ -4,6 +4,11 @@
     <div v-else-if="!evento" class="empty-full">Evento non trovato.</div>
     <template v-else>
 
+      <!-- Toast posti tornati disponibili -->
+      <transition name="avviso-fade">
+        <div v-if="avviso" class="avviso-posti">{{ avviso }}</div>
+      </transition>
+
       <!-- Navbar -->
       <header class="vetnav">
         <div class="vetnav-inner">
@@ -131,7 +136,7 @@
 <script setup>
 import { vetrinaApi } from '@/api/vetrina'
 import { useHead } from '@unhead/vue'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route   = useRoute()
@@ -146,6 +151,30 @@ const carica = async () => {
     const res = await vetrinaApi.evento(shopUrl, slug)
     evento.value = res.data
   } finally { loading.value = false }
+}
+
+// ── WebSocket: posti tornati disponibili ──────────────────────────────────
+const avviso      = ref('')
+let   avvisoTimer = null
+const channelNames = []
+
+const sottoscriviCanali = () => {
+  if (!window.Echo || !evento.value?.sessioni) return
+  evento.value.sessioni.forEach(s => {
+    const ch = `sessione.${s.id}`
+    channelNames.push(ch)
+    window.Echo.channel(ch).listen('.posti.disponibili', (data) => {
+      // Aggiorna disponibilità locale
+      const idx = evento.value.sessioni.findIndex(x => x.id === data.sessione_id)
+      if (idx !== -1) {
+        evento.value.sessioni[idx].posti_disponibili = data.posti_liberi
+        evento.value.sessioni[idx].posti_riservati   = 0
+      }
+      clearTimeout(avvisoTimer)
+      avviso.value = '🎉 Posti tornati disponibili! Prenota ora prima che si esauriscano.'
+      avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
+    })
+  })
 }
 
 const heroStyle = computed(() => {
@@ -285,7 +314,15 @@ useHead({
   ),
 })
 
-onMounted(carica)
+onMounted(async () => {
+  await carica()
+  sottoscriviCanali()
+})
+
+onUnmounted(() => {
+  clearTimeout(avvisoTimer)
+  if (window.Echo) channelNames.forEach(ch => window.Echo.leave(ch))
+})
 </script>
 
 <style scoped>
@@ -383,4 +420,7 @@ onMounted(carica)
   .ev-hero-content h1 { font-size: 1.35rem; }
   .vetnav-btn { display: none; }
 }
+.avviso-posti { position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%); background: #27ae60; color: #fff; padding: .7rem 1.4rem; border-radius: 8px; font-weight: 600; z-index: 9999; box-shadow: 0 2px 12px rgba(0,0,0,.2); white-space: nowrap; }
+.avviso-fade-enter-active, .avviso-fade-leave-active { transition: opacity .4s; }
+.avviso-fade-enter-from, .avviso-fade-leave-to { opacity: 0; }
 </style>

@@ -94,6 +94,7 @@ class PurgaLockScaduti extends Command
 
                 $nuovoDisp = max(0, $sessione->posti_totali - $confermati);
 
+                $liberiPrima = max(0, $sessione->posti_disponibili - $sessione->posti_riservati);
                 if ($sessione->posti_disponibili !== $nuovoDisp || $sessione->posti_riservati !== $lockAttivi) {
                     $this->line(sprintf(
                         '  Sessione %d: disp %d→%d, riservati %d→%d',
@@ -102,6 +103,12 @@ class PurgaLockScaduti extends Command
                         $sessione->posti_riservati, $lockAttivi
                     ));
                     $sessione->update(['posti_disponibili' => $nuovoDisp, 'posti_riservati' => $lockAttivi]);
+
+                    // Notifica se i posti sono tornati disponibili (transizione 0 → >0)
+                    $liberiDopo = max(0, $nuovoDisp - $lockAttivi);
+                    if ($liberiPrima <= 0 && $liberiDopo > 0) {
+                        broadcast(new \App\Events\PostiTornatiDisponibili($sessione->fresh()));
+                    }
                 }
 
                 // Ricalibra per tipologia

@@ -4,6 +4,11 @@
       <div v-if="loading" class="loading">Caricamento sessione…</div>
       <div v-else-if="erroreCaricamento" class="alert-error">{{ erroreCaricamento }}</div>
       <template v-else>
+        <!-- Avviso posti tornati disponibili -->
+        <transition name="avviso-fade">
+          <div v-if="avvisoPosti" class="avviso-posti">{{ avvisoPosti }}</div>
+        </transition>
+
         <div class="back-link-wrap">
           <router-link :to="`/vetrina/${shopUrl}/eventi/${slug}`" class="back-link">← Torna all'evento</router-link>
         </div>
@@ -513,6 +518,8 @@ const mostraListaAttesa = computed(() => {
 
 const listaAttesaInviata = ref(false)
 const rispostaListaAttesa = ref(null)
+const avvisoPosti         = ref('')
+let   avvisoPostiTimer    = null
 
 const carica = async () => {
   loading.value = true
@@ -732,12 +739,23 @@ const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { weekday:
 onMounted(() => {
   carica()
   window.addEventListener('pagehide', rilasciaLockBeacon)
+  // Ascolta notifiche posti tornati disponibili per questa sessione
+  if (window.Echo) {
+    window.Echo.channel(`sessione.${sessioneId}`).listen('.posti.disponibili', (data) => {
+      clearTimeout(avvisoPostiTimer)
+      avvisoPosti.value = `🎉 Posti tornati disponibili (${data.posti_liberi} liberi)! Aggiornamento in corso…`
+      carica()
+      avvisoPostiTimer = setTimeout(() => { avvisoPosti.value = '' }, 5000)
+    })
+  }
 })
 
 onUnmounted(() => {
   fermaTimer()
   rilasciaLock()
   window.removeEventListener('pagehide', rilasciaLockBeacon)
+  if (window.Echo) window.Echo.leave(`sessione.${sessioneId}`)
+  clearTimeout(avvisoPostiTimer)
 })
 
 // Rilascio lock alla chiusura del browser/tab o F5 (keepalive sopravvive alla pagina)
@@ -867,4 +885,7 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
   .conferma { padding: 1.5rem 1rem; }
   .conferma-icon { font-size: 2.2rem; }
 }
+.avviso-posti { position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%); background: #27ae60; color: #fff; padding: .7rem 1.4rem; border-radius: 8px; font-weight: 600; z-index: 9999; box-shadow: 0 2px 12px rgba(0,0,0,.2); white-space: nowrap; }
+.avviso-fade-enter-active, .avviso-fade-leave-active { transition: opacity .4s; }
+.avviso-fade-enter-from, .avviso-fade-leave-to { opacity: 0; }
 </style>

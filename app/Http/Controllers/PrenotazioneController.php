@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PostiTornatiDisponibili;
 use App\Models\CampoForm;
 use App\Models\Ente;
 use App\Models\Prenotazione;
@@ -615,6 +616,11 @@ class PrenotazioneController extends Controller
             if ($sessione) {
                 $totale = $prenotazione->posti()->sum('quantita');
 
+                // Snapshot prima (per notifica)
+                $liberiPrima = $sessione->posti_totali > 0
+                    ? max(0, $sessione->posti_disponibili - $sessione->posti_riservati)
+                    : null;
+
                 if ($eraListaAttesa) {
                     // Le prenotazioni in lista attesa non occupano posti_disponibili:
                     // basta decrementare posti_in_attesa
@@ -627,6 +633,15 @@ class PrenotazioneController extends Controller
                         SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                             ->where('tipologia_posto_id', $posto->tipologia_posto_id)
                             ->increment('posti_disponibili', $posto->quantita);
+                    }
+
+                    // Notifica se si passa da 0 a > 0 posti liberi
+                    if ($liberiPrima !== null && $liberiPrima <= 0) {
+                        $sessione->refresh();
+                        $liberiDopo = max(0, $sessione->posti_disponibili - $sessione->posti_riservati);
+                        if ($liberiDopo > 0) {
+                            broadcast(new PostiTornatiDisponibili($sessione));
+                        }
                     }
                 }
             }
@@ -661,12 +676,27 @@ class PrenotazioneController extends Controller
             if ($sessione) {
                 $posti = collect($lock->dettaglio_tipologie);
                 $totale = $posti->sum('quantita');
+
+                // Snapshot disponibilità prima del rilascio (per decidere se notificare)
+                $liberiPrima = $sessione->posti_totali > 0
+                    ? max(0, $sessione->posti_disponibili - $sessione->posti_riservati)
+                    : null; // illimitato → non notificare
+
                 $sessione->decrement('posti_riservati', $totale);
 
                 foreach ($posti as $posto) {
                     SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                         ->where('tipologia_posto_id', $posto['tipologia_id'])
                         ->decrement('posti_riservati', $posto['quantita']);
+                }
+
+                // Notifica solo se si passa da 0 posti liberi a > 0
+                if ($liberiPrima !== null && $liberiPrima <= 0) {
+                    $sessione->refresh();
+                    $liberiDopo = max(0, $sessione->posti_disponibili - $sessione->posti_riservati);
+                    if ($liberiDopo > 0) {
+                        broadcast(new PostiTornatiDisponibili($sessione));
+                    }
                 }
             }
             $lock->delete();
