@@ -112,14 +112,12 @@ const salva = async () => {
   errore.value = ''
   try {
     if (form.id) {
-      const res = await luoghiApi.update(enteId, form.id, form)
-      const idx = luoghi.value.findIndex(l => l.id === form.id)
-      if (idx !== -1) luoghi.value[idx] = res.data
+      await luoghiApi.update(enteId, form.id, form)
     } else {
-      const res = await luoghiApi.store(enteId, form)
-      luoghi.value.push(res.data)
+      await luoghiApi.store(enteId, form)
     }
     modal.value = false
+    await carica()
   } catch (e) {
     errore.value = e.response?.data?.message ?? 'Errore.'
   } finally { saving.value = false }
