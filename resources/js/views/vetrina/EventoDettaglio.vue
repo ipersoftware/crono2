@@ -188,7 +188,9 @@ const sessionePrenotabile = (s) => {
   // 2. Posti per-tipologia: controlla solo STP che hanno un limite proprio
   if (s.tipologie_posto?.length) {
     const stpConLimite = s.tipologie_posto.filter(t => t.posti_totali > 0)
-    if (stpConLimite.length > 0) {
+    // Se esiste almeno una tipologia illimitata (posti_totali === 0), la sessione è sempre prenotabile
+    const haIllimitate = s.tipologie_posto.some(t => t.posti_totali === 0)
+    if (stpConLimite.length > 0 && !haIllimitate) {
       const haPostiLiberi = stpConLimite.some(t =>
         (t.posti_disponibili - (t.posti_riservati ?? 0)) > 0
       )
