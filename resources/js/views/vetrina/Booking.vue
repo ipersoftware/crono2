@@ -208,7 +208,7 @@
                   Informativa sulla Privacy (GDPR Reg. UE 2016/679)
                 </summary>
                 <div v-if="privacyLoading" class="gdpr-loading">Caricamento informativa…</div>
-                <div v-else-if="privacyHtml" class="gdpr-body" v-html="privacyHtml"></div>
+                <iframe v-else-if="privacyHtml" class="gdpr-body" :srcdoc="privacyIframeSrc" frameborder="0" scrolling="auto"></iframe>
                 <p v-else class="gdpr-fallback">
                   Trattamento dei dati personali secondo il GDPR Regolamento Europeo UE 2016/679.
                 </p>
@@ -385,6 +385,11 @@ const privacyOk         = ref(null)   // null = non ancora scelto, true = accons
 const privacyHtml       = ref('')
 const privacyVersione   = ref(null)
 const privacyLoading    = ref(false)
+
+// Isola il CSS di Governance in un iframe separato per evitare contaminazione del DOM
+const privacyIframeSrc = computed(() =>
+  `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:.75rem;font-size:.82rem;line-height:1.55;color:#333}</style></head><body>${privacyHtml.value}</body></html>`
+)
 let timer = null
 
 const getQty = (id) => posti[id] ?? 0
@@ -760,7 +765,7 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .gdpr-details { margin-bottom: .65rem; }
 .gdpr-summary { font-size: .88rem; color: #444; cursor: pointer; user-select: none; padding: .15rem 0; }
 .gdpr-summary:hover { color: #2980b9; }
-.gdpr-body { margin-top: .75rem; max-height: 320px; overflow-y: auto; font-size: .82rem; line-height: 1.55; color: #333; padding: .75rem; background: white; border: 1px solid #dee2e6; border-radius: 4px; }
+.gdpr-body { display: block; margin-top: .75rem; width: 100%; height: 280px; border: 1px solid #dee2e6; border-radius: 4px; background: white; }
 .gdpr-fallback { font-size: .85rem; color: #666; margin: .5rem 0 0; }
 .gdpr-loading { font-size: .82rem; color: #aaa; margin: .5rem 0 0; }
 .gdpr-option { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; padding: .2rem 0; }

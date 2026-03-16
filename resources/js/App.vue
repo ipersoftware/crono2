@@ -65,7 +65,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const menuAperto = ref(false)
 
-const isLanding = computed(() => route.name === 'Landing')
+const isLanding = computed(() => ['Landing', 'VetrinaHome', 'VetrinaEvento', 'Booking'].includes(route.name))
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin      = computed(() => authStore.user?.role === 'admin')
