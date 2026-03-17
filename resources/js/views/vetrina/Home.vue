@@ -301,6 +301,17 @@ const carica = async () => {
     ente.value       = homeRes.data.ente
     inEvidenza.value = homeRes.data.eventi_in_evidenza ?? []
     tags.value       = tagsRes.data
+
+    // Pre-selezione tag da URL legacy crono1 (?tag_slug=...) o diretto (?tag_id=...)
+    const qTagSlug = route.query.tag_slug
+    const qTagId   = route.query.tag_id
+    if (qTagSlug) {
+      const found = tags.value.find(t => t.slug === qTagSlug)
+      if (found) filtri.tag_id = found.id
+    } else if (qTagId) {
+      filtri.tag_id = qTagId
+    }
+
     await caricaEventi()
   } finally { loading.value = false }
 }

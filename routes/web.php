@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\GitHubWebhookController;
+use App\Http\Controllers\LegacyRedirectController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\VetrinaMetaController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +16,9 @@ Route::get('/auth/keycloak/callback', [AuthController::class, 'handleKeycloakCal
 
 // Sitemap XML
 Route::get('/sitemap.xml', [SitemapController::class, 'index']);
+
+// Redirect compatibilità crono1 — deve stare prima della catch-all SPA
+Route::get('/search', [LegacyRedirectController::class, 'search']);
 
 // Vetrina pubblica — meta OG server-side per social crawler (PRIMA della catch-all)
 Route::get('/vetrina/{shopUrl}/eventi/{slug}', [VetrinaMetaController::class, 'evento']);
