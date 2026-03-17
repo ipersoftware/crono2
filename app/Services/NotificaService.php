@@ -241,7 +241,10 @@ class NotificaService
             '{{costo_totale}}'          => number_format($prenotazione->costo_totale ?? 0, 2, ',', '.') . ' €',
             '{{note_prenotazione}}'     => $prenotazione->note ?? '',
             '{{link_prenotazione}}'     => $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? '') . '?token=' . ($prenotazione->token_accesso ?? ''),
-            '{{link_annullamento}}'     => $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? '') . '/annulla?token=' . ($prenotazione->token_accesso ?? ''),
+            '{{link_annullamento}}'     => $prenotazione->isAnnullabile()
+                ? $frontendUrl . '/prenotazioni/' . ($prenotazione->codice ?? '') . '/annulla?token=' . ($prenotazione->token_accesso ?? '')
+                : '',
+            '{{info_cancellazione}}'    => $this->buildInfoCancellazione($evento),
             '{{motivo_annullamento}}'   => $prenotazione->motivo_annullamento ?? '',
 
             // Ente
@@ -250,6 +253,29 @@ class NotificaService
             '{{telefono_ente}}'         => $ente?->telefono ?? '',
             '{{link_vetrina}}'          => $ente ? $frontendUrl . '/vetrina/' . ($ente->shop_url ?? $ente->slug ?? '') : '',
         ];
+    }
+
+    /**
+     * Genera una frase leggibile sulla politica di cancellazione dell'evento.
+     * Usata per il placeholder {{info_cancellazione}} nelle email.
+     */
+    private function buildInfoCancellazione(?\App\Models\Evento $evento): string
+    {
+        if (!$evento) {
+            return '';
+        }
+
+        $ore = $evento->cancellazione_consentita_ore;
+
+        if ($ore === null) {
+            return 'Puoi annullare la prenotazione in qualsiasi momento dalla tua area personale.';
+        }
+
+        if ($ore === -1) {
+            return 'La cancellazione della prenotazione non è consentita.';
+        }
+
+        return "Puoi annullare la prenotazione fino a {$ore} ore prima dell'inizio della sessione.";
     }
 
     /**

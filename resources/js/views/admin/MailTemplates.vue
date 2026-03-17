@@ -43,7 +43,19 @@
 
           <div class="form-group">
             <label>Corpo HTML</label>
-            <div class="helper">Usa <code v-pre>{{nome_utente}}</code>, <code v-pre>{{codice_prenotazione}}</code>, <code v-pre>{{titolo_evento}}</code>, <code v-pre>{{link_conferma}}</code>, ecc.</div>
+            <details class="placeholder-box">
+              <summary>Variabili disponibili <span class="ph-hint">(clicca per espandere — clicca su una variabile per copiarla)</span></summary>
+              <div class="ph-groups">
+                <div v-for="gruppo in gruppiPlaceholder" :key="gruppo.titolo" class="ph-group">
+                  <div class="ph-group-title">{{ gruppo.titolo }}</div>
+                  <template v-for="voce in gruppo.voci" :key="voce.k">
+                    <code @click="copiaPh(voce.k)">{{ voce.k }}</code>
+                    <span v-if="voce.desc" class="ph-desc">{{ voce.desc }}</span>
+                  </template>
+                </div>
+              </div>
+              <div v-if="copiato" class="ph-copiato">✓ Copiato!</div>
+            </details>
             <Editor
               v-model="form.corpo"
               api-key="jzd2a0zvkf6gmknn3yaxfk66pb6c1zzjnap5x6uzxo717ufn"
@@ -166,6 +178,51 @@ const tipoLabel = (tipo) => ({
   BENVENUTO_OPERATORE:           '🔐 Benvenuto operatore',
 }[tipo] ?? tipo)
 
+const gruppiPlaceholder = [
+  { titolo: '👤 Utente', voci: [
+    { k: '{{nome_utente}}' },
+    { k: '{{cognome_utente}}' },
+    { k: '{{email_utente}}' },
+  ]},
+  { titolo: '📅 Evento & Sessione', voci: [
+    { k: '{{titolo_evento}}' },
+    { k: '{{data_sessione}}' },
+    { k: '{{ora_inizio}}' },
+    { k: '{{ora_fine}}' },
+    { k: '{{luogo_evento}}' },
+    { k: '{{indirizzo_luogo}}' },
+    { k: '{{descrizione_sessione}}' },
+  ]},
+  { titolo: '🎫 Prenotazione', voci: [
+    { k: '{{codice_prenotazione}}' },
+    { k: '{{posti_prenotati}}' },
+    { k: '{{dettaglio_posti}}' },
+    { k: '{{costo_totale}}' },
+    { k: '{{note_prenotazione}}' },
+    { k: '{{motivo_annullamento}}' },
+  ]},
+  { titolo: '🔗 Link', voci: [
+    { k: '{{link_prenotazione}}' },
+    { k: '{{link_annullamento}}' },
+    { k: '{{link_vetrina}}' },
+  ]},
+  { titolo: '❌ Cancellazione', voci: [
+    { k: '{{info_cancellazione}}', desc: 'Frase automatica sulla policy (sempre / mai / N ore prima)' },
+  ]},
+  { titolo: '🏢 Ente', voci: [
+    { k: '{{nome_ente}}' },
+    { k: '{{email_ente}}' },
+    { k: '{{telefono_ente}}' },
+  ]},
+]
+
+const copiato = ref(false)
+const copiaPh = (testo) => {
+  navigator.clipboard.writeText(testo).catch(() => {})
+  copiato.value = true
+  setTimeout(() => { copiato.value = false }, 1500)
+}
+
 onMounted(carica)
 </script>
 
@@ -186,6 +243,16 @@ onMounted(carica)
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
 
 .helper { font-size: .8rem; color: #888; margin-bottom: .35rem; }
+.placeholder-box { border: 1px solid #dde3ea; border-radius: 8px; padding: .5rem .85rem; margin-bottom: .5rem; background: #f8fafc; font-size: .82rem; }
+.placeholder-box summary { cursor: pointer; font-weight: 600; color: #2c3e50; user-select: none; padding: .25rem 0; }
+.ph-hint { font-weight: 400; color: #999; font-size: .78rem; margin-left: .35rem; }
+.ph-groups { display: flex; flex-wrap: wrap; gap: .75rem 1.25rem; margin-top: .65rem; }
+.ph-group { min-width: 160px; }
+.ph-group-title { font-size: .75rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .04em; margin-bottom: .3rem; }
+.ph-group code { display: inline-block; background: #e8f0fe; color: #1a5276; border-radius: 4px; padding: .1rem .4rem; margin: .15rem .15rem .15rem 0; font-size: .78rem; cursor: pointer; transition: background .15s; }
+.ph-group code:hover { background: #bcd4f7; }
+.ph-desc { display: block; font-size: .76rem; color: #777; margin-top: .2rem; line-height: 1.4; max-width: 240px; }
+.ph-copiato { margin-top: .4rem; font-size: .78rem; color: #27ae60; font-weight: 600; }
 .alert-error { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; }
 .btn-sm { padding: .3rem .65rem; font-size: .82rem; }
 .btn-secondary { background: #ecf0f1; color: #2c3e50; border: none; border-radius: 6px; padding: .45rem 1rem; cursor: pointer; }
