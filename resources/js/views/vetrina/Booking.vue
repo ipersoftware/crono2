@@ -596,6 +596,7 @@ const acquisisciLock = async () => {
 
     const res = await prenotazioniApi.lock({ sessione_id: sessioneId, posti: postiPayload })
     lockToken.value = res.data.token
+    sessionStorage.setItem(`lock_${sessioneId}`, res.data.token) // persiste per sopravvivere a F5
     const scadenzaMs = new Date(res.data.scadenza_at) - Date.now()
     scadenzaSecondi.value = Math.max(0, Math.floor(scadenzaMs / 1000))
     avviaTimer()
@@ -716,6 +717,7 @@ const rilasciaLock = async () => {
   if (lockToken.value) {
     await prenotazioniApi.rilasciaLock(lockToken.value).catch(() => {})
     lockToken.value = null
+    sessionStorage.removeItem(`lock_${sessioneId}`)
     fermaTimer()
   }
 }
@@ -737,7 +739,13 @@ const fermaTimer = () => {
 
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–'
 
-onMounted(() => {
+onMounted(async () => {
+  // Se c'era un lock da una sessione precedente (es. F5), rilascialo prima di caricare
+  const tokenPrecedente = sessionStorage.getItem(`lock_${sessioneId}`)
+  if (tokenPrecedente) {
+    sessionStorage.removeItem(`lock_${sessioneId}`)
+    await fetch(`/api/prenotazioni/lock/${tokenPrecedente}`, { method: 'DELETE' }).catch(() => {})
+  }
   carica()
   window.addEventListener('pagehide', rilasciaLockBeacon)
   // Ascolta notifiche posti tornati disponibili per questa sessione
