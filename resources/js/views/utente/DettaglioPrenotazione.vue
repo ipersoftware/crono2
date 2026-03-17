@@ -89,11 +89,16 @@
 
       <!-- Azioni -->
       <div class="card" v-if="!['ANNULLATA_UTENTE','ANNULLATA_ADMIN','SCADUTA'].includes(prenotazione.stato)">
-        <button @click="apriModaleAnnulla" :disabled="annullando" class="btn btn-danger">
-          ❌ Annulla prenotazione
-        </button>
-        <p class="muted" style="margin-top: .5rem; font-size: .85rem;">
-          L'annullamento è irreversibile.
+        <template v-if="prenotazione.is_annullabile">
+          <button @click="apriModaleAnnulla" :disabled="annullando" class="btn btn-danger">
+            ❌ Annulla prenotazione
+          </button>
+          <p class="muted" style="margin-top: .5rem; font-size: .85rem;">
+            L'annullamento è irreversibile.
+          </p>
+        </template>
+        <p v-else class="muted" style="font-size: .88rem;">
+          ℹ️ {{ infoAnnullamento }}
         </p>
       </div>
     </template>
@@ -139,7 +144,7 @@
 
 <script setup>
 import { prenotazioniApi } from '@/api/prenotazioni'
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -168,7 +173,7 @@ const carica = async () => {
   try {
     const res = await prenotazioniApi.show(codice, tokenGuest)
     prenotazione.value = res.data
-    if (autoAnnulla && !['ANNULLATA_UTENTE','ANNULLATA_ADMIN','SCADUTA'].includes(res.data.stato)) {
+    if (autoAnnulla && !['ANNULLATA_UTENTE','ANNULLATA_ADMIN','SCADUTA'].includes(res.data.stato) && res.data.is_annullabile) {
       apriModaleAnnulla()
     }
   } catch (e) {
@@ -199,6 +204,13 @@ const confermAnnullamento = async () => {
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–'
 const enteIdentifier = (ente) => ente?.shop_url || ente?.slug || null
 const statoClass = (s) => s?.toLowerCase().replace(/_/g, '-') ?? ''
+
+const infoAnnullamento = computed(() => {
+  const ore = prenotazione.value?.sessione?.evento?.cancellazione_consentita_ore
+  if (ore === -1) return 'La cancellazione di questa prenotazione non è consentita.'
+  if (typeof ore === 'number') return `La cancellazione è consentita solo entro ${ore} ore dall'inizio della sessione; il termine è scaduto.`
+  return 'La prenotazione non è al momento annullabile.'
+})
 
 onMounted(carica)
 </script>
