@@ -162,13 +162,19 @@ let   avvisoTimer = null
 // non presente nella lista caricata inizialmente.
 const sottoscriviCanali = () => {
   if (!window.Echo || !evento.value?.id) return
-  window.Echo.channel(`evento.${evento.value.id}`).listen('.posti.disponibili', (data) => {
-    // Ricarica tutto l'evento per avere i dati aggiornati
-    carica()
-    clearTimeout(avvisoTimer)
-    avviso.value = '🎉 Posti tornati disponibili! Prenota ora prima che si esauriscano.'
-    avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
-  })
+  window.Echo.channel(`evento.${evento.value.id}`)
+    .listen('.posti.disponibili', () => {
+      carica()
+      clearTimeout(avvisoTimer)
+      avviso.value = '🎉 Posti tornati disponibili! Prenota ora prima che si esauriscano.'
+      avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
+    })
+    .listen('.posti.esauriti', () => {
+      carica()
+      clearTimeout(avvisoTimer)
+      avviso.value = '⚠️ Posti esauriti per questa sessione.'
+      avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
+    })
 }
 
 const heroStyle = computed(() => {

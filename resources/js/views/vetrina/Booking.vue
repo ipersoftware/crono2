@@ -750,12 +750,19 @@ onMounted(async () => {
   window.addEventListener('pagehide', rilasciaLockBeacon)
   // Ascolta notifiche posti tornati disponibili per questa sessione
   if (window.Echo) {
-    window.Echo.channel(`sessione.${sessioneId}`).listen('.posti.disponibili', (data) => {
-      clearTimeout(avvisoPostiTimer)
-      avvisoPosti.value = `🎉 Posti tornati disponibili (${data.posti_liberi} liberi)! Aggiornamento in corso…`
-      carica()
-      avvisoPostiTimer = setTimeout(() => { avvisoPosti.value = '' }, 5000)
-    })
+    window.Echo.channel(`sessione.${sessioneId}`)
+      .listen('.posti.disponibili', (data) => {
+        clearTimeout(avvisoPostiTimer)
+        avvisoPosti.value = `🎉 Posti tornati disponibili (${data.posti_liberi} liberi)! Aggiornamento in corso…`
+        carica()
+        avvisoPostiTimer = setTimeout(() => { avvisoPosti.value = '' }, 5000)
+      })
+      .listen('.posti.esauriti', () => {
+        clearTimeout(avvisoPostiTimer)
+        avvisoPosti.value = '⚠️ Posti esauriti. Aggiornamento in corso…'
+        carica()
+        avvisoPostiTimer = setTimeout(() => { avvisoPosti.value = '' }, 5000)
+      })
   }
 })
 

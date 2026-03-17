@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PostiEsauriti;
 use App\Events\PostiTornatiDisponibili;
 use App\Models\CampoForm;
 use App\Models\Ente;
@@ -115,6 +116,11 @@ class PrenotazioneController extends Controller
                 'scadenza_at'        => now()->addMinutes($sessione->durata_lock_minuti ?? config('booking.lock_minutes', 15)),
             ]);
 
+            // Snapshot posti liberi prima di incrementare i riservati
+            $liberiPrima = $sessione->posti_totali > 0
+                ? max(0, $sessione->posti_disponibili - $sessione->posti_riservati)
+                : PHP_INT_MAX; // sessione senza limite: non può mai esaurirsi
+
             // Incrementa posti_riservati sulla sessione
             $sessione->increment('posti_riservati', $totaleRichiesto);
 
@@ -123,6 +129,13 @@ class PrenotazioneController extends Controller
                 SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                     ->where('tipologia_posto_id', $richiesta['tipologia_id'])
                     ->increment('posti_riservati', $richiesta['quantita']);
+            }
+
+            // Broadcast se la sessione è appena diventata esaurita (transizione >0 → <=0)
+            $liberiDopo = $liberiPrima - $totaleRichiesto;
+            if ($liberiPrima > 0 && $liberiDopo <= 0) {
+                $sessione->refresh();
+                broadcast(new PostiEsauriti($sessione));
             }
 
             return response()->json([
