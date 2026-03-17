@@ -145,6 +145,7 @@ import { useRoute } from 'vue-router'
 const route = useRoute()
 const codice = route.params.codice
 const tokenGuest = route.query.token ?? null
+const autoAnnulla = route.name === 'AnnullaPrenotazione'
 
 const prenotazione = ref(null)
 const loading   = ref(true)
@@ -167,6 +168,9 @@ const carica = async () => {
   try {
     const res = await prenotazioniApi.show(codice, tokenGuest)
     prenotazione.value = res.data
+    if (autoAnnulla && !['ANNULLATA_UTENTE','ANNULLATA_ADMIN','SCADUTA'].includes(res.data.stato)) {
+      apriModaleAnnulla()
+    }
   } catch (e) {
     errore.value = e.response?.status === 403
       ? 'Accesso non autorizzato a questa prenotazione.'

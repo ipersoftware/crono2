@@ -154,6 +154,11 @@ const routes = [
     name: 'DettaglioPrenotazione',
     component: () => import('@/views/utente/DettaglioPrenotazione.vue'),
   },
+  {
+    path: '/prenotazioni/:codice/annulla',
+    name: 'AnnullaPrenotazione',
+    component: () => import('@/views/utente/DettaglioPrenotazione.vue'),
+  },
 
   // ──────────────────────────────────────────────
   // Vetrina pubblica
