@@ -291,13 +291,16 @@ class NotificaService
             return [];
         }
 
-        // Email configurate manualmente
+        // Email configurate manualmente — filtra solo indirizzi validi
         if (!empty($config['notifica_staff_emails']) && is_array($config['notifica_staff_emails'])) {
-            return $config['notifica_staff_emails'];
+            return array_values(array_filter(
+                $config['notifica_staff_emails'],
+                fn($e) => filter_var($e, FILTER_VALIDATE_EMAIL) !== false
+            ));
         }
 
-        // Fallback: email dell'ente
-        return $ente->email ? [$ente->email] : [];
+        // Nessuna email staff configurata: non inviare (la mail dell'ente non è uno staff address)
+        return [];
     }
 
     /**
