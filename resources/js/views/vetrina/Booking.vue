@@ -744,7 +744,7 @@ onMounted(async () => {
   const tokenPrecedente = sessionStorage.getItem(`lock_${sessioneId}`)
   if (tokenPrecedente) {
     sessionStorage.removeItem(`lock_${sessioneId}`)
-    await fetch(`/api/prenotazioni/lock/${tokenPrecedente}`, { method: 'DELETE' }).catch(() => {})
+    await prenotazioniApi.rilasciaLock(tokenPrecedente).catch(() => {})
   }
   carica()
   window.addEventListener('pagehide', rilasciaLockBeacon)
