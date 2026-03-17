@@ -34,22 +34,24 @@ class AuthController extends Controller
         $isKeycloakAuth = config('auth_provider.driver') === 'keycloak';
 
         $validated = $request->validate([
-            'cognome' => ['required', 'string', 'max:255'],
-            'nome' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users'],
-            'password' => ['required', 'confirmed', Password::min(8)],
-            'telefono' => ['nullable', 'string', 'max:20'],
+            'cognome'   => ['required', 'string', 'max:255'],
+            'nome'      => ['required', 'string', 'max:255'],
+            'email'     => ['required', 'string', 'email', 'max:255', 'unique:users'],
+            'password'  => ['required', 'confirmed', Password::min(8)],
+            'telefono'  => ['nullable', 'string', 'max:20'],
+            'privacy_ok' => ['required', 'accepted'],
         ]);
 
         $user = User::create([
-            'cognome' => $validated['cognome'],
-            'nome' => $validated['nome'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
-            'telefono' => $validated['telefono'] ?? null,
-            'role' => 'utente',
-            'attivo' => true,
+            'cognome'    => $validated['cognome'],
+            'nome'       => $validated['nome'],
+            'email'      => $validated['email'],
+            'password'   => Hash::make($validated['password']),
+            'telefono'   => $validated['telefono'] ?? null,
+            'role'       => 'utente',
+            'attivo'     => true,
             'primo_accesso_eseguito' => true,
+            'privacy_ok' => true,
         ]);
 
         if ($isKeycloakAuth) {
@@ -71,6 +73,31 @@ class AuthController extends Controller
             'user' => $user->load(['ente']),
             'token' => $token,
         ], 201);
+    }
+
+    /**
+     * GET /api/auth/privacy
+     * Informativa privacy pubblica (primo ente attivo).
+     */
+    public function privacy(): \Illuminate\Http\JsonResponse
+    {
+        $ente = \App\Models\Ente::where('attivo', true)->first();
+        if (!$ente) {
+            return response()->json(['trovato' => false, 'contenuto_body' => null, 'versione' => null]);
+        }
+
+        $svc  = app(\App\Services\GovernancePrivacyService::class);
+        $data = $svc->getInformativa('crono', $ente->id);
+
+        if (!$data) {
+            return response()->json(['trovato' => false, 'contenuto_body' => null, 'versione' => null]);
+        }
+
+        return response()->json([
+            'trovato'        => true,
+            'contenuto_body' => $data['contenuto_body'] ?? null,
+            'versione'       => $data['versione'] ?? null,
+        ]);
     }
 
     /**

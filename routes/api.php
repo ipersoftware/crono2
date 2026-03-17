@@ -37,6 +37,7 @@ Route::post('/contatto-piattaforma', [LandingController::class, 'contatto']);
 Route::get('/auth/provider', [AuthController::class, 'provider']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/auth/privacy',  [AuthController::class, 'privacy']);
 
 // -------------------------------------------------------
 // Vetrina pubblica (no auth)
