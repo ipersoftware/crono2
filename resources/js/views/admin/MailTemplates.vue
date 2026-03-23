@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="page-header">
-      <h1>✉ Template email</h1>
+      <h1>✉ Notifiche</h1>
     </div>
 
     <div class="layout">
