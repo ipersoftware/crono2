@@ -295,16 +295,8 @@ class AuthController extends Controller
             $tokenParts = explode('.', $accessToken);
             $tokenPayload = json_decode(base64_decode($tokenParts[1]), true);
             
-            // Extract realm roles from token
-            $realmRoles = $tokenPayload['realm_access']['roles'] ?? [];
-            
-            // Check if user has allowed roles
-            $allowedRoles = ['admin', 'admin_ente', 'operatore_ente'];
-            $hasAllowedRole = !empty(array_intersect($allowedRoles, $realmRoles));
-            
-            if (!$hasAllowedRole) {
-                return redirect(config('app.url') . '/login?error=unauthorized_role');
-            }
+            // I ruoli applicativi sono gestiti localmente (DB), non nel token Keycloak.
+            // Il token viene usato solo per autenticare l'identità utente.
 
             // Get user info from Keycloak
             $userInfoResponse = $client->get(sprintf('%s/realms/%s/protocol/openid-connect/userinfo', $baseUrl, $realm), [
@@ -315,16 +307,6 @@ class AuthController extends Controller
 
             $keycloakUser = json_decode($userInfoResponse->getBody(), true);
             
-            // Determine user role based on Keycloak roles (priority: admin > admin_ente > operatore_ente)
-            $userRole = 'utente';
-            if (in_array('admin', $realmRoles)) {
-                $userRole = 'admin';
-            } elseif (in_array('admin_ente', $realmRoles)) {
-                $userRole = 'admin_ente';
-            } elseif (in_array('operatore_ente', $realmRoles)) {
-                $userRole = 'operatore_ente';
-            }
-
             // Find or sync user in local database
             $user = User::where('email', $keycloakUser['email'])->first();
 
@@ -335,7 +317,7 @@ class AuthController extends Controller
                     'nome'                   => $keycloakUser['given_name'] ?? '',
                     'cognome'                => $keycloakUser['family_name'] ?? '',
                     'password'               => Hash::make(\Str::random(32)),
-                    'role'                   => $userRole,
+                    'role'                   => 'utente',
                     'attivo'                 => true,
                     'primo_accesso_eseguito' => true,
                     'last_login_at'          => now(),
