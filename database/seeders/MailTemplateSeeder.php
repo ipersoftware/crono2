@@ -37,7 +37,8 @@ class MailTemplateSeeder extends Seeder
 </p>
 
 <p style="margin-top:24px;font-size:13px;color:#777">
-  Vuoi annullare? <a href="{{link_annullamento}}">Clicca qui</a> (entro i termini previsti).
+  <strong>Cancellazione:</strong> {{info_cancellazione}}<br>
+  <a href="{{link_annullamento}}">Annulla la prenotazione</a>
 </p>
 
 <p>A presto,<br><strong>{{nome_ente}}</strong></p>
@@ -86,6 +87,11 @@ HTML,
 
 <p style="margin-top:24px">
   <a href="{{link_prenotazione}}" style="background:#1a56db;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold">Visualizza la tua prenotazione</a>
+</p>
+
+<p style="margin-top:24px;font-size:13px;color:#777">
+  <strong>Cancellazione:</strong> {{info_cancellazione}}<br>
+  <a href="{{link_annullamento}}">Annulla la prenotazione</a>
 </p>
 
 <p>A presto,<br><strong>{{nome_ente}}</strong></p>

@@ -30,6 +30,7 @@ class Prenotazione extends Model
         'telefono',
         'note',
         'privacy_ok',
+        'privacy_versione',
         'costo_totale',
         'evento_snapshot',
         'data_annullamento',

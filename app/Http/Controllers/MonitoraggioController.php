@@ -15,7 +15,9 @@ class MonitoraggioController extends Controller
      */
     public function evento(Ente $ente, Evento $evento): JsonResponse
     {
-        abort_if($evento->ente_id !== $ente->id, 403);
+        if (!request()->user()?->isAdmin()) {
+            abort_if($evento->ente_id !== $ente->id, 403);
+        }
 
         // Carica sessioni con tipologie e conteggio prenotazioni
         $sessioni = $evento->sessioni()

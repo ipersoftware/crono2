@@ -18,4 +18,7 @@ export const vetrinaApi = {
 
   contatto: (shopUrl, data) =>
     api.post(`/vetrina/${shopUrl}/contatto`, data),
+
+  privacy: (shopUrl) =>
+    api.get(`/vetrina/${shopUrl}/privacy`),
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\PostiEsauriti;
+use App\Events\PostiTornatiDisponibili;
 use App\Models\CampoForm;
 use App\Models\Ente;
 use App\Models\Prenotazione;
@@ -114,6 +116,11 @@ class PrenotazioneController extends Controller
                 'scadenza_at'        => now()->addMinutes($sessione->durata_lock_minuti ?? config('booking.lock_minutes', 15)),
             ]);
 
+            // Snapshot posti liberi prima di incrementare i riservati
+            $liberiPrima = $sessione->posti_totali > 0
+                ? max(0, $sessione->posti_disponibili - $sessione->posti_riservati)
+                : PHP_INT_MAX; // sessione senza limite: non può mai esaurirsi
+
             // Incrementa posti_riservati sulla sessione
             $sessione->increment('posti_riservati', $totaleRichiesto);
 
@@ -122,6 +129,13 @@ class PrenotazioneController extends Controller
                 SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                     ->where('tipologia_posto_id', $richiesta['tipologia_id'])
                     ->increment('posti_riservati', $richiesta['quantita']);
+            }
+
+            // Broadcast se la sessione è appena diventata esaurita (transizione >0 → <=0)
+            $liberiDopo = $liberiPrima - $totaleRichiesto;
+            if ($liberiPrima > 0 && $liberiDopo <= 0) {
+                $sessione->refresh();
+                broadcast(new PostiEsauriti($sessione));
             }
 
             return response()->json([
@@ -169,6 +183,7 @@ class PrenotazioneController extends Controller
             'risposte.*.campo_form_id'   => 'required|integer|exists:campi_form,id',
             'risposte.*.risposta'        => 'required|string',
             'privacy_ok'                 => 'required|boolean|accepted',
+            'privacy_versione'           => 'nullable|string|max:20',
         ]);
 
         $lock = PrenotazioneTemporanea::where('token', $data['token'])
@@ -223,6 +238,7 @@ class PrenotazioneController extends Controller
                 'telefono'          => $data['telefono'] ?? null,
                 'note'              => $data['note'] ?? null,
                 'privacy_ok'        => true,
+                'privacy_versione'  => $data['privacy_versione'] ?? null,
                 'stato'             => $statoIniziale,
                 'posti_prenotati'   => collect($data['posti'])->sum('quantita'),
                 'costo_totale'      => $totale,
@@ -317,9 +333,13 @@ class PrenotazioneController extends Controller
 
         abort_if(!$autorizzato, 403, 'Accesso non autorizzato.');
 
-        return response()->json(
-            $prenotazione->load(['sessione.evento.ente', 'sessione.luoghi', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
-        );
+        $prenotazione->load(['sessione.evento.ente', 'sessione.luoghi', 'posti.tipologiaPosto', 'risposteForm.campoForm'])
+        ;
+
+        return response()->json(array_merge(
+            $prenotazione->toArray(),
+            ['is_annullabile' => $prenotazione->isAnnullabile()]
+        ));
     }
 
     /**
@@ -613,6 +633,11 @@ class PrenotazioneController extends Controller
             if ($sessione) {
                 $totale = $prenotazione->posti()->sum('quantita');
 
+                // Snapshot prima (per notifica)
+                $liberiPrima = $sessione->posti_totali > 0
+                    ? max(0, $sessione->posti_disponibili - $sessione->posti_riservati)
+                    : null;
+
                 if ($eraListaAttesa) {
                     // Le prenotazioni in lista attesa non occupano posti_disponibili:
                     // basta decrementare posti_in_attesa
@@ -625,6 +650,15 @@ class PrenotazioneController extends Controller
                         SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                             ->where('tipologia_posto_id', $posto->tipologia_posto_id)
                             ->increment('posti_disponibili', $posto->quantita);
+                    }
+
+                    // Notifica se si passa da 0 a > 0 posti liberi
+                    if ($liberiPrima !== null && $liberiPrima <= 0) {
+                        $sessione->refresh();
+                        $liberiDopo = max(0, $sessione->posti_disponibili - $sessione->posti_riservati);
+                        if ($liberiDopo > 0) {
+                            broadcast(new PostiTornatiDisponibili($sessione));
+                        }
                     }
                 }
             }
@@ -659,12 +693,27 @@ class PrenotazioneController extends Controller
             if ($sessione) {
                 $posti = collect($lock->dettaglio_tipologie);
                 $totale = $posti->sum('quantita');
+
+                // Snapshot disponibilità prima del rilascio (per decidere se notificare)
+                $liberiPrima = $sessione->posti_totali > 0
+                    ? max(0, $sessione->posti_disponibili - $sessione->posti_riservati)
+                    : null; // illimitato → non notificare
+
                 $sessione->decrement('posti_riservati', $totale);
 
                 foreach ($posti as $posto) {
                     SessioneTipologiaPosto::where('sessione_id', $sessione->id)
                         ->where('tipologia_posto_id', $posto['tipologia_id'])
                         ->decrement('posti_riservati', $posto['quantita']);
+                }
+
+                // Notifica solo se si passa da 0 posti liberi a > 0
+                if ($liberiPrima !== null && $liberiPrima <= 0) {
+                    $sessione->refresh();
+                    $liberiDopo = max(0, $sessione->posti_disponibili - $sessione->posti_riservati);
+                    if ($liberiDopo > 0) {
+                        broadcast(new PostiTornatiDisponibili($sessione));
+                    }
                 }
             }
             $lock->delete();

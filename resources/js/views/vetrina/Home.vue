@@ -188,10 +188,6 @@
             <router-link to="/login" class="vetfooter-link">Accedi</router-link>
             <router-link to="/register" class="vetfooter-link">Registrati</router-link>
           </div>
-          <div v-if="ente.privacy_url" class="vetfooter-col">
-            <div class="vetfooter-col-title">Informazioni</div>
-            <a :href="ente.privacy_url" target="_blank" rel="noopener" class="vetfooter-link">Privacy Policy</a>
-          </div>
         </div>
         <div class="vetfooter-bottom">
           © {{ new Date().getFullYear() }} {{ ente.nome }}. Powered by Crono.
@@ -305,6 +301,17 @@ const carica = async () => {
     ente.value       = homeRes.data.ente
     inEvidenza.value = homeRes.data.eventi_in_evidenza ?? []
     tags.value       = tagsRes.data
+
+    // Pre-selezione tag da URL legacy crono1 (?tag_slug=...) o diretto (?tag_id=...)
+    const qTagSlug = route.query.tag_slug
+    const qTagId   = route.query.tag_id
+    if (qTagSlug) {
+      const found = tags.value.find(t => t.slug === qTagSlug)
+      if (found) filtri.tag_id = found.id
+    } else if (qTagId) {
+      filtri.tag_id = qTagId
+    }
+
     await caricaEventi()
   } finally { loading.value = false }
 }

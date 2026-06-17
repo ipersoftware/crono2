@@ -4,6 +4,11 @@
     <div v-else-if="!evento" class="empty-full">Evento non trovato.</div>
     <template v-else>
 
+      <!-- Toast posti tornati disponibili -->
+      <transition name="avviso-fade">
+        <div v-if="avviso" class="avviso-posti">{{ avviso }}</div>
+      </transition>
+
       <!-- Navbar -->
       <header class="vetnav">
         <div class="vetnav-inner">
@@ -118,10 +123,6 @@
             <router-link to="/login" class="vetfooter-link">Accedi</router-link>
             <router-link to="/register" class="vetfooter-link">Registrati</router-link>
           </div>
-          <div v-if="evento.ente_info?.privacy_url" class="vetfooter-col">
-            <div class="vetfooter-col-title">Informazioni</div>
-            <a :href="evento.ente_info.privacy_url" target="_blank" rel="noopener" class="vetfooter-link">Privacy Policy</a>
-          </div>
         </div>
         <div class="vetfooter-bottom">
           © {{ new Date().getFullYear() }} {{ evento.ente_info?.nome }}. Powered by Crono.
@@ -134,7 +135,8 @@
 
 <script setup>
 import { vetrinaApi } from '@/api/vetrina'
-import { computed, onMounted, ref } from 'vue'
+import { useHead } from '@unhead/vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route   = useRoute()
@@ -149,6 +151,30 @@ const carica = async () => {
     const res = await vetrinaApi.evento(shopUrl, slug)
     evento.value = res.data
   } finally { loading.value = false }
+}
+
+// ── WebSocket: posti tornati disponibili ──────────────────────────────────
+const avviso      = ref('')
+let   avvisoTimer = null
+
+// Sottoscrive il canale EVENTO (non i singoli canali sessione): in questo
+// modo riceve la notifica anche quando la sessione era esaurita e quindi
+// non presente nella lista caricata inizialmente.
+const sottoscriviCanali = () => {
+  if (!window.Echo || !evento.value?.id) return
+  window.Echo.channel(`evento.${evento.value.id}`)
+    .listen('.posti.disponibili', () => {
+      carica()
+      clearTimeout(avvisoTimer)
+      avviso.value = '🎉 Posti tornati disponibili! Prenota ora prima che si esauriscano.'
+      avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
+    })
+    .listen('.posti.esauriti', () => {
+      carica()
+      clearTimeout(avvisoTimer)
+      avviso.value = '⚠️ Posti esauriti per questa sessione.'
+      avvisoTimer  = setTimeout(() => { avviso.value = '' }, 6000)
+    })
 }
 
 const heroStyle = computed(() => {
@@ -191,7 +217,9 @@ const sessionePrenotabile = (s) => {
   // 2. Posti per-tipologia: controlla solo STP che hanno un limite proprio
   if (s.tipologie_posto?.length) {
     const stpConLimite = s.tipologie_posto.filter(t => t.posti_totali > 0)
-    if (stpConLimite.length > 0) {
+    // Se esiste almeno una tipologia illimitata (posti_totali === 0), la sessione è sempre prenotabile
+    const haIllimitate = s.tipologie_posto.some(t => t.posti_totali === 0)
+    if (stpConLimite.length > 0 && !haIllimitate) {
       const haPostiLiberi = stpConLimite.some(t =>
         (t.posti_disponibili - (t.posti_riservati ?? 0)) > 0
       )
@@ -217,7 +245,89 @@ const prenotabileMessage = computed(() => {
   return ''
 })
 
-onMounted(carica)
+// ── SEO: meta tag dinamici + schema.org ─────────────────────────────────────
+const seoTitle = computed(() => {
+  const ev = evento.value
+  if (!ev) return 'Crono'
+  return `${ev.titolo}${ev.ente_info?.nome ? ' — ' + ev.ente_info.nome : ''}`
+})
+
+const seoDesc = computed(() => evento.value?.descrizione_breve || evento.value?.titolo || '')
+const seoImage = computed(() => evento.value?.immagine || '')
+const seoUrl = computed(() => location.href)
+
+const seoJsonLd = computed(() => {
+  const ev = evento.value
+  if (!ev) return null
+  return JSON.stringify({
+    '@context':            'https://schema.org',
+    '@type':               ev.sessioni?.length > 1 ? 'EventSeries' : 'Event',
+    name:                  ev.titolo,
+    description:           seoDesc.value,
+    ...(seoImage.value ? { image: seoImage.value } : {}),
+    url:                   seoUrl.value,
+    organizer: ev.ente_info ? {
+      '@type': 'Organization',
+      name:    ev.ente_info.nome,
+    } : undefined,
+    ...(ev.luoghi?.length ? {
+      location: {
+        '@type':  'Place',
+        name:     ev.luoghi[0].nome,
+        address:  ev.luoghi[0].indirizzo ?? ev.luoghi[0].nome,
+      }
+    } : {}),
+    ...(ev.sessioni?.length ? {
+      startDate: ev.sessioni[0].data_inizio,
+      endDate:   ev.sessioni[ev.sessioni.length - 1].data_fine ?? ev.sessioni[ev.sessioni.length - 1].data_inizio,
+    } : {}),
+    eventStatus:         'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    offers: {
+      '@type':       'Offer',
+      url:           seoUrl.value,
+      availability:  'https://schema.org/InStock',
+    },
+  })
+})
+
+// useHead va chiamato una volta sola in setup(), con valori computed reattivi
+useHead({
+  title: seoTitle,
+  meta: computed(() => [
+    { name:     'description',         content: seoDesc.value },
+    { property: 'og:type',             content: 'event' },
+    { property: 'og:title',            content: evento.value?.titolo ?? '' },
+    { property: 'og:description',      content: seoDesc.value },
+    ...(seoImage.value ? [{ property: 'og:image', content: seoImage.value }] : []),
+    { property: 'og:url',              content: seoUrl.value },
+    { property: 'og:site_name',        content: evento.value?.ente_info?.nome ?? 'Crono' },
+    { name:     'twitter:card',        content: 'summary_large_image' },
+    { name:     'twitter:title',       content: evento.value?.titolo ?? '' },
+    { name:     'twitter:description', content: seoDesc.value },
+    ...(seoImage.value ? [{ name: 'twitter:image', content: seoImage.value }] : []),
+  ]),
+  link:   computed(() => [{ rel: 'canonical', href: seoUrl.value }]),
+  script: computed(() => seoJsonLd.value
+    ? [{ type: 'application/ld+json', innerHTML: seoJsonLd.value }]
+    : []
+  ),
+})
+
+// Ricarica i dati se l'utente torna sulla tab (copre i casi in cui il WebSocket drop ha fatto perdere l'evento)
+const handleVisibility = () => { if (!document.hidden) carica() }
+
+onMounted(async () => {
+  await carica()
+  sottoscriviCanali()
+  document.addEventListener('visibilitychange', handleVisibility)
+})
+
+onUnmounted(() => {
+  clearTimeout(avvisoTimer)
+  if (window.Echo && evento.value?.id) window.Echo.leave(`evento.${evento.value.id}`)
+  document.removeEventListener('visibilitychange', handleVisibility)
+})
 </script>
 
 <style scoped>
@@ -315,4 +425,7 @@ onMounted(carica)
   .ev-hero-content h1 { font-size: 1.35rem; }
   .vetnav-btn { display: none; }
 }
+.avviso-posti { position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%); background: #27ae60; color: #fff; padding: .7rem 1.4rem; border-radius: 8px; font-weight: 600; z-index: 9999; box-shadow: 0 2px 12px rgba(0,0,0,.2); white-space: nowrap; }
+.avviso-fade-enter-active, .avviso-fade-leave-active { transition: opacity .4s; }
+.avviso-fade-enter-from, .avviso-fade-leave-to { opacity: 0; }
 </style>

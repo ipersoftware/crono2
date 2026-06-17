@@ -26,20 +26,20 @@ class LuogoController extends Controller
     public function store(Request $request, Ente $ente): JsonResponse
     {
         $data = $request->validate([
-            'nome'        => 'required|string|max:255',
-            'descrizione' => 'nullable|string',
-            'indirizzo'   => 'nullable|string|max:255',
-            'citta'       => 'nullable|string|max:100',
-            'provincia'   => 'nullable|string|size:2',
-            'cap'         => 'nullable|string|size:5',
-            'lat'         => 'nullable|numeric|between:-90,90',
-            'lng'         => 'nullable|numeric|between:-180,180',
-            'maps_url'    => 'nullable|url|max:512',
-            'telefono'    => 'nullable|string|max:30',
-            'email'       => 'nullable|email|max:255',
-            'link_pubblico' => 'nullable|url|max:255',
-            'immagine'    => 'nullable|string|max:255',
-            'stato'       => 'nullable|in:ATTIVO,SOSPESO',
+            'nome'          => 'required|string|max:255',
+            'descrizione'   => 'nullable|string',
+            'indirizzo'     => 'nullable|string|max:255',
+            'citta'         => 'nullable|string|max:100',
+            'provincia'     => 'nullable|string|size:2',
+            'cap'           => 'nullable|string|size:5',
+            'lat'           => 'nullable|numeric|between:-90,90',
+            'lng'           => 'nullable|numeric|between:-180,180',
+            'maps_url'      => 'nullable|string|max:1024',
+            'telefono'      => 'nullable|string|max:30',
+            'email'         => 'nullable|email|max:255',
+            'link_pubblico' => 'nullable|string|max:255',
+            'immagine'      => 'nullable|string|max:255',
+            'stato'         => 'nullable|in:ATTIVO,SOSPESO',
         ]);
 
         $data['ente_id'] = $ente->id;
@@ -64,20 +64,20 @@ class LuogoController extends Controller
         $this->autorizza($ente, $luogo);
 
         $data = $request->validate([
-            'nome'        => 'sometimes|string|max:255',
-            'descrizione' => 'nullable|string',
-            'indirizzo'   => 'nullable|string|max:255',
-            'citta'       => 'nullable|string|max:100',
-            'provincia'   => 'nullable|string|size:2',
-            'cap'         => 'nullable|string|size:5',
-            'lat'         => 'nullable|numeric|between:-90,90',
-            'lng'         => 'nullable|numeric|between:-180,180',
-            'maps_url'    => 'nullable|url|max:512',
-            'telefono'    => 'nullable|string|max:30',
-            'email'       => 'nullable|email|max:255',
-            'link_pubblico' => 'nullable|url|max:255',
-            'immagine'    => 'nullable|string|max:255',
-            'stato'       => 'nullable|in:ATTIVO,SOSPESO',
+            'nome'          => 'sometimes|string|max:255',
+            'descrizione'   => 'nullable|string',
+            'indirizzo'     => 'nullable|string|max:255',
+            'citta'         => 'nullable|string|max:100',
+            'provincia'     => 'nullable|string|size:2',
+            'cap'           => 'nullable|string|size:5',
+            'lat'           => 'nullable|numeric|between:-90,90',
+            'lng'           => 'nullable|numeric|between:-180,180',
+            'maps_url'      => 'nullable|string|max:1024',
+            'telefono'      => 'nullable|string|max:30',
+            'email'         => 'nullable|email|max:255',
+            'link_pubblico' => 'nullable|string|max:255',
+            'immagine'      => 'nullable|string|max:255',
+            'stato'         => 'nullable|in:ATTIVO,SOSPESO',
         ]);
 
         if (isset($data['nome'])) {
@@ -100,6 +100,9 @@ class LuogoController extends Controller
 
     private function autorizza(Ente $ente, Luogo $luogo): void
     {
+        if (request()->user()?->isAdmin()) {
+            return;
+        }
         abort_if((int) $luogo->ente_id !== (int) $ente->id, 403, 'Luogo non appartiene a questo Ente.');
     }
 }

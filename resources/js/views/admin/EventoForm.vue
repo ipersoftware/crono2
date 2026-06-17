@@ -52,8 +52,21 @@
             </select>
           </div>
           <div class="form-group">
-            <label>Cancellazione consentita (ore prima)</label>
-            <input v-model.number="form.cancellazione_consentita_ore" type="number" min="0" class="input" placeholder="0 = non consentita" />
+            <label>Cancellazione prenotazione</label>
+            <select v-model="cancellazioneModo" class="input">
+              <option value="sempre">Sempre consentita</option>
+              <option value="mai">Mai consentita</option>
+              <option value="ore">Consentita fino a N ore prima</option>
+            </select>
+            <div v-if="cancellazioneModo === 'ore'" style="margin-top:.5rem;display:flex;align-items:center;gap:.5rem">
+              <input v-model.number="cancellazioneOre" type="number" min="1" class="input" style="max-width:100px" />
+              <span style="font-size:.88rem;color:#555">ore prima dell'inizio della sessione</span>
+            </div>
+            <div class="field-hint">
+              <strong>Sempre consentita</strong>: l'utente può annullare in qualsiasi momento.<br>
+              <strong>Mai consentita</strong>: dopo la conferma non è possibile annullare.<br>
+              <strong>N ore prima</strong>: è possibile annullare solo se mancano almeno N ore all'inizio della sessione.
+            </div>
           </div>
         </div>
 
@@ -653,10 +666,27 @@ const cambiaTab = (key) => {
   router.replace({ query: { ...route.query, tab: key } })
 }
 
+const cancellazioneModo = ref('sempre')  // 'sempre' | 'mai' | 'ore'
+const cancellazioneOre  = ref(24)
+
+// Sincronizza i due ref locali → form.cancellazione_consentita_ore
+watch([cancellazioneModo, cancellazioneOre], () => {
+  if (cancellazioneModo.value === 'sempre') form.cancellazione_consentita_ore = null
+  else if (cancellazioneModo.value === 'mai') form.cancellazione_consentita_ore = -1
+  else form.cancellazione_consentita_ore = cancellazioneOre.value
+})
+
+// Usato da caricaDati per inizializzare i ref locali dal valore DB
+const initCancellazione = (val) => {
+  if (val === null || val === undefined) { cancellazioneModo.value = 'sempre' }
+  else if (val === -1) { cancellazioneModo.value = 'mai' }
+  else { cancellazioneModo.value = 'ore'; cancellazioneOre.value = val }
+}
+
 const form = reactive({
   titolo: '', descrizione_breve: '', descrizione: '',
   stato: 'BOZZA', serie_id: null,
-  cancellazione_consentita_ore: 0,
+  cancellazione_consentita_ore: null,
   richiede_approvazione: false, consenti_prenotazione_guest: true,
   consenti_multi_sessione: false, consenti_prenotazioni_multiple: false, mostra_disponibilita: true,
   visibile_dal: '', visibile_al: '', prenotabile_dal: '', prenotabile_al: '',
@@ -935,7 +965,8 @@ const caricaDati = async () => {
       form.descrizione               = ev.descrizione ?? ''
       form.stato                     = ev.stato ?? 'BOZZA'
       form.serie_id                  = ev.serie_id ?? null
-      form.cancellazione_consentita_ore = ev.cancellazione_consentita_ore ?? 0
+      form.cancellazione_consentita_ore = ev.cancellazione_consentita_ore ?? null
+      initCancellazione(ev.cancellazione_consentita_ore ?? null)
       form.richiede_approvazione     = !!ev.richiede_approvazione
       form.consenti_prenotazione_guest = ev.consenti_prenotazione_guest ?? true
       form.consenti_multi_sessione          = !!ev.consenti_multi_sessione
@@ -1335,6 +1366,7 @@ watch(() => route.params.eventoId, (newId) => {
 .toggle-slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: white; border-radius: 50%; transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.3); }
 .toggle-input:checked + .toggle-slider { background: #27ae60; border-color: #27ae60; }
 .toggle-input:checked + .toggle-slider::before { transform: translateX(24px); }
+.field-hint { margin-top: .45rem; font-size: .8rem; color: #666; background: #f8f9fa; border-left: 3px solid #bbb; padding: .45rem .7rem; border-radius: 0 4px 4px 0; line-height: 1.6; }
 .input { width: 100%; padding: .45rem .75rem; border: 1px solid #ddd; border-radius: 6px; font-size: .9rem; box-sizing: border-box; }
 .form-actions { margin-top: 1.5rem; }
 .alert-error   { background: #fadbd8; color: #922b21; border-radius: 6px; padding: .75rem 1rem; margin-bottom: 1rem; }

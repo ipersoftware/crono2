@@ -4,6 +4,11 @@
       <div v-if="loading" class="loading">Caricamento sessione…</div>
       <div v-else-if="erroreCaricamento" class="alert-error">{{ erroreCaricamento }}</div>
       <template v-else>
+        <!-- Avviso posti tornati disponibili -->
+        <transition name="avviso-fade">
+          <div v-if="avvisoPosti" class="avviso-posti">{{ avvisoPosti }}</div>
+        </transition>
+
         <div class="back-link-wrap">
           <router-link :to="`/vetrina/${shopUrl}/eventi/${slug}`" class="back-link">← Torna all'evento</router-link>
         </div>
@@ -32,17 +37,17 @@
           <div v-if="!tipologie.length" class="empty">Nessuna tipologia di posto disponibile.</div>
           <div v-for="t in tipologie" :key="t.tipologia_posto.id"
             class="tipologia-row"
-            :class="{ 'tipologia-row--esaurita': !mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0 }">
+            :class="{ 'tipologia-row--esaurita': !mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0 }">
             <div class="tipologia-info">
               <strong>{{ t.tipologia_posto.nome }}</strong>
               <span class="prezzo">
                 {{ t.tipologia_posto.gratuita ? 'Gratuito' : `€ ${Number(t.tipologia_posto.costo).toFixed(2)}` }}
               </span>
-              <span v-if="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0" class="posti-esauriti">
+              <span v-if="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0" class="posti-esauriti">
                 Disponibilità terminata
               </span>
               <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali > 0" class="posti-left-tp">
-                {{ t.posti_disponibili }} disponibili
+                {{ tipDisp(t) }} disponibili
               </span>
               <span v-else-if="t.tipologia_posto.visualizza_disponibili && t.posti_totali === 0" class="posti-left-tp">
                 Disponibilità libera
@@ -58,7 +63,7 @@
               <button type="button"
                 @click="cambiaQty(t.tipologia_posto.id, -1)"
                 class="qty-btn"
-                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">−</button>
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0">−</button>
               <input
                 type="number"
                 min="0"
@@ -67,12 +72,12 @@
                 :value="getQty(t.tipologia_posto.id)"
                 @change="setQty(t.tipologia_posto.id, $event.target.value, $event)"
                 @focus="$event.target.select()"
-                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0"
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0"
               />
               <button type="button"
                 @click="cambiaQty(t.tipologia_posto.id, +1)"
                 class="qty-btn"
-                :disabled="!mostraListaAttesa && t.posti_totali > 0 && (t.posti_disponibili ?? 0) === 0">+</button>
+                :disabled="!mostraListaAttesa && t.posti_totali > 0 && tipDisp(t) === 0">+</button>
             </div>
           </div>
 
@@ -203,10 +208,16 @@
 
             <!-- GDPR / Trattamento dati personali -->
             <div class="gdpr-box">
-              <p class="gdpr-text">
-                Trattamento dei dati personali secondo le informazioni di cui al GDPR Regolamento Europeo UE 2016/679.
-                <a v-if="privacyUrl" :href="privacyUrl" target="_blank" rel="noopener" class="gdpr-link">Maggiori informazioni</a>
-              </p>
+              <details class="gdpr-details">
+                <summary class="gdpr-summary">
+                  Informativa sulla Privacy (GDPR Reg. UE 2016/679)
+                </summary>
+                <div v-if="privacyLoading" class="gdpr-loading">Caricamento informativa…</div>
+                <iframe v-else-if="privacyHtml" class="gdpr-body" :srcdoc="privacyIframeSrc" frameborder="0" scrolling="auto"></iframe>
+                <p v-else class="gdpr-fallback">
+                  Trattamento dei dati personali secondo il GDPR Regolamento Europeo UE 2016/679.
+                </p>
+              </details>
               <label class="gdpr-option" :class="{ 'gdpr-option--selected': privacyOk === true }">
                 <input type="radio" :value="true" v-model="privacyOk" /> Acconsento
               </label>
@@ -376,14 +387,23 @@ const lockToken         = ref(null)
 const scadenzaSecondi   = ref(0)
 const prenotazioneConfermata = ref(null)
 const privacyOk         = ref(null)   // null = non ancora scelto, true = acconsento
-const privacyUrl        = ref('')
+const privacyHtml       = ref('')
+const privacyVersione   = ref(null)
+const privacyLoading    = ref(false)
+
+// Isola il CSS di Governance in un iframe separato per evitare contaminazione del DOM
+const privacyIframeSrc = computed(() =>
+  `<!DOCTYPE html><html><head><meta charset="utf-8"><style>html,body{margin:0;padding:.75rem;font-size:.82rem;line-height:1.55;color:#333}</style></head><body>${privacyHtml.value}</body></html>`
+)
 let timer = null
 
 const getQty = (id) => posti[id] ?? 0
 
 // In modalità lista d'attesa usa il totale come cap, non la disponibilità residua
-const capTipologia = (t) => t.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? t.posti_totali : (t.posti_disponibili ?? 0))
-const capSessione  = (s) => s.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? s.posti_totali : (s.posti_disponibili ?? 0))
+// Disponibilità effettiva tipologia = disponibili - riservati da lock attivi
+const tipDisp = (t) => Math.max(0, (t.posti_disponibili ?? 0) - (t.posti_riservati ?? 0))
+const capTipologia = (t) => t.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? t.posti_totali : tipDisp(t))
+const capSessione  = (s) => s.posti_totali === 0 ? Infinity : (mostraListaAttesa.value ? s.posti_totali : (Math.max(0, (s.posti_disponibili ?? 0) - (s.posti_riservati ?? 0))))
 
 const maxQtyTipologia = (id) => {
   const t = tipologie.value.find(x => x.tipologia_posto.id === id)
@@ -498,6 +518,8 @@ const mostraListaAttesa = computed(() => {
 
 const listaAttesaInviata = ref(false)
 const rispostaListaAttesa = ref(null)
+const avvisoPosti         = ref('')
+let   avvisoPostiTimer    = null
 
 const carica = async () => {
   loading.value = true
@@ -517,7 +539,16 @@ const carica = async () => {
     sessione.value  = res.data.sessioni?.find(s => s.id === sessioneId) ?? null
     tipologie.value = sessione.value?.tipologie_posto?.filter(t => t.attiva) ?? []
     campiForm.value = res.data.campi_form ?? []
-    privacyUrl.value = res.data.ente_privacy_url ?? ''
+
+    // Carica informativa privacy da Governance (in parallelo, non bloccante)
+    privacyLoading.value = true
+    vetrinaApi.privacy(shopUrl)
+      .then(pr => {
+        privacyHtml.value     = pr.data.contenuto_body ?? ''
+        privacyVersione.value = pr.data.versione  ?? null
+      })
+      .catch(() => { /* non bloccante */ })
+      .finally(() => { privacyLoading.value = false })
 
     if (!sessione.value) {
       erroreCaricamento.value = 'Sessione non trovata o non disponibile.'
@@ -565,6 +596,7 @@ const acquisisciLock = async () => {
 
     const res = await prenotazioniApi.lock({ sessione_id: sessioneId, posti: postiPayload })
     lockToken.value = res.data.token
+    sessionStorage.setItem(`lock_${sessioneId}`, res.data.token) // persiste per sopravvivere a F5
     const scadenzaMs = new Date(res.data.scadenza_at) - Date.now()
     scadenzaSecondi.value = Math.max(0, Math.floor(scadenzaMs / 1000))
     avviaTimer()
@@ -617,7 +649,8 @@ const confermaPrenot = async () => {
     const res = await prenotazioniApi.store({
       token: lockToken.value,
       ...datiPersonali,
-      privacy_ok: privacyOk.value === true,
+      privacy_ok:       privacyOk.value === true,
+      privacy_versione: privacyVersione.value,
       posti: postiPayload,
       risposte: rispostePayload,
     })
@@ -668,7 +701,8 @@ const iscriviListaAttesa = async () => {
     const res = await prenotazioniApi.iscriviListaAttesa({
       sessione_id: sessioneId,
       ...datiPersonali,
-      privacy_ok: true,
+      privacy_ok:       true,
+      privacy_versione: privacyVersione.value,
       posti: postiPayload,
     })
     rispostaListaAttesa.value = res.data
@@ -683,6 +717,7 @@ const rilasciaLock = async () => {
   if (lockToken.value) {
     await prenotazioniApi.rilasciaLock(lockToken.value).catch(() => {})
     lockToken.value = null
+    sessionStorage.removeItem(`lock_${sessioneId}`)
     fermaTimer()
   }
 }
@@ -693,6 +728,7 @@ const avviaTimer = () => {
       scadenzaSecondi.value--
     } else {
       fermaTimer()
+      rilasciaLock() // rilascia subito → triggera il broadcast "posti tornati disponibili"
     }
   }, 1000)
 }
@@ -703,19 +739,46 @@ const fermaTimer = () => {
 
 const formatDateTime = (d) => d ? new Date(d).toLocaleString('it-IT', { weekday: 'short', day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–'
 
-onMounted(carica)
+onMounted(async () => {
+  // Se c'era un lock da una sessione precedente (es. F5), rilascialo prima di caricare
+  const tokenPrecedente = sessionStorage.getItem(`lock_${sessioneId}`)
+  if (tokenPrecedente) {
+    sessionStorage.removeItem(`lock_${sessioneId}`)
+    await prenotazioniApi.rilasciaLock(tokenPrecedente).catch(() => {})
+  }
+  carica()
+  window.addEventListener('pagehide', rilasciaLockBeacon)
+  // Ascolta notifiche posti tornati disponibili per questa sessione
+  if (window.Echo) {
+    window.Echo.channel(`sessione.${sessioneId}`)
+      .listen('.posti.disponibili', (data) => {
+        clearTimeout(avvisoPostiTimer)
+        avvisoPosti.value = `🎉 Posti tornati disponibili (${data.posti_liberi} liberi)! Aggiornamento in corso…`
+        carica()
+        avvisoPostiTimer = setTimeout(() => { avvisoPosti.value = '' }, 5000)
+      })
+      .listen('.posti.esauriti', () => {
+        clearTimeout(avvisoPostiTimer)
+        avvisoPosti.value = '⚠️ Posti esauriti. Aggiornamento in corso…'
+        carica()
+        avvisoPostiTimer = setTimeout(() => { avvisoPosti.value = '' }, 5000)
+      })
+  }
+})
+
 onUnmounted(() => {
   fermaTimer()
   rilasciaLock()
   window.removeEventListener('pagehide', rilasciaLockBeacon)
+  if (window.Echo) window.Echo.leave(`sessione.${sessioneId}`)
+  clearTimeout(avvisoPostiTimer)
 })
 
-// Rilascio lock alla chiusura del browser/tab (keepalive sopravvive alla pagina)
+// Rilascio lock alla chiusura del browser/tab o F5 (keepalive sopravvive alla pagina)
 const rilasciaLockBeacon = () => {
   if (!lockToken.value) return
   fetch(`/api/prenotazioni/lock/${lockToken.value}`, { method: 'DELETE', keepalive: true }).catch(() => {})
 }
-window.addEventListener('pagehide', rilasciaLockBeacon)
 </script>
 
 <style scoped>
@@ -738,8 +801,12 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
 .qty-hint { color: #e67e22; font-size: .78rem; margin-top: .1rem; }
 /* GDPR */
 .gdpr-box { background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 6px; padding: .9rem 1rem; margin-top: 1.25rem; }
-.gdpr-text { font-size: .88rem; color: #444; margin: 0 0 .65rem; line-height: 1.45; }
-.gdpr-link { color: #2980b9; text-decoration: underline; }
+.gdpr-details { margin-bottom: .65rem; }
+.gdpr-summary { font-size: .88rem; color: #444; cursor: pointer; user-select: none; padding: .15rem 0; }
+.gdpr-summary:hover { color: #2980b9; }
+.gdpr-body { display: block; margin-top: .75rem; width: 100%; height: 280px; border: 1px solid #dee2e6; border-radius: 4px; background: white; }
+.gdpr-fallback { font-size: .85rem; color: #666; margin: .5rem 0 0; }
+.gdpr-loading { font-size: .82rem; color: #aaa; margin: .5rem 0 0; }
 .gdpr-option { display: flex; align-items: center; gap: .5rem; font-size: .9rem; cursor: pointer; padding: .2rem 0; }
 .gdpr-option input[type="radio"] { accent-color: #2980b9; width: 1rem; height: 1rem; cursor: pointer; }
 .gdpr-option--selected { font-weight: 600; color: #1a5276; }
@@ -834,4 +901,7 @@ h1 { font-size: 1.6rem; margin-bottom: 1rem; }
   .conferma { padding: 1.5rem 1rem; }
   .conferma-icon { font-size: 2.2rem; }
 }
+.avviso-posti { position: fixed; top: 1.2rem; left: 50%; transform: translateX(-50%); background: #27ae60; color: #fff; padding: .7rem 1.4rem; border-radius: 8px; font-weight: 600; z-index: 9999; box-shadow: 0 2px 12px rgba(0,0,0,.2); white-space: nowrap; }
+.avviso-fade-enter-active, .avviso-fade-leave-active { transition: opacity .4s; }
+.avviso-fade-enter-from, .avviso-fade-leave-to { opacity: 0; }
 </style>

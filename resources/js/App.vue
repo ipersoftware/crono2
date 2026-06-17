@@ -25,10 +25,11 @@
             <router-link :to="`/admin/${enteId}/tags`">🏷 Tag</router-link>
             <router-link :to="`/admin/${enteId}/luoghi`">📍 Luoghi</router-link>
             <router-link :to="`/admin/${enteId}/serie`">📚 Serie</router-link>
-            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Mail</router-link>
+            <router-link :to="`/admin/${enteId}/mail-templates`">✉ Notifiche</router-link>
             <router-link :to="`/admin/${enteId}/vetrina`">🏪 Vetrina</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/accessi-log`">🔐 Accessi</router-link>
             <router-link v-if="isAdminEnte" :to="`/admin/${enteId}/notifiche-log`">✉ Log mail</router-link>
+            <router-link :to="`/admin/${enteId}/statistiche`">📊 Statistiche</router-link>
             <a v-if="ermesUrl" :href="ermesUrl" target="_blank" rel="noopener" class="nav-ermes-link">📨 Ermes</a>
           </template>
 
@@ -64,7 +65,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const menuAperto = ref(false)
 
-const isLanding = computed(() => route.name === 'Landing')
+const isLanding = computed(() => ['Landing', 'VetrinaHome', 'VetrinaEvento', 'Booking'].includes(route.name))
 
 const isAuthenticated = computed(() => authStore.isAuthenticated)
 const isAdmin      = computed(() => authStore.user?.role === 'admin')

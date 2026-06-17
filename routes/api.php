@@ -23,6 +23,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\LandingController;
 use App\Http\Controllers\VetrinaController;
 use App\Http\Controllers\NewsletterController;
+use App\Http\Controllers\StatisticheController;
 use Illuminate\Support\Facades\Route;
 
 // -------------------------------------------------------
@@ -36,6 +37,7 @@ Route::post('/contatto-piattaforma', [LandingController::class, 'contatto']);
 Route::get('/auth/provider', [AuthController::class, 'provider']);
 Route::post('/auth/register', [AuthController::class, 'register']);
 Route::post('/auth/login', [AuthController::class, 'login']);
+Route::get('/auth/privacy',  [AuthController::class, 'privacy']);
 
 // -------------------------------------------------------
 // Vetrina pubblica (no auth)
@@ -47,6 +49,7 @@ Route::prefix('vetrina/{shopUrl}')->group(function () {
     Route::get('/serie',   [VetrinaController::class, 'serie']);
     Route::get('/tags',    [VetrinaController::class, 'tags']);
     Route::post('/contatto', [VetrinaController::class, 'contatto']);
+    Route::get('/privacy', [VetrinaController::class, 'privacy']);
 });
 
 // Serve documenti — pubblico, no auth (URL opaco con ID)
@@ -103,7 +106,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::apiResource('tags', TagController::class)->except(['show']);
 
             // Luoghi
-            Route::apiResource('luoghi', LuogoController::class);
+            Route::apiResource('luoghi', LuogoController::class)->parameters(['luoghi' => 'luogo']);
 
             // Serie
             Route::apiResource('serie', SerieController::class);
@@ -172,6 +175,19 @@ Route::middleware('auth:sanctum')->group(function () {
             // Newsletter / Ermes
             Route::get('newsletter/ermes-attivo',  [NewsletterController::class, 'ermesAttivo']);
             Route::post('newsletter/snapshot',     [NewsletterController::class, 'creaSnapshot']);
+
+            // Statistiche (operatore_ente e superiori)
+            Route::prefix('statistiche')->group(function () {
+                Route::get('kpi',             [StatisticheController::class, 'kpi']);
+                Route::get('andamento',       [StatisticheController::class, 'andamento']);
+                Route::get('stati',           [StatisticheController::class, 'stati']);
+                Route::get('top-eventi',      [StatisticheController::class, 'topEventi']);
+                Route::get('occupazione',     [StatisticheController::class, 'occupazione']);
+                Route::get('giorni-settimana',[StatisticheController::class, 'giorniSettimana']);
+                Route::get('fasce-orarie',    [StatisticheController::class, 'fasceOrarie']);
+                Route::get('lista-attesa',    [StatisticheController::class, 'listaAttesa']);
+                Route::get('tipologie-posto', [StatisticheController::class, 'tipologiePosto']);
+            });
         });
 });
 

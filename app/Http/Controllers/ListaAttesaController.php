@@ -38,6 +38,7 @@ class ListaAttesaController extends Controller
             'posti.*.tipologia_id' => 'required|integer|exists:tipologie_posto,id',
             'posti.*.quantita'     => 'required|integer|min:1',
             'privacy_ok'           => 'required|boolean|accepted',
+            'privacy_versione'     => 'nullable|string|max:20',
         ]);
 
         $sessione = Sessione::with(['evento', 'tipologiePosto'])->findOrFail($data['sessione_id']);
@@ -91,6 +92,7 @@ class ListaAttesaController extends Controller
                 'email'                  => $data['email'],
                 'telefono'               => $data['telefono'] ?? null,
                 'privacy_ok'             => true,
+                'privacy_versione'       => $data['privacy_versione'] ?? null,
                 'stato'                  => 'IN_LISTA_ATTESA',
                 'posti_prenotati'        => $totaleQuantita,
                 'posizione_lista_attesa' => $posizione,

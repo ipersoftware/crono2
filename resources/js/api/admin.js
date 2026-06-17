@@ -77,3 +77,16 @@ export const newsletterApi = {
   creaSnapshot: (enteId, filtri) =>
     api.post(`/enti/${enteId}/newsletter/snapshot`, { filtri }),
 }
+
+// Statistiche
+export const statisticheApi = {
+  kpi:             (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/kpi`,              { params }),
+  andamento:       (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/andamento`,        { params }),
+  stati:           (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/stati`,            { params }),
+  topEventi:       (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/top-eventi`,       { params }),
+  occupazione:     (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/occupazione`,      { params }),
+  giorniSettimana: (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/giorni-settimana`, { params }),
+  fasceOrarie:     (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/fasce-orarie`,     { params }),
+  listaAttesa:     (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/lista-attesa`,     { params }),
+  tipologiePosto:  (enteId, params = {}) => api.get(`/enti/${enteId}/statistiche/tipologie-posto`,  { params }),
+}

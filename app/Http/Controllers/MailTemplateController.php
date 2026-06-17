@@ -120,6 +120,9 @@ class MailTemplateController extends Controller
 
     private function autorizza(Ente $ente, MailTemplate $template): void
     {
+        if (request()->user()?->isAdmin()) {
+            return;
+        }
         abort_if((int) $template->ente_id !== (int) $ente->id, 403, 'Template non appartiene a questo Ente.');
     }
 }
